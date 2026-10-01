@@ -190,7 +190,7 @@
     border-radius: 16px;
     background: var(--base);
     border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     animation: popup-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 

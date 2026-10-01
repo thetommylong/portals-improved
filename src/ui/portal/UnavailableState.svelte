@@ -32,7 +32,7 @@
 
   .unavailable p {
     margin: 0;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 14px;
     line-height: 1.5;
   }

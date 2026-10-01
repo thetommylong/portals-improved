@@ -102,7 +102,7 @@
     padding: 7px 14px;
     border: none;
     border-radius: 8px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;

@@ -170,7 +170,7 @@
     color: var(--text);
     cursor: pointer;
     text-align: left;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
     transition: background 0.15s ease;
   }
@@ -224,7 +224,7 @@
     border-radius: 8px;
     background: var(--surface0);
     color: var(--text);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 12px;
     cursor: pointer;
     transition: background 0.15s ease;

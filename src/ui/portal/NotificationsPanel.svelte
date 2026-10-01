@@ -191,7 +191,7 @@
     background: var(--base);
     border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
     overflow: hidden;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     animation: notif-in 0.2s ease-out both;
   }

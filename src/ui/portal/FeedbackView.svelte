@@ -385,7 +385,7 @@
   .fb-textarea {
     width: 100%;
     padding: 6px 8px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
     border: 1px solid var(--border);
     border-radius: 8px;

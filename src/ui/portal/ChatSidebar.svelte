@@ -165,7 +165,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 14px;
   }
 
@@ -242,7 +242,7 @@
     padding: 10px 14px;
     background: var(--surface0);
     color: var(--text);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
     line-height: 1.4;
     outline: none;

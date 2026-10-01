@@ -67,7 +67,7 @@
   let { userId }: { userId: string } = $props();
 
   const FONT_URL =
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap";
+    "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wdth,wght@75..100,100..900&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap";
   if (!document.querySelector(`link[href="${FONT_URL}"]`)) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -598,7 +598,7 @@
     color: var(--mantle);
     font-size: 9px;
     font-weight: 700;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
   }
 
   .badge {
@@ -711,7 +711,7 @@
     border-radius: 12px;
     background: transparent;
     cursor: pointer;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 14px;
     color: var(--text);
     text-align: left;
@@ -829,7 +829,7 @@
     border-radius: 8px;
     background: var(--surface0);
     color: var(--text);
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
     cursor: pointer;
     transition: background 0.15s ease;
@@ -853,7 +853,7 @@
 
   .schedule-date {
     margin-left: 10px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 16px;
     font-weight: 600;
     color: var(--text);
@@ -882,7 +882,7 @@
 
   .settings-title {
     margin: 0 0 8px;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -902,7 +902,7 @@
   }
 
   .settings-flavor {
-    font-family: "Open Sans", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 12px;
     color: var(--text);
     background: var(--surface0);
@@ -965,20 +965,20 @@
   }
 
   .about-name {
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
     font-weight: 600;
     color: var(--text);
   }
 
   .about-detail {
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 11px;
     color: var(--subtext0);
   }
 
   .about-link {
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 11px;
     color: var(--accent);
     text-decoration: none;
