@@ -1,10 +1,15 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - main
+    inputs:
+      version:
+        description: 'Release version (e.g. v1.0.1)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -27,22 +32,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm check
+
       - name: Build
         run: pnpm build
 
-      - name: Read version from package.json
+      - name: Determine version and tag
         id: version
+        shell: bash
         run: |
-          VERSION=$(node -p 'require("./package.json").version')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            TAG="${{ github.event.inputs.version }}"
+          else
+            PKG=$(node -p 'require("./package.json").version')
+            TAG="v${PKG}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-latest
-          name: Latest Build (v${{ steps.version.outputs.version }})
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Portals Improved ${{ steps.version.outputs.tag }}
           body: |
-            Automated build from the latest `main`.
-            **Version:** v${{ steps.version.outputs.version }}
+            Portals Improved ${{ steps.version.outputs.tag }}
+
+            **Version:** ${{ steps.version.outputs.version }}
           make_latest: true
           files: dist/script.user.js
