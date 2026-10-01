@@ -204,6 +204,7 @@ function findImageUrl(data: unknown, depth = 0): string | null {
 
 export class FspLiveAdapter implements PortalAdapter {
   readonly name = "live" as const;
+  readonly hosts = ["fsp"];
   readonly features = FEATURES;
 
   private eduNextLiteCampusCode: string | null = null;

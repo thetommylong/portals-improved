@@ -2,11 +2,12 @@
 // Copyright (C) 2026 thetommylong
 
 import { createLogger } from "./log";
-import { site } from "./site";
+import { hasLiveAdapter, isMockForced } from "./adapters/runtime.svelte";
+import { matchesHost } from "./sdk/adapter";
 
 const log = createLogger("index");
 
-if (site === "unknown") {
+if (!hasLiveAdapter() && !isMockForced()) {
   log.log("no supported portal here — staying idle");
 } else {
   console.log(
@@ -21,8 +22,16 @@ if (site === "unknown") {
     const tasks = Object.entries(modules).map(async ([path, mod]) => {
       const m = mod as Record<string, unknown>;
 
-      const scriptSite = m.site as string | undefined;
-      if (scriptSite && scriptSite !== site) return;
+      // Scripts may opt into a single portal. Under a forced mock every script
+      // runs, so the whole shell can be previewed on any host.
+      const scriptPortal = m.portal as string | undefined;
+      if (
+        scriptPortal &&
+        !isMockForced() &&
+        !matchesHost(window.location.hostname, [scriptPortal])
+      ) {
+        return;
+      }
 
       if (typeof m.default === "function") {
         try {

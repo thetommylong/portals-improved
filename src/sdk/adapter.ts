@@ -65,6 +65,11 @@ export interface AdapterFeatures {
 
 export interface PortalAdapter {
   readonly name: "live" | "mock";
+  /** Hostname fragments this adapter serves. Each adapter declares its own —
+   *  nothing outside the adapter needs to know which hosts exist. A live
+   *  adapter claims real hosts; the mock claims none, since it's a stand-in
+   *  for whichever portal is active rather than a portal itself. */
+  readonly hosts: readonly string[];
   readonly features: AdapterFeatures;
 
   waitForValidSession(timeoutMs: number): Promise<string | null>;
@@ -173,4 +178,14 @@ export interface PortalAdapter {
     startDate: string,
     endDate: string,
   ): Promise<ScheduleEntry[]>;
+}
+
+/** Does `hostname` belong to any of the given host fragments? The single
+ *  definition of what "on this portal" means, shared by the adapter registry
+ *  and by scripts that opt into one portal via `export const portal`. */
+export function matchesHost(
+  hostname: string,
+  fragments: readonly string[],
+): boolean {
+  return fragments.some((fragment) => hostname.includes(fragment));
 }

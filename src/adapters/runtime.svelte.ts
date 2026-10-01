@@ -3,21 +3,36 @@
 
 import { FspLiveAdapter } from "./fsp-live";
 import { MockAdapter } from "./mock";
-import { site } from "../site";
-import type { PortalAdapter } from "../sdk/adapter";
+import { matchesHost, type PortalAdapter } from "../sdk/adapter";
 
 const ADAPTER_KEY = "portal:adapter";
+const HOST = window.location.hostname;
+
+/** Every live portal adapter. Adding a portal means adding its class here —
+ *  the hosts it serves come from the adapter itself, so nothing else in the
+ *  codebase needs editing. */
+const LIVE_ADAPTERS = [FspLiveAdapter];
+
+function firstMatchingLive(): PortalAdapter | null {
+  for (const Adapter of LIVE_ADAPTERS) {
+    const adapter = new Adapter();
+    if (matchesHost(HOST, adapter.hosts)) return adapter;
+  }
+  return null;
+}
+
+/** Is this a host any live adapter claims? The single gate for whether the
+ *  userscript should do anything at all. */
+export function hasLiveAdapter(): boolean {
+  return firstMatchingLive() !== null;
+}
 
 function resolveAdapter(): PortalAdapter {
-  const param = new URLSearchParams(window.location.search).get("adapter");
-  if (param === "live") return new FspLiveAdapter();
-  if (param === "mock") return new MockAdapter();
-
-  const stored: string = GM_getValue(ADAPTER_KEY, "");
-  if (stored === "live") return new FspLiveAdapter();
-  if (stored === "mock") return new MockAdapter();
-
-  return site === "fsp" ? new FspLiveAdapter() : new MockAdapter();
+  const forced =
+    new URLSearchParams(window.location.search).get("adapter") ??
+    GM_getValue<string>(ADAPTER_KEY, "");
+  if (forced === "mock") return new MockAdapter();
+  return firstMatchingLive() ?? new MockAdapter();
 }
 
 export function isMockForced(): boolean {
@@ -32,7 +47,10 @@ class AdapterRuntime {
 
   setActive(name: "live" | "mock"): void {
     GM_setValue(ADAPTER_KEY, name);
-    this.adapter = name === "live" ? new FspLiveAdapter() : new MockAdapter();
+    this.adapter =
+      name === "live"
+        ? (firstMatchingLive() ?? new MockAdapter())
+        : new MockAdapter();
   }
 }
 

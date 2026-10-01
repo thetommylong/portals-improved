@@ -2,14 +2,11 @@
 // Copyright (C) 2026 thetommylong
 
 import { mount } from "svelte";
-import { site } from "../site";
-import { isMockForced, runtime } from "../adapters/runtime.svelte";
+import { runtime } from "../adapters/runtime.svelte";
 import PortalShell from "../ui/PortalShell.svelte";
 import sharedCss from "../ui/portal/shared.css?inline";
 
 export default function () {
-  if (site !== "fsp" && !isMockForced()) return;
-
   void runtime.adapter.waitForValidSession(60_000).then((userId) => {
     if (!userId) return;
     boot(userId);
@@ -42,10 +39,9 @@ function boot(userId: string) {
     mount(PortalShell, { target: host, props: { userId } });
 
     void Promise.allSettled([
-      document.fonts.load('400 16px "Open Sans"'),
-      document.fonts.load('600 16px "Open Sans"'),
-      document.fonts.load('400 16px "Inter"'),
-      document.fonts.load('600 16px "Inter"'),
+      document.fonts.load('400 16px "Google Sans Flex"'),
+      document.fonts.load('600 16px "Google Sans Flex"'),
+      document.fonts.load('900 16px "Google Sans Flex"'),
     ]);
   };
 

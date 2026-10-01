@@ -103,6 +103,7 @@ function markCommon(): MarkCommon {
 
 export class MockAdapter implements PortalAdapter {
   readonly name = "mock" as const;
+  readonly hosts: readonly string[] = [];
   readonly features = FEATURES;
 
   waitForValidSession(): Promise<string | null> {

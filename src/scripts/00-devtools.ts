@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-export const site = "fsp";
+export const portal = "fsp";
 
 export default function () {
   if (unsafeWindow.__devtoolsPatchActive) return;
