@@ -939,12 +939,6 @@ export function getToolMeta(name: string): ToolMeta | null {
   return TOOLS.find((t) => t.name === name) ?? null;
 }
 
-export function getCapability(name: string): FeatureFlag | null {
-  const tool = TOOLS.find((t) => t.name === name);
-  if (!tool) return null;
-  return CATEGORY_CAPABILITY[tool.category] ?? null;
-}
-
 export function isToolSupported(name: string): boolean {
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) return false;

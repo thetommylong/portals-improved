@@ -12,8 +12,6 @@ export const FLAVOR_OPTIONS = [
 ] as const;
 export type FlavorChoice = (typeof FLAVOR_OPTIONS)[number];
 
-const FLAVORS: FlavorName[] = ["latte", "frappe", "macchiato", "mocha"];
-
 export const DARK_FLAVORS = ["frappe", "macchiato", "mocha"] as const;
 export type DarkFlavorChoice = (typeof DARK_FLAVORS)[number];
 

@@ -7,7 +7,7 @@
   import type { ScheduleEntry } from "../../types/portal";
   import { readWeek, writeWeek } from "../../scheduleCache";
   import { notify } from "../../notifications";
-  import { getWeek } from "./src/dateHelper";
+  import { getWeek } from "./dateHelper";
   import LessonCard from "./LessonCard.svelte";
   import LessonPopup from "./LessonPopup.svelte";
 

@@ -7,10 +7,6 @@ export function parseScore(raw: unknown): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-export function isNumericScore(v: unknown): boolean {
-  return !Number.isNaN(Number(v));
-}
-
 export function getMilestoneValue(
   milestones: [string, string][],
   keyRegex: RegExp,
@@ -24,9 +20,9 @@ export function getMilestoneValue(
   return null;
 }
 
-export const GK_REGEX = /giữa\s*k[ìiỳ]/i;
-export const CK_REGEX = /cuối\s*k[ìiỳ]/i;
-export const TX_REGEX = /^Đánh giá thường xuyên/i;
+const GK_REGEX = /giữa\s*k[ìiỳ]/i;
+const CK_REGEX = /cuối\s*k[ìiỳ]/i;
+const TX_REGEX = /^Đánh giá thường xuyên/i;
 
 export function getGKValue(milestones: [string, string][]): number | null {
   return getMilestoneValue(milestones, GK_REGEX);
