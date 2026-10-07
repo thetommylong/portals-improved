@@ -34,9 +34,9 @@ Portals that haven't been wired up yet just don't exist. The shell only renders 
 
 | Portal | Host | Status |
 |--------|------|--------|
-| **FSP University** | `fsp.fpt.edu.vn` | ✅ Live — the original, and the reference implementation |
+| **FPT University** | `fsp.fpt.edu.vn` | ✅ Live — the original, and the reference implementation |
 
-### FSP University
+### FPT University
 
 Where this started. The shell was reverse-engineered against FSP's internal API, so most of its features are things FSP specifically exposes.
 
