@@ -20,15 +20,25 @@ function boot(userId: string) {
 
     document.body.replaceChildren(host);
 
-    // Drop the portal's own stylesheet(s) from <head> so their 8k+ rules stop
-    // bleeding into the app chrome. Only same-origin/relative <link rel="stylesheet">
-    // (e.g. `styles-W27TWSNY.css`) are removed — absolute links like the Google
-    // Fonts sheet and the userscript's own injected <style> blocks are kept.
-    document.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
-      const href = link.getAttribute("href") ?? "";
-      if (/^https?:\/\//.test(href) || href.startsWith("//")) return;
-      link.remove();
-    });
+    // The shell replaces the whole document, so no host stylesheet is wanted:
+    // drop every <link rel="stylesheet"> and inline <style> from <head> — the
+    // portal's own rules, but also a mock host's styling (e.g. example.com's
+    // `html{color-scheme:light dark}` + `body{...text-align:center}`) which
+    // would otherwise inherit into the shell. Our own CSS survives: component
+    // css is injected as a <style> chunk tagged with vite's `/*$vite$:*/`
+    // marker — capture it before the strip and re-add it after (the bundle
+    // only injects that chunk once per load).
+    const ownCss = [...document.head.querySelectorAll("style")]
+      .map((el) => el.textContent ?? "")
+      .filter((css) => css.includes("/*$vite$:"));
+    document.head
+      .querySelectorAll('link[rel="stylesheet"], style')
+      .forEach((el) => el.remove());
+    for (const css of ownCss) {
+      const style = document.createElement("style");
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
 
     window.stop();
 
