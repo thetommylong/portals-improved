@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
+  import { untrack } from "svelte";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Notification, NotificationsResult } from "../../types/portal";
+  import { t } from "../../i18n.svelte";
 
   let {
     userId,
@@ -54,12 +56,12 @@
 
   $effect(() => {
     void userId;
-    void load();
+    untrack(() => void load());
   });
 
   $effect(() => {
     if (open && loadedOnce) {
-      void load();
+      untrack(() => void load());
     }
   });
 
@@ -94,7 +96,7 @@
   function relTime(iso: string): string {
     const then = new Date(iso).getTime();
     const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
-    if (mins < 1) return "now";
+    if (mins < 1) return t("notif.now");
     if (mins < 60) return `${mins}m`;
     const hours = Math.floor(mins / 60);
     if (hours < 24) return `${hours}h`;
@@ -113,20 +115,20 @@
       class="notif-panel"
       role="dialog"
       aria-modal="false"
-      aria-label="Notifications"
+      aria-label={t("notif.title")}
       tabindex="-1"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => e.stopPropagation()}
     >
       <div class="notif-header">
-        <span class="notif-title">Notifications</span>
+        <span class="notif-title">{t("notif.title")}</span>
         {#if result}
-          <span class="notif-unread">{result.numberOfUnreadNotifications} unread</span>
+          <span class="notif-unread">{t("notif.unread", { n: result.numberOfUnreadNotifications })}</span>
         {/if}
         <button
           type="button"
           class="notif-close"
-          aria-label="Close"
+          aria-label={t("aria.close")}
           onclick={onclose}
         >
           <span class="material-symbols-rounded" aria-hidden="true">close</span>
@@ -135,11 +137,11 @@
 
       <div class="notif-list">
         {#if loading && !result}
-          <p class="notif-status">Loading…</p>
+          <p class="notif-status">{t("status.loading")}</p>
         {:else if error}
-          <p class="notif-status">Failed to load notifications</p>
+          <p class="notif-status">{t("notif.failed")}</p>
         {:else if result && result.notifications.length === 0}
-          <p class="notif-status">No notifications</p>
+          <p class="notif-status">{t("notif.empty")}</p>
         {:else if result}
           {#each result.notifications as n (n.notificationId)}
             <button
@@ -148,7 +150,7 @@
               class:unread={!n.isRead}
               class:clickable={!n.isRead}
               disabled={n.isRead}
-              aria-label={n.isRead ? n.title : `Mark as read: ${n.title}`}
+              aria-label={n.isRead ? n.title : `${t("notif.markRead")}: ${n.title}`}
               onclick={() => markRead(n)}
             >
               <div class="notif-item-top">

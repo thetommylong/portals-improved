@@ -5,6 +5,7 @@
   import { runtime } from "../../adapters/runtime.svelte";
   import type { StudentHomeWork } from "../../types/portal";
   import { notify } from "../../notifications";
+  import { i18n, t } from "../../i18n.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -32,7 +33,7 @@
 
   function fmtDate(iso: string): string {
     if (!iso) return "—";
-    return new Intl.DateTimeFormat("vi-VN", {
+    return new Intl.DateTimeFormat(i18n.locale, {
       day: "2-digit",
       month: "2-digit",
       hour: "2-digit",
@@ -47,7 +48,7 @@
       const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
       items = await runtime.adapter.getStudentHomeWorks(studentId, term.termId);
     } catch {
-      notify("Failed to load homeworks", "error");
+      notify(t("toast.homeworksFailed"), "error");
     } finally {
       loading = false;
     }
@@ -61,12 +62,12 @@
 <div class="homeworks">
   <div class="feedback-body">
     {#if loading}
-      <p class="feedback-empty" role="status">Loading…</p>
+      <p class="feedback-empty" role="status">{t("status.loading")}</p>
     {:else if items.length === 0}
-      <p class="feedback-empty">No homework published yet</p>
+      <p class="feedback-empty">{t("homeworks.empty")}</p>
     {:else}
       {#if pending.length > 0}
-        <h2 class="feedback-group-title" id="hw-pending">Chưa hoàn thành ({pending.length})</h2>
+        <h2 class="feedback-group-title" id="hw-pending">{t("homeworks.groupPending", { n: pending.length })}</h2>
         <ul class="feedback-list" aria-labelledby="hw-pending">
           {#each pending as hw (hw.homeWorkStudentId)}
             {@render card(hw)}
@@ -74,7 +75,7 @@
         </ul>
       {/if}
       {#if done.length > 0}
-        <h2 class="feedback-group-title" id="hw-done">Đã hoàn thành ({done.length})</h2>
+        <h2 class="feedback-group-title" id="hw-done">{t("homeworks.groupDone", { n: done.length })}</h2>
         <ul class="feedback-list" aria-labelledby="hw-done">
           {#each done as hw (hw.homeWorkStudentId)}
             {@render card(hw)}
@@ -93,34 +94,34 @@
         <p class="fb-card-sub">{hw.subjectName} · {hw.className}</p>
       </div>
       {#if hw.isDone}
-        <span class="fb-badge fb-badge-done">Đã làm</span>
+        <span class="fb-badge fb-badge-done">{t("homeworks.badgeDone")}</span>
       {:else if isOverdue(hw)}
-        <span class="fb-badge fb-badge-overdue">Quá hạn</span>
+        <span class="fb-badge fb-badge-overdue">{t("homeworks.badgeOverdue")}</span>
       {:else}
-        <span class="fb-badge fb-badge-pending">Chưa làm</span>
+        <span class="fb-badge fb-badge-pending">{t("homeworks.badgePending")}</span>
       {/if}
     </header>
     <section class="mark-section">
-      <span class="mark-label">Hạn</span>
+      <span class="mark-label">{t("label.deadline")}</span>
       <span class="fb-text">{fmtDate(hw.expiredDateTime)}</span>
     </section>
     <section class="mark-section">
-      <span class="mark-label">GV</span>
+      <span class="mark-label">{t("label.teacher")}</span>
       <span class="fb-text">{hw.teacherName || "—"}</span>
     </section>
     {#if hw.homeworkFiles.length > 0 || hw.studentFiles.length > 0}
       <section class="mark-section">
-        <span class="mark-label">Files</span>
+        <span class="mark-label">{t("label.files")}</span>
         <span class="fb-text"
-          >{#if hw.homeworkFiles.length > 0}{hw.homeworkFiles.length} đề{/if
+          >{#if hw.homeworkFiles.length > 0}{t("homeworks.assignments", { n: hw.homeworkFiles.length })}{/if
           }{#if hw.homeworkFiles.length > 0 && hw.studentFiles.length > 0} · {/if
-          }{#if hw.studentFiles.length > 0}{hw.studentFiles.length} nộp{/if}</span
+          }{#if hw.studentFiles.length > 0}{t("homeworks.submissions", { n: hw.studentFiles.length })}{/if}</span
         >
       </section>
     {/if}
     {#if hw.mark !== null}
       <section class="mark-section">
-        <span class="mark-label">Mark</span>
+        <span class="mark-label">{t("label.mark")}</span>
         <span class="fb-text">{hw.mark}</span>
       </section>
     {/if}

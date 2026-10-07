@@ -2,8 +2,10 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { t } from "../../i18n.svelte";
+
   let {
-    message = "This feature is unavailable for the current portal provider.",
+    message = t("unavailable.msg"),
   }: { message?: string } = $props();
 </script>
 

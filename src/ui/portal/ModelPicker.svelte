@@ -4,6 +4,7 @@
 
   import { fetchModels, getModel, setModel } from "../../sdk/openai";
   import type { ModelInfo } from "../../sdk/types";
+  import { t } from "../../i18n.svelte";
 
   let {
     open = false,
@@ -41,23 +42,23 @@
 </script>
 
 {#if open}
-  <div class="picker-overlay" role="dialog" aria-label="Select model">
+  <div class="picker-overlay" role="dialog" aria-label={t("modelPicker.title")}>
     <div class="picker">
       <div class="picker-header">
-        <span class="picker-title">Select Model</span>
-        <button class="picker-close" aria-label="Close" onclick={onclose}>
+        <span class="picker-title">{t("modelPicker.title")}</span>
+        <button class="picker-close" aria-label={t("aria.close")} onclick={onclose}>
           <span class="material-symbols-rounded" aria-hidden="true">close</span>
         </button>
       </div>
 
       <div class="picker-body">
         {#if loading}
-          <div class="picker-status">Loading models...</div>
+          <div class="picker-status">{t("modelPicker.loading")}</div>
         {:else if error}
           <div class="picker-status error">{error}</div>
-          <button class="picker-retry" onclick={loadModels}>Retry</button>
+          <button class="picker-retry" onclick={loadModels}>{t("modelPicker.retry")}</button>
         {:else if models.length === 0}
-          <div class="picker-status">No models found</div>
+          <div class="picker-status">{t("modelPicker.empty")}</div>
         {:else}
           <div class="model-list">
             {#each models as model (model.id)}

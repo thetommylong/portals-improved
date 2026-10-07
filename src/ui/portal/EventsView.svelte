@@ -5,6 +5,7 @@
   import { runtime } from "../../adapters/runtime.svelte";
   import type { EventStudent } from "../../types/portal";
   import { notify } from "../../notifications";
+  import { i18n, t } from "../../i18n.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -20,7 +21,7 @@
       const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
       items = await runtime.adapter.getEventsByTerm(term.termId, studentId);
     } catch {
-      notify("Failed to load events", "error");
+      notify(t("toast.eventsFailed"), "error");
     } finally {
       loading = false;
     }
@@ -50,11 +51,11 @@
       );
       await load();
       notify(
-        ev.event.hasAttendance ? "Unregistered from event" : "Registered for event",
+        ev.event.hasAttendance ? t("toast.unregistered") : t("toast.registered"),
         "success",
       );
     } catch {
-      notify("Failed to update registration", "error");
+      notify(t("toast.registrationToggleFailed"), "error");
     } finally {
       togglingId = null;
     }
@@ -75,35 +76,35 @@
         <p class="fb-card-sub">{ev.event.eventTypeId || "—"}</p>
       </div>
       {#if ev.event.hasAttendance}
-        <span class="fb-badge fb-badge-done">Đã tham gia</span>
+        <span class="fb-badge fb-badge-done">{t("events.badgeDone")}</span>
       {:else}
-        <span class="fb-badge fb-badge-pending">Chưa tham gia</span>
+        <span class="fb-badge fb-badge-pending">{t("events.badgePending")}</span>
       {/if}
     </header>
     <section class="mark-section">
-      <span class="mark-label">Hạn</span>
-      <span class="fb-text">{new Date(ev.event.startDate).toLocaleDateString("vi-VN")} - {new Date(ev.event.endDate).toLocaleDateString("vi-VN")}</span>
+      <span class="mark-label">{t("label.deadline")}</span>
+      <span class="fb-text">{new Date(ev.event.startDate).toLocaleDateString(i18n.locale)} - {new Date(ev.event.endDate).toLocaleDateString(i18n.locale)}</span>
     </section>
     <section class="mark-section">
-      <span class="mark-label">Địa điểm</span>
+      <span class="mark-label">{t("label.location")}</span>
       <span class="fb-text">{ev.event.location || "—"}</span>
     </section>
     {#if ev.event.numberOfSlots > 0}
       <section class="mark-section">
-        <span class="mark-label">Slots</span>
-        <span class="fb-text">{ev.event.numberOfSlots} vé</span>
+        <span class="mark-label">{t("label.slots")}</span>
+        <span class="fb-text">{t("label.tickets", { n: ev.event.numberOfSlots })}</span>
       </section>
     {/if}
     {#if ev.event.hasIssuingCertificate}
       <section class="mark-section">
-        <span class="mark-label">Certificate</span>
-        <span class="fb-badge fb-badge-done">Có</span>
+        <span class="mark-label">{t("label.certificate")}</span>
+        <span class="fb-badge fb-badge-done">{t("label.yes")}</span>
       </section>
     {/if}
     {#if ev.event.hasAttendance}
       <section class="mark-section">
-        <span class="mark-label">Attendance</span>
-        <span class="fb-badge fb-badge-done">Đã có</span>
+        <span class="mark-label">{t("label.attendance")}</span>
+        <span class="fb-badge fb-badge-done">{t("label.done")}</span>
       </section>
     {/if}
     <footer class="event-actions">
@@ -111,11 +112,11 @@
         class={ev.event.hasAttendance ? "btn-unregister" : "btn-register"}
         disabled={togglingId === ev.event.eventId}
         onclick={() => handleToggle(ev)}
-        aria-label={ev.event.hasAttendance ? "Unregister from this event" : "Register for this event"}
+        aria-label={ev.event.hasAttendance ? t("events.ariaUnregister") : t("events.ariaRegister")}
       >
         {togglingId === ev.event.eventId
-          ? (ev.event.hasAttendance ? "Unregistering…" : "Registering…")
-          : (ev.event.hasAttendance ? "Unregister" : "Register")}
+          ? (ev.event.hasAttendance ? t("events.unregistering") : t("events.registering"))
+          : (ev.event.hasAttendance ? t("events.unregister") : t("events.register"))}
       </button>
     </footer>
   </article>
@@ -124,12 +125,12 @@
 <div class="homeworks">
   <div class="feedback-body" bind:clientWidth={gridWidth}>
     {#if loading}
-      <p class="feedback-empty" role="status">Loading…</p>
+      <p class="feedback-empty" role="status">{t("status.loading")}</p>
     {:else if items.length === 0}
-      <p class="feedback-empty">No events published yet</p>
+      <p class="feedback-empty">{t("events.empty")}</p>
     {:else}
       {#if pending.length > 0}
-        <h2 class="feedback-group-title" id="ev-pending">Chưa tham gia ({pending.length})</h2>
+        <h2 class="feedback-group-title" id="ev-pending">{t("events.groupPending", { n: pending.length })}</h2>
         <div class="events-grid" role="group" aria-labelledby="ev-pending">
           {#each columnsOf(pending) as col, ci (ci)}
             <div class="events-col">
@@ -141,7 +142,7 @@
         </div>
       {/if}
       {#if done.length > 0}
-        <h2 class="feedback-group-title" id="ev-done">Đã tham gia ({done.length})</h2>
+        <h2 class="feedback-group-title" id="ev-done">{t("events.groupDone", { n: done.length })}</h2>
         <div class="events-grid" role="list" aria-labelledby="ev-done">
           {#each columnsOf(done) as col, ci (ci)}
             <div class="events-col">

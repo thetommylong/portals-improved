@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import { gmOpenAI, gmOpenAIStream, getModel, isConfigured } from "./openai";
 import { buildSystemPrompt } from "./system";
+import { t } from "../i18n.svelte";
 import {
   searchFunctions,
   getToolDefinitions,
@@ -144,7 +145,7 @@ export function createAgent(context: AgentContext): AgentInstance {
 
       const choice = response.choices?.[0];
       if (!choice) {
-        onEvent({ type: "error", content: "No response from API" });
+        onEvent({ type: "error", content: t("chat.noResponse") });
         return;
       }
 

@@ -6,6 +6,7 @@
   import type { Club, Term } from "../../types/portal";
   import { notify } from "../../notifications";
   import { readTerms, writeTerms } from "../../marksCache";
+  import { i18n, t } from "../../i18n.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -63,7 +64,7 @@
 
   function fmtDate(iso: string | null): string {
     if (!iso) return "—";
-    return new Intl.DateTimeFormat("vi-VN", {
+    return new Intl.DateTimeFormat(i18n.locale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -92,7 +93,7 @@
         selectedTermId = def.termId;
       }
     } catch {
-      if (!cached) notify("Failed to load semesters", "error");
+      if (!cached) notify(t("toast.semestersFailed"), "error");
     }
   }
 
@@ -109,7 +110,7 @@
     try {
       clubs = await runtime.adapter.getClubsByTerm(termId, studentId);
     } catch {
-      notify("Failed to load clubs", "error");
+      notify(t("toast.clubsFailed"), "error");
     } finally {
       loading = false;
     }
@@ -126,7 +127,7 @@
 
 <div class="marks">
   <div class="marks-toolbar">
-    <label class="marks-label" for="clubs-term">Học kỳ</label>
+    <label class="marks-label" for="clubs-term">{t("label.term")}</label>
     <select
       id="clubs-term"
       class="marks-select"
@@ -151,14 +152,14 @@
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">Loading…</p>
+      <p class="marks-empty" role="status">{t("status.loading")}</p>
     {:else if clubs.length === 0}
-      <p class="marks-empty">Không có câu lạc bộ nào</p>
+      <p class="marks-empty">{t("clubs.empty")}</p>
     {:else}
       <div
         class="marks-grid"
         role="group"
-        aria-label="Clubs"
+        aria-label={t("clubs.gridAria")}
         bind:clientWidth={gridWidth}
       >
         {#each columns as col, ci (ci)}
@@ -169,7 +170,7 @@
                   <h3 class="mark-card-title">{club.clubName}</h3>
                 </header>
                 <section class="mark-section">
-                  <span class="mark-label">Tạo</span>
+                  <span class="mark-label">{t("label.created")}</span>
                   <span class="fb-text">{fmtDate(club.createdDate)}</span>
                 </section>
               </article>

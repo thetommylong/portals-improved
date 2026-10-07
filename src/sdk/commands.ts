@@ -11,6 +11,7 @@ import {
   setModel,
   fetchModels,
 } from "./openai";
+import { t } from "../i18n.svelte";
 
 export interface CommandResult {
   handled: boolean;
@@ -18,13 +19,7 @@ export interface CommandResult {
   clearChat?: boolean;
 }
 
-const HELP_TEXT = `Available commands:
-  /models  — List and select available models
-  /key     — Set your API key
-  /url     — Set the API base URL
-  /model   — Show or set the current model
-  /clear   — Clear chat history
-  /help    — Show this help`;
+const HELP_TEXT = (): string => t("chat.help");
 
 export async function handleCommand(input: string): Promise<CommandResult> {
   const trimmed = input.trim();
@@ -40,21 +35,24 @@ export async function handleCommand(input: string): Promise<CommandResult> {
     case "/help": {
       return {
         handled: true,
-        events: [{ type: "message", content: HELP_TEXT, role: "assistant" }],
+        events: [{ type: "message", content: HELP_TEXT(), role: "assistant" }],
       };
     }
 
     case "/key": {
       if (!arg) {
         const current = getApiKey();
+        const masked = current
+          ? `${current.slice(0, 4)}...${current.slice(-4)}`
+          : "";
         return {
           handled: true,
           events: [
             {
               type: "message",
               content: current
-                ? `API key is set (${current.slice(0, 4)}...${current.slice(-4)})`
-                : "No API key set. Usage: /key <your-api-key>",
+                ? t("chat.apiKeySet", { masked })
+                : t("chat.apiKeyMissing"),
               role: "assistant",
             },
           ],
@@ -64,7 +62,11 @@ export async function handleCommand(input: string): Promise<CommandResult> {
       return {
         handled: true,
         events: [
-          { type: "message", content: "API key saved.", role: "assistant" },
+          {
+            type: "message",
+            content: t("chat.apiKeySaved"),
+            role: "assistant",
+          },
         ],
       };
     }
@@ -76,7 +78,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
           events: [
             {
               type: "message",
-              content: `Current base URL: ${getBaseUrl()}\nUsage: /url <new-base-url>`,
+              content: t("chat.baseUrlCurrent", { url: getBaseUrl() }),
               role: "assistant",
             },
           ],
@@ -88,7 +90,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
         events: [
           {
             type: "message",
-            content: `Base URL set to: ${arg}`,
+            content: t("chat.baseUrlSet", { url: arg }),
             role: "assistant",
           },
         ],
@@ -102,7 +104,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
           events: [
             {
               type: "message",
-              content: `Current model: ${getModel()}\nUsage: /model <model-id>`,
+              content: t("chat.modelCurrent", { model: getModel() }),
               role: "assistant",
             },
           ],
@@ -114,7 +116,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
         events: [
           {
             type: "message",
-            content: `Model set to: ${arg}`,
+            content: t("chat.modelSet", { model: arg }),
             role: "assistant",
           },
         ],
@@ -130,7 +132,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
             events: [
               {
                 type: "message",
-                content: "No models returned from API.",
+                content: t("chat.noModels"),
                 role: "assistant",
               },
             ],
@@ -145,7 +147,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
           events: [
             {
               type: "message",
-              content: `Available models (● = current):\n${list}\n\nUse /model <id> to switch.`,
+              content: t("chat.modelsList", { list }),
               role: "assistant",
             },
           ],
@@ -157,7 +159,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
           events: [
             {
               type: "error",
-              content: `Failed to fetch models: ${message}`,
+              content: t("chat.modelsFailed", { message }),
               role: "assistant",
             },
           ],
@@ -169,7 +171,7 @@ export async function handleCommand(input: string): Promise<CommandResult> {
       return {
         handled: true,
         events: [
-          { type: "message", content: "Chat cleared.", role: "assistant" },
+          { type: "message", content: t("chat.cleared"), role: "assistant" },
         ],
         clearChat: true,
       };
@@ -181,7 +183,10 @@ export async function handleCommand(input: string): Promise<CommandResult> {
         events: [
           {
             type: "message",
-            content: `Unknown command: ${cmd}\n\n${HELP_TEXT}`,
+            content: t("chat.unknownCommand", {
+              cmd,
+              help: t("chat.help"),
+            }),
             role: "assistant",
           },
         ],

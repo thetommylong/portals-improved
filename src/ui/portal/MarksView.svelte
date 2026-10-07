@@ -5,6 +5,7 @@
   import { runtime } from "../../adapters/runtime.svelte";
   import type { MarkCommon, Term } from "../../types/portal";
   import { notify } from "../../notifications";
+  import { i18n, t } from "../../i18n.svelte";
   import {
     readTermMarks,
     readTerms,
@@ -152,7 +153,7 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
         selectedTermId = def.termId;
       }
     } catch {
-      if (!cached) notify("Failed to load semesters", "error");
+      if (!cached) notify(t("toast.semestersFailed"), "error");
     }
   }
 
@@ -193,9 +194,9 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
       }
     } catch {
       if (!cache.has(termId)) {
-        notify("Failed to load marks", "error");
+        notify(t("toast.marksFailed"), "error");
       } else if (force) {
-        notify("Couldn't refresh — showing saved marks", "info");
+        notify(t("toast.marksStale"), "info");
       }
     } finally {
       loading = false;
@@ -213,7 +214,7 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
 
 <div class="marks">
   <div class="marks-toolbar">
-    <label class="marks-label" for="marks-term">Học kỳ</label>
+    <label class="marks-label" for="marks-term">{t("marks.term")}</label>
     <select
       id="marks-term"
       class="marks-select"
@@ -240,7 +241,7 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
           class="btn-marks"
           onclick={() => exportGradesToCSV(marks, selectedTerm?.semesterName)}
         >
-          Export CSV
+          {t("marks.export")}
         </button>
         <button
           type="button"
@@ -250,18 +251,18 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
             predictorOpen = true;
           }}
         >
-          What do I need on my finals?
+          {t("marks.predictor")}
         </button>
       </div>
     </div>
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">Loading…</p>
+      <p class="marks-empty" role="status">{t("status.loading")}</p>
     {:else if marks.length === 0}
-      <p class="marks-empty">No marks recorded for this semester yet</p>
+      <p class="marks-empty">{t("marks.empty")}</p>
     {:else}
-      <div class="marks-grid" role="group" aria-label="Bảng điểm theo môn học" bind:clientWidth={gridWidth}>
+      <div class="marks-grid" role="group" aria-label={t("marks.gridAria")} bind:clientWidth={gridWidth}>
         {#each columns as col, ci (ci)}
           <div class="marks-col">
             {#each col as m (m.courseId)}
@@ -271,17 +272,17 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
               <h3 class="mark-card-title">{m.subjectName}</h3>
               <div class="mark-card-avgs">
                 {#if m.averageMark}
-                  <span class="avg-badge" aria-label="TB {m.averageMark}">TB {m.averageMark}</span>
+                  <span class="avg-badge" aria-label={t("marks.tb", { value: m.averageMark })}>{t("marks.tb", { value: m.averageMark })}</span>
                 {/if}
                 {#if m.averageMarkCN}
-                  <span class="avg-badge avg-badge-cn" aria-label="CN {m.averageMarkCN}">CN {m.averageMarkCN}</span>
+                  <span class="avg-badge avg-badge-cn" aria-label={t("marks.cn", { value: m.averageMarkCN })}>{t("marks.cn", { value: m.averageMarkCN })}</span>
                 {/if}
               </div>
             </header>
 
             {#if g.tx.length > 0}
-              <section class="mark-section" aria-label="Đánh giá thường xuyên">
-                <span class="mark-label">TX</span>
+              <section class="mark-section" aria-label={t("marks.ariaTx")}>
+                <span class="mark-label">{t("marks.tx")}</span>
                 <div class="chips">
                   {#each g.tx as [key, value], i (key)}
                     <span class="chip"><b>{i + 1}</b>{value}</span>
@@ -291,8 +292,8 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
             {/if}
 
             {#if g.skills.length > 0}
-              <section class="mark-section" aria-label="Kỹ năng ngôn ngữ">
-                <span class="mark-label">Kỹ năng</span>
+              <section class="mark-section" aria-label={t("marks.ariaSkills")}>
+                <span class="mark-label">{t("marks.skills")}</span>
                 <div class="chips">
                   {#each g.skills as [name, value] (name)}
                     <span class="chip"><b>{name}</b>{value}</span>
@@ -302,8 +303,8 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
             {/if}
 
             {#if g.milestones.length > 0}
-              <section class="mark-section mark-milestones" aria-label="Điểm định kỳ">
-                <span class="mark-label">Định kỳ</span>
+              <section class="mark-section mark-milestones" aria-label={t("marks.ariaMilestones")}>
+                <span class="mark-label">{t("marks.milestones")}</span>
                 <div class="chips">
                   {#each g.milestones as [key, value] (key)}
                     <span class="chip chip-milestone"
@@ -315,8 +316,8 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
             {/if}
 
             {#if g.other.length > 0}
-              <section class="mark-section" aria-label="Hạng mục khác">
-                <span class="mark-label">Khác</span>
+              <section class="mark-section" aria-label={t("marks.ariaOthers")}>
+                <span class="mark-label">{t("marks.others")}</span>
                 <div class="chips">
                   {#each g.other as [key, value] (key)}
                     <span class="chip"><b>{key}</b>{value}</span>
@@ -326,7 +327,7 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
             {/if}
 
             {#if !hasGrades(g, m)}
-              <p class="mark-none">Chưa có điểm</p>
+              <p class="mark-none">{t("marks.none")}</p>
             {/if}
               </article>
             {/each}

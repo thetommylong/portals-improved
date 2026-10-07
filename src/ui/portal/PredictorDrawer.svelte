@@ -15,6 +15,7 @@
     yearlyAverage,
   } from "./marksHelpers";
   import { notify } from "../../notifications";
+  import { t } from "../../i18n.svelte";
 
   let { marks, terms, selectedTermId, onclose }: {
     marks: MarkCommon[];
@@ -119,7 +120,7 @@
         studentId,
       );
     } catch {
-      notify("Couldn't load other semester — predicting without CN", "info");
+      notify(t("toast.otherSemester"), "info");
       siblingMarks = [];
     } finally {
       siblingLoading = false;
@@ -225,16 +226,16 @@
     class="drawer"
     role="dialog"
     aria-modal="false"
-    aria-label="Final Grade Predictor"
+    aria-label={t("predictor.title")}
     tabindex="-1"
     bind:this={drawerEl}
   >
     <div class="drawer-header">
-      <h2 class="drawer-title">Final Grade Predictor</h2>
+      <h2 class="drawer-title">{t("predictor.title")}</h2>
       <button
         type="button"
         class="drawer-close"
-        aria-label="Close"
+        aria-label={t("aria.close")}
         onclick={onclose}
       >
         X
@@ -245,15 +246,15 @@
       {#if detailSubject}
         <!-- Detail View -->
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <section class="detail-view" role="group" aria-label="Grade detail" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+        <section class="detail-view" role="group" aria-label={t("predictor.detailGroup")} onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
           <div class="detail-header">
             <button
               type="button"
               class="detail-back"
               onclick={closeDetail}
-              aria-label="Back to list"
+              aria-label={t("predictor.back")}
             >
-              ← Back
+              ← {t("predictor.back")}
             </button>
             <h3 class="detail-title">{detailSubject.subjectName}</h3>
           </div>
@@ -262,13 +263,13 @@
             <table class="detail-table">
               <thead>
                 <tr>
-                  <th>Component</th>
-                  <th>Score</th>
+                  <th>{t("predictor.component")}</th>
+                  <th>{t("predictor.score")}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>ĐGTX 1</td>
+                  <td>{t("predictor.txComponent", { n: 1 })}</td>
                   <td>
                     <input
                       type="number"
@@ -277,13 +278,13 @@
                       step="0.1"
                       bind:value={detailTXSlots[0]}
                       class="detail-input"
-                      aria-label="ĐGTX 1"
+                      aria-label={t("predictor.txComponent", { n: 1 })}
                       disabled={hasLetterGrades}
                     />
                   </td>
                 </tr>
                 <tr>
-                  <td>ĐGTX 2</td>
+                  <td>{t("predictor.txComponent", { n: 2 })}</td>
                   <td>
                     <input
                       type="number"
@@ -292,13 +293,13 @@
                       step="0.1"
                       bind:value={detailTXSlots[1]}
                       class="detail-input"
-                      aria-label="ĐGTX 2"
+                      aria-label={t("predictor.txComponent", { n: 2 })}
                       disabled={hasLetterGrades}
                     />
                   </td>
                 </tr>
                 <tr>
-                  <td>ĐGTX 3</td>
+                  <td>{t("predictor.txComponent", { n: 3 })}</td>
                   <td>
                     <input
                       type="number"
@@ -307,13 +308,13 @@
                       step="0.1"
                       bind:value={detailTXSlots[2]}
                       class="detail-input"
-                      aria-label="ĐGTX 3"
+                      aria-label={t("predictor.txComponent", { n: 3 })}
                       disabled={hasLetterGrades}
                     />
                   </td>
                 </tr>
                 <tr>
-                  <td>ĐGTX 4</td>
+                  <td>{t("predictor.txComponent", { n: 4 })}</td>
                   <td>
                     <input
                       type="number"
@@ -322,13 +323,13 @@
                       step="0.1"
                       bind:value={detailTXSlots[3]}
                       class="detail-input"
-                      aria-label="ĐGTX 4"
+                      aria-label={t("predictor.txComponent", { n: 4 })}
                       disabled={hasLetterGrades}
                     />
                   </td>
                 </tr>
                 <tr class="detail-separator">
-                  <td>Giữa Kỳ (×2)</td>
+                  <td>{t("predictor.midtermComponent")}</td>
                   <td>
                     <input
                       type="number"
@@ -337,14 +338,14 @@
                       step="0.1"
                       bind:value={detailGK}
                       class="detail-input"
-                      aria-label="Giữa Kỳ"
+                      aria-label={t("predictor.midtermAria")}
                       placeholder={detailGK !== null ? String(detailGK) : "—"}
                       disabled={hasLetterGrades}
                     />
                   </td>
                 </tr>
                 <tr class="detail-separator">
-                  <td>Cuối Kỳ (×3)</td>
+                  <td>{t("predictor.finalComponent")}</td>
                   <td>
                     <input
                       type="number"
@@ -353,7 +354,7 @@
                       step="0.1"
                       bind:value={detailCK}
                       class="detail-input"
-                      aria-label="Cuối Kỳ"
+                      aria-label={t("predictor.finalAria")}
                       placeholder={detailCK !== null ? String(detailCK) : "—"}
                       disabled={hasLetterGrades}
                     />
@@ -364,13 +365,13 @@
           </div>
 
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <section class="detail-results" role="group" aria-label="Results" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+          <section class="detail-results" role="group" aria-label={t("predictor.results")} onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
             <div class="detail-result">
-              <span class="detail-result-label">TB (Semester Avg)</span>
+              <span class="detail-result-label">{t("predictor.tbAvg")}</span>
               <span class="detail-result-value">{detailTB}</span>
             </div>
             <div class="detail-result">
-              <span class="detail-result-label">Target Avg</span>
+              <span class="detail-result-label">{t("predictor.targetLabel")}</span>
               <input
                 type="number"
                 min="0"
@@ -378,24 +379,24 @@
                 step="0.1"
                 bind:value={detailTarget}
                 class="detail-input"
-                aria-label="Target average"
-                placeholder="e.g. 8.0"
+                aria-label={t("predictor.targetAria")}
+                placeholder={t("predictor.placeholder")}
               />
             </div>
             <div class="detail-result">
-              <span class="detail-result-label">CN (Year Avg)</span>
+              <span class="detail-result-label">{t("predictor.cnAvg")}</span>
               <span class="detail-result-value">{detailCN}</span>
             </div>
             {#if detailRequired}
               <div class="detail-result detail-target">
-                <span class="detail-result-label">Need on Final for {detailTarget}</span>
+                <span class="detail-result-label">{t("predictor.needOnFinal", { target: detailTarget })}</span>
                 <span class="detail-result-value">
                   {#if detailRequired.status === "impossible"}
-                    <span class="detail-impossible">Impossible</span>
+                    <span class="detail-impossible">{t("predictor.statusImpossible")}</span>
                   {:else if detailRequired.status === "secured"}
-                    <span class="detail-secured">Secured</span>
+                    <span class="detail-secured">{t("predictor.statusSecured")}</span>
                   {:else if detailRequired.status === "unknown"}
-                    <span class="detail-unknown">Need GK</span>
+                    <span class="detail-unknown">{t("predictor.statusNeedGK")}</span>
                   {:else}
                     <span class="detail-need">{Math.max(0, Math.min(10, detailRequired.value)).toFixed(2)}</span>
                   {/if}
@@ -407,7 +408,7 @@
       {:else}
         <!-- List View -->
         <div class="drawer-section">
-          <label class="drawer-instruction" for="pred-target">Target average:</label>
+          <label class="drawer-instruction" for="pred-target">{t("predictor.targetLabel")}</label>
           <div class="drawer-presets">
             <button type="button" class="drawer-preset-btn" onclick={() => (target = 8)}>8.0</button>
             <button type="button" class="drawer-preset-btn" onclick={() => (target = 9)}>9.0</button>
@@ -421,18 +422,18 @@
             step="0.1"
             bind:value={target}
             class="drawer-input"
-            placeholder="e.g. 8.0"
+            placeholder={t("predictor.placeholder")}
           />
         </div>
 
         {#if siblingLoading}
-          <p class="drawer-loading">Loading other semester…</p>
+          <p class="drawer-loading">{t("predictor.loadingSibling")}</p>
         {:else if siblingMarks.length > 0}
           <p class="drawer-note">
-            Year averages include {siblingTerm?.semesterName}.
+            {t("predictor.yearAvgInclude", { semester: siblingTerm?.semesterName ?? "" })}
           </p>
         {:else}
-          <p class="drawer-note">Year averages need your other semester's grades.</p>
+          <p class="drawer-note">{t("predictor.yearAvgNeed")}</p>
         {/if}
 
         <div class="drawer-subjects">
@@ -447,7 +448,7 @@
             >
               <div class="drawer-row-head">
                 <span class="drawer-subject-name">{row.subjectName}</span>
-                <span class="drawer-gk">GK: {row.gk !== null ? row.gk : "—"}</span>
+                <span class="drawer-gk">{t("predictor.gk", { value: row.gk !== null ? row.gk : "—" })}</span>
               </div>
 
               <div class="drawer-projection">
@@ -459,25 +460,25 @@
                       step="0.05"
                       bind:value={projections[row.courseId]}
                       class="drawer-slider"
-                      aria-label="Projected Cuối Kỳ for {row.subjectName}"
+                      aria-label={t("predictor.projectedAria", { subject: row.subjectName })}
                     />
-                   <span class="drawer-ck-value">CK {row.proj.toFixed(2)}</span>
-                  <span class="drawer-tb-badge">TB {row.tb}</span>
+                   <span class="drawer-ck-value">{t("predictor.ck", { value: row.proj.toFixed(2) })}</span>
+                  <span class="drawer-tb-badge">{t("predictor.tb", { value: row.tb })}</span>
                   {#if siblingMarks.length > 0}
-                    <span class="drawer-cn-badge">CN {row.cn}</span>
+                    <span class="drawer-cn-badge">{t("predictor.cn", { value: row.cn })}</span>
                   {/if}
                   {#if row.status === "impossible"}
-                    <span class="drawer-status impossible">Impossible</span>
+                    <span class="drawer-status impossible">{t("predictor.statusImpossible")}</span>
                   {:else if row.status === "secured"}
-                    <span class="drawer-status secured">Secured</span>
+                    <span class="drawer-status secured">{t("predictor.statusSecured")}</span>
                   {:else if row.status === "unknown"}
-                    <span class="drawer-status unknown">Need GK</span>
+                    <span class="drawer-status unknown">{t("predictor.statusNeedGK")}</span>
                   {:else}
-                    <span class="drawer-status on-track">Need {Math.max(0, Math.min(10, row.required)).toFixed(2)} on final</span>
+                    <span class="drawer-status on-track">{t("predictor.statusNeedFinal", { value: Math.max(0, Math.min(10, row.required)).toFixed(2) })}</span>
                   {/if}
                 {:else}
                   <span class="drawer-finalized">
-                    Final done · TB {row.tb}{#if row.cn !== "—"} · CN {row.cn}{/if}
+                    {t("predictor.finalized")} · {t("predictor.tb", { value: row.tb })}{#if row.cn !== "—"} · {t("predictor.cn", { value: row.cn })}{/if}
                   </span>
                 {/if}
               </div>
@@ -489,8 +490,8 @@
 
     {#if !detailSubject}
       <div class="drawer-footer">
-        <button type="button" class="drawer-apply" onclick={onclose}>Apply</button>
-        <button type="button" class="drawer-cancel" onclick={onclose}>Cancel</button>
+        <button type="button" class="drawer-apply" onclick={onclose}>{t("predictor.apply")}</button>
+        <button type="button" class="drawer-cancel" onclick={onclose}>{t("predictor.cancel")}</button>
       </div>
     {/if}
   </div>

@@ -3,6 +3,7 @@
 // Copyright (C) 2026 thetommylong
 
   import type { ConfirmRequest } from "../../sdk";
+  import { t } from "../../i18n.svelte";
 
   let { request }: { request: ConfirmRequest } = $props();
 
@@ -18,7 +19,7 @@
 <div class="confirm-card" role="alert">
   <div class="confirm-header">
     <span class="material-symbols-rounded" aria-hidden="true">warning</span>
-    <span>Confirm Action</span>
+    <span>{t("confirm.title")}</span>
   </div>
   <p class="confirm-desc">{request.description}</p>
   <div class="confirm-args">
@@ -30,8 +31,8 @@
     {/each}
   </div>
   <div class="confirm-actions">
-    <button class="btn-approve" onclick={approve}>Approve</button>
-    <button class="btn-reject" onclick={reject}>Reject</button>
+    <button class="btn-approve" onclick={approve}>{t("confirm.approve")}</button>
+    <button class="btn-reject" onclick={reject}>{t("confirm.reject")}</button>
   </div>
 </div>
 

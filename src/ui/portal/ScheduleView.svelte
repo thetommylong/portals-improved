@@ -7,6 +7,7 @@
   import type { ScheduleEntry } from "../../types/portal";
   import { readWeek, writeWeek } from "../../scheduleCache";
   import { notify } from "../../notifications";
+  import { i18n, t } from "../../i18n.svelte";
   import { getWeek } from "./dateHelper";
   import LessonCard from "./LessonCard.svelte";
   import LessonPopup from "./LessonPopup.svelte";
@@ -76,9 +77,9 @@
       }
     } catch {
       if (!cache.has(key)) {
-        notify("Failed to load timetable", "error");
+        notify(t("toast.timetableFailed"), "error");
       } else {
-        notify("Offline — showing saved timetable", "info");
+        notify(t("toast.timetableOffline"), "info");
       }
     } finally {
       loading = false;
@@ -192,10 +193,10 @@
           const mon = weekDays[0];
           const sun = weekDays[6];
           const fmt = (d: Temporal.PlainDate) =>
-            d.toLocaleString("en-US", { month: "short", day: "numeric" });
+            d.toLocaleString(i18n.locale, { month: "short", day: "numeric" });
           return `${fmt(mon)} – ${fmt(sun)}`;
         })()
-      : selectedDate.toLocaleString("en-US", {
+      : selectedDate.toLocaleString(i18n.locale, {
           weekday: "long",
           month: "long",
           day: "numeric",
@@ -270,7 +271,7 @@
   }
 
   function dayHeaderLabel(date: Temporal.PlainDate): string {
-    return date.toLocaleString("en-US", { weekday: "short" });
+    return date.toLocaleString(i18n.locale, { weekday: "short" });
   }
 
   $effect(() => {
@@ -392,7 +393,7 @@
           {/if}
 
           {#if !loading && dayEntries.length === 0}
-            <div class="schedule-empty">No classes this day</div>
+            <div class="schedule-empty">{t("schedule.noClasses")}</div>
           {/if}
         </div>
       </div>

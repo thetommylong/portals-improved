@@ -5,6 +5,7 @@
   import { Temporal } from "@js-temporal/polyfill";
   import type { ScheduleEntry } from "../../types/portal";
   import { runtime } from "../../adapters/runtime.svelte";
+  import { i18n, t } from "../../i18n.svelte";
 
   let {
     entry,
@@ -19,7 +20,7 @@
   const dateLabel = $derived.by(() => {
     const d = Temporal.PlainDateTime.from(entry.startDateTime);
     const e = Temporal.PlainDateTime.from(entry.endDateTime);
-    const day = d.toLocaleString("en-US", {
+    const day = d.toLocaleString(i18n.locale, {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -34,13 +35,13 @@
     if (Temporal.PlainDateTime.compare(end, now) > 0) return null;
     switch (entry.status) {
       case "PRESENT":
-        return { label: "Present", cls: "present" };
+        return { label: t("attendance.present"), cls: "present" };
       case "LATE":
-        return { label: "Late", cls: "late" };
+        return { label: t("attendance.late"), cls: "late" };
       case "ABSENT":
-        return { label: "Absent", cls: "absent" };
+        return { label: t("attendance.absent"), cls: "absent" };
       case "STUDY_LEAVE":
-        return { label: "Excused", cls: "study-leave" };
+        return { label: t("attendance.excused"), cls: "study-leave" };
     }
   });
 
@@ -95,7 +96,7 @@
         <button
           type="button"
           class="popup-close"
-          aria-label="Close"
+          aria-label={t("aria.close")}
           onclick={onclose}
         >
           <span class="material-symbols-rounded" aria-hidden="true">close</span>
@@ -107,15 +108,15 @@
     <div class="popup-body">
       {#if entry.schedulePlanContent}
         <section>
-          <h3>Plan</h3>
+          <h3>{t("popup.plan")}</h3>
           <p>{entry.schedulePlanContent}</p>
         </section>
       {/if}
 
       <section>
         <h3>
-          Teacher's comment
-          {#if checking}<span class="popup-checking">checking…</span>{/if}
+          {t("popup.teacherComment")}
+          {#if checking}<span class="popup-checking">{t("popup.checking")}</span>{/if}
         </h3>
         <p class:empty={!entry.comment}>
           {entry.comment ?? "—"}
@@ -124,20 +125,20 @@
 
       {#if entry.proctorComment}
         <section>
-          <h3>Proctor</h3>
+          <h3>{t("popup.proctor")}</h3>
           <p>{entry.proctorComment}</p>
         </section>
       {/if}
 
       <section>
         <h3>
-          Absence request
-          {#if checking}<span class="popup-checking">checking…</span>{/if}
+          {t("popup.absenceRequest")}
+          {#if checking}<span class="popup-checking">{t("popup.checking")}</span>{/if}
         </h3>
         <p class:empty={!entry.hasAbsenceRequest}>
           {entry.hasAbsenceRequest
-            ? (entry.absenceRequestReason ?? "Requested")
-            : "None"}
+            ? (entry.absenceRequestReason ?? t("popup.requested"))
+            : t("popup.none")}
         </p>
       </section>
 
@@ -157,7 +158,7 @@
             rel="noopener noreferrer"
             onclick={onSsoClick}
           >
-            Open in LMS
+            {t("popup.openLms")}
           </a>
         {/if}
       </div>

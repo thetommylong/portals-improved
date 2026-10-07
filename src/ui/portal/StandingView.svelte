@@ -5,6 +5,7 @@
   import { runtime } from "../../adapters/runtime.svelte";
   import type { DisciplineRuleStudent, RewardStudent } from "../../types/portal";
   import { notify } from "../../notifications";
+  import { i18n, t } from "../../i18n.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -46,7 +47,7 @@
 
   function fmtDate(iso: string | null): string {
     if (!iso) return "—";
-    return new Intl.DateTimeFormat("vi-VN", {
+    return new Intl.DateTimeFormat(i18n.locale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -81,9 +82,9 @@
         return {
           kind: "reward",
           date: rs.createdDate,
-          title: catalog?.title ?? rs.description ?? "Thưởng",
+          title: catalog?.title ?? rs.description ?? t("standing.reward"),
           subtitle: rs.description || "—",
-          badge: "Thưởng",
+          badge: t("standing.reward"),
           academic: rs.academic,
           raw: rs,
         };
@@ -94,9 +95,9 @@
         return {
           kind: "discipline",
           date: ds.createdDate,
-          title: rule?.description ?? ds.description ?? "Kỷ luật",
+          title: rule?.description ?? ds.description ?? t("standing.discipline"),
           subtitle: ds.description || "—",
-          badge: "Kỷ luật",
+          badge: t("standing.discipline"),
           academic: ds.academic,
           raw: ds,
         };
@@ -106,7 +107,7 @@
         (a, b) => b.date.localeCompare(a.date),
       );
     } catch {
-      notify("Failed to load standing", "error");
+      notify(t("toast.standingFailed"), "error");
     } finally {
       loading = false;
     }
@@ -121,13 +122,13 @@
 
 <div class="marks">
   <div class="marks-toolbar">
-    <label class="marks-label" for="year-filter">Năm học</label>
+    <label class="marks-label" for="year-filter">{t("standing.year")}</label>
     <select
       id="year-filter"
       class="marks-select"
       bind:value={yearFilter}
     >
-      <option value="all">Tất cả</option>
+      <option value="all">{t("standing.all")}</option>
       {#each academicYears as year (year)}
         <option value={year}>{year}</option>
       {/each}
@@ -136,13 +137,13 @@
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">Loading…</p>
+      <p class="marks-empty" role="status">{t("status.loading")}</p>
     {:else if items.length === 0}
-      <p class="marks-empty">Chưa có dữ liệu</p>
+      <p class="marks-empty">{t("standing.empty")}</p>
     {:else if filtered.length === 0}
-      <p class="marks-empty">Không có dữ liệu năm học này</p>
+      <p class="marks-empty">{t("standing.emptyYear")}</p>
     {:else}
-      <div class="marks-grid" role="list" aria-label="Standing records" bind:clientWidth={gridWidth}>
+      <div class="marks-grid" role="list" aria-label={t("standing.gridAria")} bind:clientWidth={gridWidth}>
         {#each columns as col, ci (ci)}
           <div class="marks-col">
             {#each col as item (item.kind + item.date + item.title)}
@@ -186,16 +187,16 @@
       </div>
     </header>
     <section class="mark-section">
-      <span class="mark-label">Ngày</span>
+      <span class="mark-label">{t("standing.date")}</span>
       <span class="fb-text">{fmtDate(item.date)}</span>
     </section>
     <section class="mark-section">
-      <span class="mark-label">Năm</span>
+      <span class="mark-label">{t("standing.yearShort")}</span>
       <span class="fb-text">{item.academic}</span>
     </section>
     {#if item.subtitle && item.subtitle !== item.title}
       <section class="mark-section">
-        <span class="mark-label">Chi tiết</span>
+        <span class="mark-label">{t("standing.detail")}</span>
         <span class="fb-text">{item.subtitle}</span>
       </section>
     {/if}
@@ -205,36 +206,36 @@
           {@const raw = item.raw as RewardStudent}
           {#if raw.decisionCode}
             <section class="mark-section">
-              <span class="mark-label">Số QĐ</span>
+              <span class="mark-label">{t("standing.decisionNo")}</span>
               <span class="fb-text">{raw.decisionCode}</span>
             </section>
           {/if}
           {#if raw.descriptionEnglish}
             <section class="mark-section">
-              <span class="mark-label">EN</span>
+              <span class="mark-label">{t("standing.eo")}</span>
               <span class="fb-text">{raw.descriptionEnglish}</span>
             </section>
           {/if}
           <section class="mark-section">
-            <span class="mark-label">Mã</span>
+            <span class="mark-label">{t("standing.code")}</span>
             <span class="fb-text">{raw.rewardId}</span>
           </section>
           <section class="mark-section">
-            <span class="mark-label">Tạo</span>
+            <span class="mark-label">{t("label.created")}</span>
             <span class="fb-text">{fmtDate(raw.createdDate)}</span>
           </section>
         {:else}
           {@const raw = item.raw as DisciplineRuleStudent}
           <section class="mark-section">
-            <span class="mark-label">Mã PL</span>
+            <span class="mark-label">{t("standing.ruleCode")}</span>
             <span class="fb-text">{raw.disciplineRuleId}</span>
           </section>
           <section class="mark-section">
-            <span class="mark-label">Cấp độ</span>
+            <span class="mark-label">{t("standing.level")}</span>
             <span class="fb-text">{raw.disciplineLevelId}</span>
           </section>
           <section class="mark-section">
-            <span class="mark-label">Tạo</span>
+            <span class="mark-label">{t("label.created")}</span>
             <span class="fb-text">{fmtDate(raw.createdDate)}</span>
           </section>
         {/if}

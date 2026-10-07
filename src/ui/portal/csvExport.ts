@@ -3,6 +3,7 @@
 
 import type { MarkCommon } from "../../types/portal";
 import { getGKValue, getCKValue } from "./marksHelpers";
+import { t } from "../../i18n.svelte";
 
 function rfc4180Escape(value: string): string {
   if (value.includes(",") || value.includes('"') || value.includes("\n")) {
@@ -47,20 +48,20 @@ export function exportGradesToCSV(
   const rows: string[] = [];
 
   const header = [
-    "Subject",
-    "Type",
-    "TX Scores",
-    "Midterm (Giữa Kỳ)",
-    "Final (Cuối Kỳ)",
-    "Semester Avg (TB)",
-    "Yearly Avg (CN)",
+    t("csv.subject"),
+    t("csv.type"),
+    t("csv.tx"),
+    t("csv.midterm"),
+    t("csv.final"),
+    t("csv.semesterAvg"),
+    t("csv.yearlyAvg"),
   ]
     .map(rfc4180Escape)
     .join(",");
   rows.push(header);
 
   for (const m of gradesData) {
-    const type = hasNumericScore(m) ? "Numeric" : "Pass-Fail";
+    const type = hasNumericScore(m) ? t("csv.numeric") : t("csv.passFail");
 
     const milestones = extractMilestones(m.markDTO ?? {});
     const gk = getGKValue(milestones);

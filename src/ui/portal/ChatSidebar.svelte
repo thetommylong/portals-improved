@@ -8,6 +8,7 @@
   import ChatMessage from "./ChatMessage.svelte";
   import ConfirmCard from "./ConfirmCard.svelte";
   import ModelPicker from "./ModelPicker.svelte";
+  import { t } from "../../i18n.svelte";
 
   let { agentContext }: { agentContext: AgentContext } = $props();
 
@@ -24,8 +25,7 @@
       messages = [
         {
           type: "message",
-          content:
-            "Welcome! Set your API key first:\n\n/key <your-api-key>\n\nThen optionally:\n/url <custom-base-url>\n/model <model-id>",
+          content: t("chat.welcome"),
           role: "assistant",
         },
       ];
@@ -100,18 +100,18 @@
 
 <div class="chat-sidebar">
   <div class="chat-header">
-    <span class="chat-title">AI Assistant</span>
+    <span class="chat-title">{t("chat.assistant")}</span>
     <div class="chat-actions">
       <button
         class="chat-icon-btn"
-        aria-label="Select model"
+        aria-label={t("chat.selectModel")}
         onclick={() => (modelPickerOpen = true)}
       >
         <span class="material-symbols-rounded" aria-hidden="true">smart_toy</span>
       </button>
       <button
         class="chat-icon-btn"
-        aria-label="Clear chat"
+        aria-label={t("chat.clear")}
         onclick={() => {
           agent.clear();
           messages = [];
@@ -141,7 +141,7 @@
 
   <div class="chat-input">
     <textarea
-      placeholder="Ask about your portal data..."
+      placeholder={t("chat.placeholder")}
       bind:value={input}
       onkeydown={handleKeydown}
       rows={1}
@@ -149,7 +149,7 @@
     ></textarea>
     <button
       class="send-btn"
-      aria-label="Send"
+      aria-label={t("chat.send")}
       onclick={send}
       disabled={sending || !input.trim()}
     >

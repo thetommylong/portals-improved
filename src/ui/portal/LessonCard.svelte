@@ -3,6 +3,7 @@
 // Copyright (C) 2026 thetommylong
 
   import type { ScheduleEntry } from "../../types/portal";
+  import { i18n, t } from "../../i18n.svelte";
 
   let {
     entry,
@@ -35,8 +36,14 @@
     const start = new Date(entry.startDateTime);
     const end = new Date(entry.endDateTime);
     const fmt = (d: Date) =>
-      d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    return `${entry.subjectName} at ${fmt(start)}–${fmt(end)} taught by ${entry.lecturerName} in ${entry.roomNo}`;
+      d.toLocaleTimeString(i18n.locale, { hour: "numeric", minute: "2-digit" });
+    return t("schedule.lessonAria", {
+      subject: entry.subjectName,
+      start: fmt(start),
+      end: fmt(end),
+      teacher: entry.lecturerName,
+      room: entry.roomNo,
+    });
   });
 
   let metaEl = $state<HTMLDivElement>();

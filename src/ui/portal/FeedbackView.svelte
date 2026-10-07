@@ -11,6 +11,7 @@
     FeedbackStatusUpdate,
   } from "../../types/portal";
   import { notify } from "../../notifications";
+  import { t } from "../../i18n.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -61,7 +62,7 @@
       pending = data.unDoneFeedbacks;
       submitted = data.feedbacks;
     } catch {
-      notify("Failed to load feedback", "error");
+      notify(t("toast.feedbackFailed"), "error");
     } finally {
       loading = false;
     }
@@ -95,14 +96,14 @@
       comment1 = formRow.comment1 ?? "";
       comment2 = formRow.comment2 ?? "";
     } catch {
-      notify("Failed to open feedback form", "error");
+      notify(t("toast.feedbackOpenFailed"), "error");
       active = null;
     }
   }
 
   function pickAnswer(qOrder: number, feedbackAnswerId: string): void {
     answers = { ...answers, [qOrder]: feedbackAnswerId };
-    notify("Cập nhật câu trả lời", "success");
+    notify(t("toast.answerUpdated"), "success");
   }
 
   async function saveComment(slot: 1 | 2, value: string): Promise<void> {
@@ -113,7 +114,7 @@
     try {
       await runtime.adapter.updateFeedbackComment(slot, { feedbackLecturerId: active?.feedbackLecturerId ?? "", studentId: studentId ?? "", comment: value });
     } catch {
-      notify("Lưu nhận xét thất bại", "error");
+      notify(t("toast.commentSaveFailed"), "error");
     }
   }
 
@@ -137,12 +138,12 @@
     try {
       if (!runtime.adapter.features.supportsMutations) return;
       await runtime.adapter.updateFeedbackStatus({ feedbackLecturerId: formRow.feedbackLecturerId, studentId: studentId ?? "", status: true });
-      notify("Phản hồi đã gửi", "success");
+      notify(t("toast.feedbackSent"), "success");
       discardForm();
       requestAnimationFrame(() => lastTrigger?.focus());
       await load();
     } catch {
-      notify("Gửi phản hồi thất bại", "error");
+      notify(t("toast.feedbackSendFailed"), "error");
     } finally {
       submitting = false;
     }
@@ -162,29 +163,29 @@
 <div class="feedback">
   <div class="feedback-body">
     {#if loading}
-      <p class="feedback-empty" role="status">Loading…</p>
+      <p class="feedback-empty" role="status">{t("status.loading")}</p>
     {:else if pending.length === 0 && submitted.length === 0}
-      <p class="feedback-empty">No feedback published yet</p>
+      <p class="feedback-empty">{t("feedback.empty")}</p>
     {:else}
       {#if pending.length > 0}
-        <h2 class="feedback-group-title" id="fb-pending">Chưa gửi ({pending.length})</h2>
+        <h2 class="feedback-group-title" id="fb-pending">{t("feedback.groupPending", { n: pending.length })}</h2>
         <ul class="feedback-list" aria-labelledby="fb-pending">
           {#each sortedPending as f (f.feedbackLecturerId)}
             <li class="fb-card-wrapper">
               <button
                 class="fb-card fb-card-muted fb-card-button"
                 onclick={() => openForm(f)}
-                aria-label={`Phản hồi cho ${f.subjectName} (Chưa gửi)`}
+                aria-label={t("feedback.cardAria", { subject: f.subjectName })}
               >
               <header class="fb-card-head">
                 <div class="fb-card-titlewrap">
                   <h3 class="fb-card-title">{f.subjectName}</h3>
                   <p class="fb-card-sub">{f.description || f.className}</p>
                 </div>
-                <span class="fb-badge fb-badge-pending">Chưa gửi</span>
+                <span class="fb-badge fb-badge-pending">{t("feedback.badgePending")}</span>
               </header>
               <section class="mark-section">
-                <span class="mark-label">GV</span>
+                <span class="mark-label">{t("label.teacher")}</span>
                 <span class="fb-text">{f.lecturerName || "—"}</span>
               </section>
               </button>
@@ -193,7 +194,7 @@
         </ul>
       {/if}
       {#if submitted.length > 0}
-        <h2 class="feedback-group-title" id="fb-done">Đã gửi ({submitted.length})</h2>
+        <h2 class="feedback-group-title" id="fb-done">{t("feedback.groupDone", { n: submitted.length })}</h2>
         <ul class="feedback-list" aria-labelledby="fb-done">
           {#each sortedSubmitted as f}
             <li class="fb-card">
@@ -202,10 +203,10 @@
                   <h3 class="fb-card-title">{f.subjectName}</h3>
                   <p class="fb-card-sub">{f.description || f.className}</p>
                 </div>
-                <span class="fb-badge fb-badge-done">Đã gửi</span>
+                <span class="fb-badge fb-badge-done">{t("feedback.badgeDone")}</span>
               </header>
               <section class="mark-section">
-                <span class="mark-label">GV</span>
+                <span class="mark-label">{t("label.teacher")}</span>
                 <span class="fb-text">{f.lecturerName || "—"}</span>
               </section>
               {#if f.comment1}
@@ -232,7 +233,7 @@
   class="fb-dialog"
   bind:this={dialogEl}
   onclose={onDialogClose}
-  aria-label="Biểu mẫu phản hồi"
+  aria-label={t("feedback.formAria")}
 >
   {#if active && formRow}
     <header class="fb-card-head fb-dialog-head">
@@ -240,21 +241,21 @@
         <h3 class="fb-card-title">{active.subjectName}</h3>
         <p class="fb-card-sub">{active.description || active.className}</p>
       </div>
-      <button class="fb-close-btn" aria-label="Đóng" onclick={closeForm} disabled={submitting}>&times;</button>
+      <button class="fb-close-btn" aria-label={t("feedback.close")} onclick={closeForm} disabled={submitting}>&times;</button>
     </header>
 
     <div class="fb-dialog-body">
       <section class="fb-q-list">
         {#each formRow.questions ?? [] as q (q.feedbackQuestion.feedbackQuestionId)}
           <div class="fb-q-card">
-            <h4 class="fb-q-title">{q.feedbackQuestion.content || `Câu ${q.feedbackQuestion.order}`}</h4>
+            <h4 class="fb-q-title">{q.feedbackQuestion.content || t("feedback.questionFallback", { n: q.feedbackQuestion.order ?? 0 })}</h4>
             <div class="fb-answers">
               {#each q.feedbackAnswers ?? [] as a (a.feedbackAnswerId)}
                 <button
                   class={`fb-opt ${answers[q.feedbackQuestion.order ?? 0] === a.feedbackAnswerId ? "fb-opt-selected" : ""} fb-opt-${a.order ?? 0}`}
                   onclick={() => pickAnswer(q.feedbackQuestion.order ?? 0, a.feedbackAnswerId)}
                   aria-pressed={answers[q.feedbackQuestion.order ?? 0] === a.feedbackAnswerId}
-                  aria-label={`Câu ${q.feedbackQuestion.order}: ${a.content || String(a.order)}`}
+                  aria-label={t("feedback.answerAria", { n: q.feedbackQuestion.order ?? 0, content: a.content || String(a.order) })}
                 >
                   {a.content || String(a.order)}
                 </button>
@@ -270,7 +271,7 @@
           id="fb-comment1"
           class="fb-textarea"
           rows="2"
-          placeholder="Ghi nhận nhận xét về giảng viên"
+          placeholder={t("feedback.commentPlaceholder1")}
           bind:value={comment1}
           onblur={() => saveComment(1, comment1)}
         ></textarea>
@@ -279,7 +280,7 @@
           id="fb-comment2"
           class="fb-textarea"
           rows="2"
-          placeholder="Ghi nhận nhận xét khác"
+          placeholder={t("feedback.commentPlaceholder2")}
           bind:value={comment2}
           onblur={() => saveComment(2, comment2)}
         ></textarea>
@@ -288,11 +289,11 @@
 
     <footer class="fb-actions">
       {#if canFinish}
-        <button class="btn-primary" onclick={finish} disabled={submitting}>{submitting ? "Đang gửi…" : "Gửi phản hồi"}</button>
+        <button class="btn-primary" onclick={finish} disabled={submitting}>{submitting ? t("feedback.submitting") : t("feedback.submit")}</button>
       {:else}
-        <span class="fb-disabled">Vui lòng trả lời tất cả câu hỏi và ghi nhận ít nhất một nhận xét</span>
+        <span class="fb-disabled">{t("feedback.disabled")}</span>
       {/if}
-      <button class="btn-secondary" onclick={closeForm} disabled={submitting}>{submitting ? "Đang đóng…" : "Huỷ"}</button>
+      <button class="btn-secondary" onclick={closeForm} disabled={submitting}>{submitting ? t("feedback.closing") : t("feedback.cancel")}</button>
     </footer>
   {/if}
 </dialog>

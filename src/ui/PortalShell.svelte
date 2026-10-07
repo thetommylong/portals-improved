@@ -5,6 +5,7 @@
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
   import { notify } from "../notifications";
+  import { LOCALES, i18n, t, type MessageKey } from "../i18n.svelte";
   import UnavailableState from "./portal/UnavailableState.svelte";
   import ScheduleView from "./portal/ScheduleView.svelte";
   import MarksView from "./portal/MarksView.svelte";
@@ -36,18 +37,18 @@
 
   interface NavItem {
     id: PageId;
-    label: string;
+    label: MessageKey;
     icon: string;
   }
 
   const ALL_NAV_ITEMS: NavItem[] = [
-    { id: "home", label: "Home", icon: "home" },
-    { id: "feedback", label: "Feedback", icon: "chat" },
-    { id: "homeworks", label: "Homeworks", icon: "assignment" },
-    { id: "marks", label: "Marks", icon: "done_all" },
-    { id: "clubs", label: "Clubs", icon: "group" },
-    { id: "events", label: "Events", icon: "event" },
-    { id: "standing", label: "Standing", icon: "shield_person" },
+    { id: "home", label: "nav.home", icon: "home" },
+    { id: "feedback", label: "nav.feedback", icon: "chat" },
+    { id: "homeworks", label: "nav.homeworks", icon: "assignment" },
+    { id: "marks", label: "nav.marks", icon: "done_all" },
+    { id: "clubs", label: "nav.clubs", icon: "group" },
+    { id: "events", label: "nav.events", icon: "event" },
+    { id: "standing", label: "nav.standing", icon: "shield_person" },
   ];
 
   const SUPPORTED_NAV: Record<NavItem["id"], boolean> = {
@@ -175,7 +176,7 @@
         rollNumber = user.rollNumber;
       })
       .catch(() => {
-        notify("Failed to load profile", "error");
+        notify(t("toast.profileFailed"), "error");
       });
 
     runtime.adapter.getUserImage(id).then((image) => {
@@ -235,7 +236,7 @@
   function onNav(item: NavItem) {
     if (item.id === activeNav) return;
     if (!SUPPORTED_NAV[item.id]) {
-      notify(`${item.label} unavailable for this portal provider`, "info");
+      notify(t("toast.viewUnavailable", { label: t(item.label) }), "info");
       return;
     }
     activeNav = item.id;
@@ -250,24 +251,24 @@
 <div class="shell">
   <header class="header">
     <div class="header-left">
-      <button class="icon-btn" aria-label="Toggle menu" onclick={toggleSidebar}>
+      <button class="icon-btn" aria-label={t("aria.toggleMenu")} onclick={toggleSidebar}>
         <span class="material-symbols-rounded" aria-hidden="true">menu</span>
       </button>
       <div class="header-nav">
         {#if activeNav === "home"}
           <button class="toolbar-btn" onclick={() => pages.home?.goToday()}>
-            Today
+            {t("header.today")}
           </button>
           <button
             class="toolbar-btn toolbar-nav"
-            aria-label="Previous"
+            aria-label={t("header.aria.previous")}
             onclick={() => pages.home?.goTo(-1)}
           >
             ‹
           </button>
           <button
             class="toolbar-btn toolbar-nav"
-            aria-label="Next"
+            aria-label={t("header.aria.next")}
             onclick={() => pages.home?.goTo(1)}
           >
             ›
@@ -281,7 +282,7 @@
         <button
           class="icon-btn"
           class:active={chatOpen}
-          aria-label="Toggle AI assistant"
+          aria-label={t("aria.toggleAssistant")}
           aria-expanded={chatOpen}
           onclick={toggleChat}
         >
@@ -293,7 +294,7 @@
           class="icon-btn"
           class:active={settingsOpen}
           bind:this={settingsBtn}
-          aria-label="Appearance settings"
+          aria-label={t("aria.appearance")}
           aria-expanded={settingsOpen}
           onclick={() => {
             if (settingsOpen) {
@@ -307,9 +308,9 @@
           <span class="material-symbols-rounded" aria-hidden="true">settings</span>
         </button>
         {#if settingsOpen}
-          <div class="settings-pop" bind:this={settingsPop} role="dialog" aria-label="Appearance settings">
-            <p class="settings-title">Theme</p>
-            <div class="settings-flavors" role="radiogroup" aria-label="Flavor">
+          <div class="settings-pop" bind:this={settingsPop} role="dialog" aria-label={t("aria.appearance")}>
+            <p class="settings-title">{t("settings.theme")}</p>
+            <div class="settings-flavors" role="radiogroup" aria-label={t("settings.flavor")}>
               {#each FLAVOR_OPTIONS as option (option)}
                 <button
                   class="settings-flavor"
@@ -323,11 +324,11 @@
               {/each}
             </div>
             {#if theme.flavor === "system"}
-              <p class="settings-title">Dark flavor</p>
+              <p class="settings-title">{t("settings.darkGroup")}</p>
               <div
                 class="settings-flavors trio"
                 role="radiogroup"
-                aria-label="Dark flavor"
+                aria-label={t("settings.darkFlavor")}
               >
                 {#each DARK_FLAVORS as dark (dark)}
                   <button
@@ -342,8 +343,8 @@
                 {/each}
               </div>
             {/if}
-            <p class="settings-title">Accent</p>
-            <div class="settings-accents" role="radiogroup" aria-label="Accent color">
+            <p class="settings-title">{t("settings.accent")}</p>
+            <div class="settings-accents" role="radiogroup" aria-label={t("settings.accentColor")}>
               {#each ACCENTS as accent (accent)}
                 <button
                   class="accent-dot"
@@ -357,8 +358,22 @@
                 ></button>
               {/each}
             </div>
+            <p class="settings-title">{t("settings.language")}</p>
+            <div class="settings-flavors" role="radiogroup" aria-label={t("settings.languageGroup")}>
+              {#each LOCALES as choice (choice)}
+                <button
+                  class="settings-flavor"
+                  class:selected={i18n.locale === choice}
+                  role="radio"
+                  aria-checked={i18n.locale === choice}
+                  onclick={() => i18n.setLocale(choice)}
+                >
+                  {choice.toUpperCase()}
+                </button>
+              {/each}
+            </div>
             <hr class="settings-sep" />
-            <p class="settings-title">About</p>
+            <p class="settings-title">{t("settings.about")}</p>
             <div class="about">
               <span class="about-name">portals-improved</span>
               <span class="about-detail">
@@ -376,14 +391,14 @@
           </div>
         {/if}
       </div>
-      <button class="icon-btn" aria-label="Refresh" onclick={refresh}>
+      <button class="icon-btn" aria-label={t("aria.refresh")} onclick={refresh}>
         <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
       </button>
       {#if runtime.adapter.features.notifications}
         <button
           class="icon-btn"
           class:has-badge={unreadCount > 0}
-          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+          aria-label={unreadCount > 0 ? t("aria.notificationsUnread", { n: unreadCount }) : t("aria.notificationsNone")}
           onclick={onNotifications}
         >
           <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
@@ -413,7 +428,7 @@
     >
       <div class="profile">
         {#if avatar}
-          <img class="avatar" src={avatar} alt="{name || 'User'} avatar" />
+          <img class="avatar" src={avatar} alt={t("aria.avatar", { name: name || "" })} />
         {:else}
           <div class="avatar"></div>
         {/if}
@@ -421,7 +436,7 @@
         <p class="profile-roll">{rollNumber}</p>
       </div>
 
-      <nav class="nav" aria-label="Main navigation">
+      <nav class="nav" aria-label={t("header.aria.mainNav")}>
         {#each navItems as item (item.id)}
           <button
             class="nav-item"
@@ -430,7 +445,7 @@
             onclick={() => onNav(item)}
           >
             <span class="nav-icon material-symbols-rounded" aria-hidden="true">{item.icon}</span>
-            <span>{item.label}</span>
+            <span>{t(item.label)}</span>
           </button>
         {/each}
       </nav>
@@ -490,19 +505,19 @@
       <aside
         class="chat-panel"
         style={`width: ${chatWidth}px;`}
-        aria-label="AI Assistant"
+        aria-label={t("aria.assistant")}
       >
         <div
           class="chat-resize-handle"
           role="separator"
           aria-orientation="vertical"
-          aria-label="Resize AI assistant"
+          aria-label={t("aria.resizeAssistant")}
           onpointerdown={onChatResizeStart}
         ></div>
         {#if agentContext}
           <ChatSidebar {agentContext} />
         {:else}
-          <div class="chat-loading">Loading context...</div>
+          <div class="chat-loading">{t("chat.loadingContext")}</div>
         {/if}
       </aside>
     {/if}
