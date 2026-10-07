@@ -30,6 +30,7 @@ export default defineConfig({
     __BUILD__: JSON.stringify(build),
   },
   plugins: [svelte()],
+  base: './',
   build: {
     outDir: 'dist-site',
     rollupOptions: { input: 'site/index.html' },
