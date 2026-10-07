@@ -57,20 +57,34 @@ const MOCK_USER_ID = "mock-user";
 const MOCK_CAMPUS_ID = "mock-campus";
 const MOCK_STUDENT_ID = "mock-student";
 const MOCK_TERM_ID = "mock-term";
-const MOCK_DATE = "2026-08-29";
+
+// Mock data is generated relative to "now" so the preview shows a live-looking
+// schedule (current week), upcoming events, and a current semester on any day.
+const MOCK_YEAR = new Date().getFullYear();
+const MOCK_DATE = isoDaysFromNow(0);
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function isoDaysFromNow(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 function term(): Term {
   return {
     termId: MOCK_TERM_ID,
     semesterName: "Mock Term",
-    startDate: "2026-08-01",
-    endDate: "2026-12-31",
+    startDate: isoDaysFromNow(-60),
+    endDate: isoDaysFromNow(120),
     isHidden: false,
     isClosed: false,
     isFee: false,
     termOrder: 1,
-    academicStartYear: 2026,
-    academicEndYear: 2027,
+    academicStartYear: MOCK_YEAR,
+    academicEndYear: MOCK_YEAR + 1,
     isCurrentTerm: true,
     campusId: MOCK_CAMPUS_ID,
     campusId1: MOCK_CAMPUS_ID,
@@ -177,8 +191,8 @@ export class MockAdapter implements PortalAdapter {
         teacherUsername: "mock.teacher",
         homeworkTitle: "Chapter 1 exercises",
         homeworkContent: "Solve exercises 1.1–1.15.",
-        fromDateTime: "2026-08-20",
-        expiredDateTime: "2026-09-05",
+        fromDateTime: isoDaysFromNow(-5),
+        expiredDateTime: isoDaysFromNow(7),
         homeworkFiles: [],
         studentId: MOCK_STUDENT_ID,
         studentName: "Mock Student",
@@ -206,8 +220,8 @@ export class MockAdapter implements PortalAdapter {
         subjectName: "Mathematics 1",
         title: "Chapter 1 exercises",
         description: "Solve exercises 1.1–1.15.",
-        startDate: "2026-08-20",
-        endDate: "2026-09-05",
+        startDate: isoDaysFromNow(-5),
+        endDate: isoDaysFromNow(7),
         isDone: false,
         createdDate: MOCK_DATE,
         updatedDate: MOCK_DATE,
@@ -221,7 +235,7 @@ export class MockAdapter implements PortalAdapter {
   }
 
   getAcademicYears(): Promise<string[]> {
-    return Promise.resolve(["2026-2027"]);
+    return Promise.resolve([`${MOCK_YEAR}-${MOCK_YEAR + 1}`]);
   }
 
   getMarkCommonByStudent(): Promise<MarkCommon[]> {
@@ -241,8 +255,8 @@ export class MockAdapter implements PortalAdapter {
         blockMarkPeriodId: "mock-bmp",
         blockMarkPeriodCode: "BMP-1",
         description: "Block 1",
-        startDate: "2026-08-01",
-        endDate: "2026-10-31",
+        startDate: isoDaysFromNow(-60),
+        endDate: isoDaysFromNow(120),
         termId: MOCK_TERM_ID,
         campusId: MOCK_CAMPUS_ID,
         isCommon: true,
@@ -374,12 +388,12 @@ export class MockAdapter implements PortalAdapter {
           termId: MOCK_TERM_ID,
           organization: "FPT University",
           numberOfSlots: 100,
-          registeredStartDate: "2026-08-01",
-          registeredEndDate: "2026-09-01",
-          startDate: "2026-09-10",
-          endDate: "2026-09-10",
-          feedbackStartDate: "2026-09-11",
-          feedbackEndDate: "2026-09-14",
+          registeredStartDate: isoDaysFromNow(-5),
+          registeredEndDate: isoDaysFromNow(5),
+          startDate: isoDaysFromNow(10),
+          endDate: isoDaysFromNow(10),
+          feedbackStartDate: isoDaysFromNow(11),
+          feedbackEndDate: isoDaysFromNow(14),
           location: "Main Hall",
           currentOption: "registered",
           hasAttendance: true,
@@ -517,8 +531,8 @@ export class MockAdapter implements PortalAdapter {
         nameEnglish: "Academic Excellence",
         description: "Reward for top GPA",
         decisionCode: "DC-1",
-        date: MOCK_DATE,
-        startYear: 2026,
+        date: isoDaysFromNow(-20),
+        startYear: MOCK_YEAR,
         rewardFrequencyId: "mock-rf",
         organization: "FPT University",
         isShowMark: true,
@@ -661,30 +675,87 @@ export class MockAdapter implements PortalAdapter {
     ]);
   }
 
-  getCalendarByStudentAndDateRange(): Promise<ScheduleEntry[]> {
-    return Promise.resolve([
+  getCalendarByStudentAndDateRange(
+    _studentId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<ScheduleEntry[]> {
+    const subjects = [
       {
-        id: "mock-entry-1",
-        date: "2026-08-31",
-        startDateTime: "2026-08-31T07:30:00",
-        endDateTime: "2026-08-31T09:30:00",
+        subjectName: "Mathematics 1",
         roomNo: "A201",
         lecturerName: "Mock Lecturer",
-        subjectName: "Mathematics 1",
-        expectedStyle: "offline",
-        schedulePlanContent: "Complex numbers",
-        flmSessionNo: 1,
-        className: "MOCK2026A",
-        slotNo: 1,
-        timeSlotId: "mock-slot",
-        status: "PRESENT",
-        hasAbsenceRequest: false,
-        absenceRequestReason: null,
-        comment: null,
-        proctorComment: null,
-        eduNextUrl: null,
-        googleMeetLink: null,
+        plan: "Complex numbers",
       },
-    ]);
+      {
+        subjectName: "Computer Science",
+        roomNo: "B105",
+        lecturerName: "Dr. Jane Nguyen",
+        plan: "Data structures",
+      },
+      {
+        subjectName: "English 5",
+        roomNo: "C301",
+        lecturerName: "Ms. Hoa Tran",
+        plan: "Academic writing",
+      },
+      {
+        subjectName: "Physics",
+        roomNo: "A401",
+        lecturerName: "Mr. Minh Le",
+        plan: "Kinematics",
+      },
+    ];
+    const slots = [
+      { h: 7, m: 30 },
+      { h: 13, m: 0 },
+    ];
+    const statuses = [
+      "PRESENT",
+      "PRESENT",
+      "LATE",
+      "PRESENT",
+      "ABSENT",
+    ] as const;
+
+    const entries: ScheduleEntry[] = [];
+    const cursor = new Date(`${startDate}T00:00:00`);
+    const stop = new Date(`${endDate}T00:00:00`);
+    let seq = 0;
+    while (cursor <= stop) {
+      const dow = cursor.getDay();
+      if (dow >= 1 && dow <= 5) {
+        const date = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`;
+        for (const [slotIndex, slot] of slots.entries()) {
+          const subj =
+            subjects[(seq + (slotIndex % subjects.length)) % subjects.length];
+          entries.push({
+            id: `mock-entry-${seq}`,
+            date,
+            startDateTime: `${date}T${pad(slot.h)}:${pad(slot.m)}:00`,
+            endDateTime: `${date}T${pad(slot.h + 2)}:${pad(slot.m)}:00`,
+            roomNo: subj.roomNo,
+            lecturerName: subj.lecturerName,
+            subjectName: subj.subjectName,
+            expectedStyle: "offline",
+            schedulePlanContent: subj.plan,
+            flmSessionNo: seq + 1,
+            className: "MOCK2026A",
+            slotNo: (slotIndex % 4) + 1,
+            timeSlotId: "mock-slot",
+            status: statuses[seq % statuses.length],
+            hasAbsenceRequest: false,
+            absenceRequestReason: null,
+            comment: null,
+            proctorComment: null,
+            eduNextUrl: null,
+            googleMeetLink: null,
+          });
+          seq += 1;
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return Promise.resolve(entries);
   }
 }
