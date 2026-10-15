@@ -61,10 +61,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Portals Improved ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
           body: |
-            Portals Improved ${{ steps.version.outputs.tag }}
-
-            **Version:** ${{ steps.version.outputs.version }}
+            **Full Changelog**: https://github.com/thetommylong/portals-improved/compare/build-latest...${{ steps.version.outputs.tag }}
           make_latest: true
           files: dist/script.user.js
