@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import type { ScheduleEntry } from "../../types/portal";
   import { i18n, t } from "../../i18n.svelte";
@@ -32,18 +32,34 @@
     }
   });
 
+  const attendanceWord = $derived.by(() => {
+    switch (entry.status) {
+      case "ABSENT":
+        return t("attendance.absent");
+      case "LATE":
+        return t("attendance.late");
+      case "STUDY_LEAVE":
+        return t("attendance.excused");
+      case "PRESENT":
+        return t("attendance.present");
+      default:
+        return "";
+    }
+  });
+
   const lessonLabel = $derived.by(() => {
     const start = new Date(entry.startDateTime);
     const end = new Date(entry.endDateTime);
     const fmt = (d: Date) =>
       d.toLocaleTimeString(i18n.locale, { hour: "numeric", minute: "2-digit" });
-    return t("schedule.lessonAria", {
+    const base = t("schedule.lessonAria", {
       subject: entry.subjectName,
       start: fmt(start),
       end: fmt(end),
       teacher: entry.lecturerName,
       room: entry.roomNo,
     });
+    return attendanceWord ? `${base}. ${attendanceWord}` : base;
   });
 
   let metaEl = $state<HTMLDivElement>();
@@ -98,16 +114,18 @@
   <span class="lesson-accent" aria-hidden="true"></span>
   <div class="lesson-content" class:compact bind:this={contentEl}>
     <p class="lesson-subject">{entry.subjectName}</p>
-    <div
-      class="lesson-meta"
-      class:stack={mode !== "row"}
-      bind:this={metaEl}
-    >
+    <div class="lesson-meta" class:stack={mode !== "row"} bind:this={metaEl}>
       <span class="lesson-room">{entry.roomNo}</span>
       {#if mode === "row"}
         <span class="dot"></span>
       {/if}
       <span class="lesson-lecturer">{entry.lecturerName}</span>
+      {#if attendanceWord && statusClass}
+        {#if mode === "row"}
+          <span class="dot"></span>
+        {/if}
+        <span class="lesson-attendance">{attendanceWord}</span>
+      {/if}
     </div>
   </div>
 {/snippet}
@@ -137,7 +155,7 @@
     min-height: inherit;
     border-radius: 8px;
     background: var(--base);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border: 1px solid var(--border-subtle);
     overflow: hidden;
     --stripe: transparent;
     transition: background 0.15s ease;
@@ -178,7 +196,7 @@
   }
 
   .lesson.absent.lms .lesson-accent {
-    background: linear-gradient(to bottom, var(--red), var(--green));
+    background: var(--danger);
   }
 
   .lesson.late {
@@ -186,7 +204,7 @@
   }
 
   .lesson.late.lms .lesson-accent {
-    background: linear-gradient(to bottom, var(--blue), var(--green));
+    background: var(--info);
   }
 
   .lesson.study-leave {
@@ -194,7 +212,7 @@
   }
 
   .lesson.study-leave.lms .lesson-accent {
-    background: linear-gradient(to bottom, var(--yellow), var(--green));
+    background: var(--warning);
   }
 
   .lesson:hover {
@@ -209,7 +227,10 @@
     font: inherit;
     color: inherit;
     text-align: inherit;
-    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
   }
 
   .lesson.clickable:hover {
@@ -222,7 +243,7 @@
   }
 
   .lesson.clickable:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 2px;
   }
 
@@ -242,7 +263,7 @@
     padding: 0 2px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
   }
@@ -252,6 +273,12 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .lesson-attendance {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
   }
 
   .lesson-meta.stack {
@@ -272,7 +299,7 @@
     width: 2px;
     height: 2px;
     border-radius: 50%;
-    background: var(--overlay0);
+    background: var(--surface-sunken);
     flex-shrink: 0;
   }
 

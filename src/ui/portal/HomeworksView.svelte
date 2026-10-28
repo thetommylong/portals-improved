@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { StudentHomeWork } from "../../types/portal";
@@ -28,7 +28,11 @@
   );
 
   function isOverdue(hw: StudentHomeWork): boolean {
-    return !hw.isDone && hw.expiredDateTime !== "" && new Date(hw.expiredDateTime).getTime() < Date.now();
+    return (
+      !hw.isDone &&
+      hw.expiredDateTime !== "" &&
+      new Date(hw.expiredDateTime).getTime() < Date.now()
+    );
   }
 
   function fmtDate(iso: string): string {
@@ -67,7 +71,9 @@
       <p class="feedback-empty">{t("homeworks.empty")}</p>
     {:else}
       {#if pending.length > 0}
-        <h2 class="feedback-group-title" id="hw-pending">{t("homeworks.groupPending", { n: pending.length })}</h2>
+        <h2 class="feedback-group-title" id="hw-pending">
+          {t("homeworks.groupPending", { n: pending.length })}
+        </h2>
         <ul class="feedback-list" aria-labelledby="hw-pending">
           {#each pending as hw (hw.homeWorkStudentId)}
             {@render card(hw)}
@@ -75,7 +81,9 @@
         </ul>
       {/if}
       {#if done.length > 0}
-        <h2 class="feedback-group-title" id="hw-done">{t("homeworks.groupDone", { n: done.length })}</h2>
+        <h2 class="feedback-group-title" id="hw-done">
+          {t("homeworks.groupDone", { n: done.length })}
+        </h2>
         <ul class="feedback-list" aria-labelledby="hw-done">
           {#each done as hw (hw.homeWorkStudentId)}
             {@render card(hw)}
@@ -96,9 +104,13 @@
       {#if hw.isDone}
         <span class="fb-badge fb-badge-done">{t("homeworks.badgeDone")}</span>
       {:else if isOverdue(hw)}
-        <span class="fb-badge fb-badge-overdue">{t("homeworks.badgeOverdue")}</span>
+        <span class="fb-badge fb-badge-overdue"
+          >{t("homeworks.badgeOverdue")}</span
+        >
       {:else}
-        <span class="fb-badge fb-badge-pending">{t("homeworks.badgePending")}</span>
+        <span class="fb-badge fb-badge-pending"
+          >{t("homeworks.badgePending")}</span
+        >
       {/if}
     </header>
     <section class="mark-section">
@@ -113,9 +125,13 @@
       <section class="mark-section">
         <span class="mark-label">{t("label.files")}</span>
         <span class="fb-text"
-          >{#if hw.homeworkFiles.length > 0}{t("homeworks.assignments", { n: hw.homeworkFiles.length })}{/if
-          }{#if hw.homeworkFiles.length > 0 && hw.studentFiles.length > 0} · {/if
-          }{#if hw.studentFiles.length > 0}{t("homeworks.submissions", { n: hw.studentFiles.length })}{/if}</span
+          >{#if hw.homeworkFiles.length > 0}{t("homeworks.assignments", {
+              n: hw.homeworkFiles.length,
+            })}{/if}{#if hw.homeworkFiles.length > 0 && hw.studentFiles.length > 0}
+            ·
+          {/if}{#if hw.studentFiles.length > 0}{t("homeworks.submissions", {
+              n: hw.studentFiles.length,
+            })}{/if}</span
         >
       </section>
     {/if}

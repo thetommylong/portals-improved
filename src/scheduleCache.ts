@@ -11,12 +11,30 @@ export interface WeekCache {
   entries: ScheduleEntry[];
 }
 
+/** Client-side TTL for schedule weeks (7 days). */
+const WEEK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function readWeek(studentId: string, weekKey: string): WeekCache | null {
   const raw = GM_getValue<WeekCache | null>(
     `${PREFIX}${studentId}:${weekKey}`,
     null,
   );
-  return raw ?? null;
+  if (!raw) return null;
+  if (Date.now() - raw.savedAt > WEEK_TTL_MS) {
+    GM_deleteValue(`${PREFIX}${studentId}:${weekKey}`);
+    return null;
+  }
+  return raw;
+}
+
+export function clearScheduleCaches(studentId?: string): void {
+  if (!studentId) return;
+  const indexKey = `${PREFIX}${studentId}:index`;
+  const index: string[] = GM_getValue<string[]>(indexKey, []);
+  for (const weekKey of index) {
+    GM_deleteValue(`${PREFIX}${studentId}:${weekKey}`);
+  }
+  GM_deleteValue(indexKey);
 }
 
 export function writeWeek(

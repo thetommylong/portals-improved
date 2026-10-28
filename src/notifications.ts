@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-export type NotificationType = "info" | "success" | "error";
+export type ToastKind = "info" | "success" | "error";
+/** @deprecated Use ToastKind */
+export type NotificationType = ToastKind;
 
 const DURATION = 4000;
 
-const ICONS: Record<NotificationType, string> = {
+const ICONS: Record<ToastKind, string> = {
   success: "check_circle",
   error: "error",
   info: "info",
 };
 
-const COLORS: Record<NotificationType, string> = {
+const COLORS: Record<ToastKind, string> = {
   success: "var(--panel-success)",
   error: "var(--panel-error)",
   info: "var(--panel-info)",
@@ -63,7 +65,7 @@ function removeStackIfNeeded() {
   }
 }
 
-export function notify(message: string, type: NotificationType = "info") {
+export function notify(message: string, type: ToastKind = "info") {
   const s = ensureStack();
 
   const bar = document.createElement("div");

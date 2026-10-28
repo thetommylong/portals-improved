@@ -1,17 +1,15 @@
 {
-    "nav.home": "Trang chủ",
+  "nav.home": "Trang chủ",
   "nav.feedback": "Phản hồi",
   "nav.homeworks": "Bài tập",
   "nav.marks": "Điểm",
   "nav.clubs": "Câu lạc bộ",
   "nav.events": "Sự kiện",
   "nav.standing": "Khen thưởng & Kỷ luật",
-
   "header.today": "Hôm nay",
   "header.aria.previous": "Trước",
   "header.aria.next": "Sau",
   "header.aria.mainNav": "Menu chính",
-
   "aria.toggleMenu": "Mở/đóng menu",
   "aria.toggleAssistant": "Mở/đóng trợ lý AI",
   "aria.appearance": "Cài đặt giao diện",
@@ -22,7 +20,6 @@
   "aria.resizeAssistant": "Kéo thay đổi kích thước trợ lý AI",
   "aria.close": "Đóng",
   "aria.avatar": "Ảnh đại diện của {name}",
-
   "settings.theme": "Chủ đề",
   "settings.darkFlavor": "Chủ đề tối",
   "settings.accent": "Màu nhấn",
@@ -32,13 +29,11 @@
   "settings.accentColor": "Màu nhấn",
   "settings.language": "Ngôn ngữ",
   "settings.languageGroup": "Ngôn ngữ",
-
   "toast.profileFailed": "Không tải được hồ sơ",
   "toast.viewUnavailable": "Không có sẵn {label} cho cổng này",
   "toast.timetableFailed": "Không tải được thời khóa biểu",
   "toast.timetableOffline": "Ngoại tuyến — đang hiển thị thời khóa biểu đã lưu",
-  "toast.otherSemester":
-    "Không tải được học kỳ còn lại — dự đoán thiếu điểm CN",
+  "toast.otherSemester": "Không tải được học kỳ còn lại — dự đoán thiếu điểm CN",
   "toast.homeworksFailed": "Không tải được bài tập",
   "toast.feedbackFailed": "Không tải được phản hồi",
   "toast.feedbackOpenFailed": "Không mở được biểu mẫu phản hồi",
@@ -55,10 +50,8 @@
   "toast.marksFailed": "Không tải được điểm",
   "toast.marksStale": "Không làm mới được — đang hiển thị điểm đã lưu",
   "toast.standingFailed": "Không tải được dữ liệu",
-
   "status.loading": "Đang tải…",
   "status.retry": "Thử lại",
-
   "label.term": "Học kỳ",
   "label.teacher": "GV",
   "label.files": "Tệp",
@@ -73,11 +66,8 @@
   "label.yes": "Có",
   "label.done": "Đã có",
   "label.tickets": "{n} vé",
-
-  "schedule.lessonAria":
-    "{subject} lúc {start}–{end} do {teacher} dạy tại {room}",
+  "schedule.lessonAria": "{subject} lúc {start}–{end} do {teacher} dạy tại {room}",
   "schedule.noClasses": "Không có tiết học hôm nay",
-
   "popup.plan": "Kế hoạch",
   "popup.checking": "đang kiểm tra…",
   "popup.teacherComment": "Nhận xét của giảng viên",
@@ -90,22 +80,20 @@
   "attendance.late": "Đi muộn",
   "attendance.absent": "Vắng",
   "attendance.excused": "Vắng có phép",
-
   "homeworks.groupPending": "Chưa hoàn thành ({n})",
   "homeworks.groupDone": "Đã hoàn thành ({n})",
   "homeworks.badgePending": "Chưa làm",
   "homeworks.badgeDone": "Đã làm",
   "homeworks.badgeOverdue": "Quá hạn",
-  "homeworks.empty": "Chưa có bài tập nào",
+  "homeworks.empty": "Chưa có bài tập — bạn đang trống lịch",
   "homeworks.assignments": "{n} đề",
   "homeworks.submissions": "{n} nộp",
-
   "feedback.groupPending": "Chưa gửi ({n})",
   "feedback.groupDone": "Đã gửi ({n})",
   "feedback.badgePending": "Chưa gửi",
   "feedback.badgeDone": "Đã gửi",
   "feedback.cardAria": "Phản hồi cho {subject} (Chưa gửi)",
-  "feedback.empty": "Chưa có phản hồi nào",
+  "feedback.empty": "Chưa có phản hồi — quay lại khi giảng viên mở form",
   "feedback.formAria": "Biểu mẫu phản hồi",
   "feedback.close": "Đóng",
   "feedback.questionFallback": "Câu hỏi {n}",
@@ -116,27 +104,23 @@
   "feedback.submit": "Gửi phản hồi",
   "feedback.closing": "Đang đóng…",
   "feedback.cancel": "Huỷ",
-  "feedback.disabled":
-    "Vui lòng trả lời tất cả câu hỏi và ghi nhận ít nhất một nhận xét",
-
+  "feedback.disabled": "Vui lòng trả lời tất cả câu hỏi và ghi nhận ít nhất một nhận xét",
   "events.groupPending": "Chưa tham gia ({n})",
   "events.groupDone": "Đã tham gia ({n})",
   "events.badgePending": "Chưa tham gia",
   "events.badgeDone": "Đã tham gia",
-  "events.empty": "Chưa có sự kiện nào",
+  "events.empty": "Chưa có sự kiện kỳ này — quay lại sau",
   "events.ariaRegister": "Đăng ký sự kiện này",
   "events.ariaUnregister": "Hủy đăng ký sự kiện này",
   "events.register": "Đăng ký",
   "events.unregister": "Hủy đăng ký",
   "events.registering": "Đang đăng ký…",
   "events.unregistering": "Đang hủy đăng ký…",
-
-  "clubs.empty": "Không có câu lạc bộ nào",
+  "clubs.empty": "Chưa có CLB kỳ này — thử kỳ khác",
   "clubs.gridAria": "Câu lạc bộ",
-
   "standing.year": "Năm học",
   "standing.all": "Tất cả",
-  "standing.empty": "Chưa có dữ liệu",
+  "standing.empty": "Chưa có hồ sơ kỷ luật/khen thưởng",
   "standing.emptyYear": "Không có dữ liệu năm học này",
   "standing.reward": "Thưởng",
   "standing.discipline": "Kỷ luật",
@@ -149,11 +133,10 @@
   "standing.ruleCode": "Mã PL",
   "standing.level": "Cấp độ",
   "standing.gridAria": "Hồ sơ khen thưởng & kỷ luật",
-
   "marks.term": "Học kỳ",
   "marks.export": "Xuất CSV",
   "marks.predictor": "Cần bao nhiêu ở bài cuối kỳ?",
-  "marks.empty": "Chưa có điểm cho học kỳ này",
+  "marks.empty": "Chưa có điểm kỳ này — chọn kỳ khác hoặc tải lại sau",
   "marks.gridAria": "Bảng điểm theo môn học",
   "marks.tb": "TB {value}",
   "marks.cn": "CN {value}",
@@ -166,7 +149,6 @@
   "marks.ariaSkills": "Kỹ năng ngôn ngữ",
   "marks.ariaMilestones": "Điểm định kỳ",
   "marks.ariaOthers": "Hạng mục khác",
-
   "csv.subject": "Môn học",
   "csv.type": "Loại",
   "csv.tx": "Điểm TX",
@@ -176,7 +158,6 @@
   "csv.yearlyAvg": "ĐTB năm (CN)",
   "csv.numeric": "Điểm số",
   "csv.passFail": "Đạt/Không đạt",
-
   "predictor.title": "Dự đoán điểm cuối kỳ",
   "predictor.detailGroup": "Chi tiết điểm",
   "predictor.targetLabel": "Điểm mục tiêu",
@@ -209,48 +190,47 @@
   "predictor.midtermAria": "Giữa Kỳ",
   "predictor.finalAria": "Cuối Kỳ",
   "predictor.projectedAria": "Điểm cuối kỳ dự đoán cho {subject}",
-
   "notif.title": "Thông báo",
   "notif.unread": "{n} chưa đọc",
   "notif.markRead": "Đánh dấu đã đọc",
-  "notif.empty": "Không có thông báo",
+  "notif.empty": "Không có thông báo — bạn đã xem hết",
   "notif.failed": "Không tải được thông báo",
   "notif.now": "bây giờ",
-
   "modelPicker.title": "Chọn model",
   "modelPicker.loading": "Đang tải danh sách model…",
   "modelPicker.empty": "Không tìm thấy model",
   "modelPicker.retry": "Thử lại",
-
   "confirm.title": "Xác nhận",
   "confirm.approve": "Đồng ý",
   "confirm.reject": "Từ chối",
-
   "chat.assistant": "Trợ lý AI",
   "chat.selectModel": "Chọn model",
   "chat.clear": "Xóa hội thoại",
   "chat.send": "Gửi",
   "chat.placeholder": "Hỏi về dữ liệu cổng của bạn…",
   "chat.loadingContext": "Đang tải ngữ cảnh…",
-  "chat.welcome":
-    "Chào mừng! Trước tiên hãy cài API key:\n\n/key <your-api-key>\n\nSau đó có thể cài:\n/url <custom-base-url>\n/model <model-id>",
+  "chat.welcome": "Chào mừng! Trước tiên hãy cài API key:\n\n/key <your-api-key>\n\nSau đó có thể cài:\n/url <custom-base-url>\n/model <model-id>",
   "chat.noResponse": "Không có phản hồi từ API",
   "chat.cleared": "Đã xóa hội thoại.",
   "chat.apiKeySet": "Đã cài API key ({masked})",
   "chat.apiKeyMissing": "Chưa cài API key. Cú pháp: /key <your-api-key>",
   "chat.apiKeySaved": "Đã lưu API key.",
-  "chat.baseUrlCurrent":
-    "Base URL hiện tại: {url}\nCú pháp: /url <new-base-url>",
+  "chat.baseUrlCurrent": "Base URL hiện tại: {url}\nCú pháp: /url <new-base-url>",
   "chat.baseUrlSet": "Đã đặt base URL: {url}",
   "chat.modelCurrent": "Model hiện tại: {model}\nCú pháp: /model <model-id>",
   "chat.modelSet": "Đã đặt model: {model}",
   "chat.noModels": "API không trả về model nào.",
-  "chat.modelsList":
-    "Các model có sẵn (● = đang dùng):\n{list}\n\nDùng /model <id> để chuyển.",
+  "chat.modelsList": "Các model có sẵn (● = đang dùng):\n{list}\n\nDùng /model <id> để chuyển.",
   "chat.modelsFailed": "Không lấy được danh sách model: {message}",
   "chat.unknownCommand": "Lệnh không xác định: {cmd}\n\n{help}",
-  "chat.help":
-    "Các lệnh có sẵn:\n  /models  — Liệt kê và chọn model\n  /key     — Cài API key\n  /url     — Đặt base URL\n  /model   — Xem hoặc đặt model hiện tại\n  /clear   — Xóa lịch sử hội thoại\n  /help    — Xem trợ giúp này",
-
-  "unavailable.msg": "Tính năng này không khả dụng với cổng hiện tại."
+  "chat.help": "Các lệnh có sẵn:\n  /models  — Liệt kê và chọn model\n  /key     — Cài API key\n  /url     — Đặt base URL\n  /model   — Xem hoặc đặt model hiện tại\n  /clear   — Xóa lịch sử hội thoại\n  /help    — Xem trợ giúp này",
+  "unavailable.msg": "Tính năng này không khả dụng với cổng hiện tại.",
+  "schedule.empty": "Không có tiết tuần này — chuyển sang tuần khác",
+  "settings.officialPortal": "Cổng chính thức",
+  "settings.changePassword": "Đổi mật khẩu (cổng chính thức)",
+  "settings.dorm": "Ký túc xá (cổng chính thức)",
+  "escape.passwordHint": "Đổi mật khẩu vẫn trên cổng chính thức",
+  "escape.dormHint": "Điểm danh KTX vẫn trên cổng chính thức",
+  "aria.appName": "Portals Improved",
+  "aria.skipToMain": "Chuyển tới nội dung chính"
 }

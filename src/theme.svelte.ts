@@ -2,6 +2,9 @@
 // Copyright (C) 2026 thetommylong
 
 import { flavors, type FlavorName } from "@catppuccin/palette";
+import { inkTowardText } from "./themeTokens";
+
+export { inkTowardText } from "./themeTokens";
 
 export const FLAVOR_OPTIONS = [
   "system",
@@ -15,6 +18,7 @@ export type FlavorChoice = (typeof FLAVOR_OPTIONS)[number];
 export const DARK_FLAVORS = ["frappe", "macchiato", "mocha"] as const;
 export type DarkFlavorChoice = (typeof DARK_FLAVORS)[number];
 
+/** Selectable accents — blue reserved for links (`info`). */
 export const ACCENTS = [
   "rosewater",
   "flamingo",
@@ -28,7 +32,6 @@ export const ACCENTS = [
   "teal",
   "sky",
   "sapphire",
-  "blue",
   "lavender",
 ] as const;
 export type AccentChoice = (typeof ACCENTS)[number];
@@ -45,10 +48,15 @@ function storedFlavor(): FlavorChoice {
 }
 
 function storedAccent(): AccentChoice {
-  const raw = GM_getValue<string>(ACCENT_KEY, "blue");
+  const raw = GM_getValue<string>(ACCENT_KEY, "mauve");
+  // Migrate legacy default / removed blue accent.
+  if (raw === "blue") {
+    GM_setValue(ACCENT_KEY, "mauve");
+    return "mauve";
+  }
   return (ACCENTS as readonly string[]).includes(raw)
     ? (raw as AccentChoice)
-    : "blue";
+    : "mauve";
 }
 
 function storedSystemDark(): DarkFlavorChoice {
@@ -91,10 +99,111 @@ export function resolvedFlavor(): FlavorName {
 }
 
 export function applyTheme(): void {
-  const flavor = flavors[resolvedFlavor()] ?? flavors.mocha;
+  const name = resolvedFlavor();
+  const flavor = flavors[name] ?? flavors.mocha;
+  const isLatte = name === "latte";
   const rootStyle = document.documentElement.style;
-  for (const [name, meta] of flavor.colorEntries) {
-    rootStyle.setProperty(`--${name}`, meta.hex);
+  const root = document.documentElement;
+
+  for (const [colorName, meta] of flavor.colorEntries) {
+    rootStyle.setProperty(`--${colorName}`, meta.hex);
   }
-  rootStyle.setProperty("--accent", flavor.colors[theme.accent].hex);
+
+  const text = flavor.colors.text.hex;
+  const accent = flavor.colors[theme.accent].hex;
+  const red = flavor.colors.red.hex;
+  const yellow = flavor.colors.yellow.hex;
+  const green = flavor.colors.green.hex;
+  const blue = flavor.colors.blue.hex;
+
+  rootStyle.setProperty("--accent", accent);
+  rootStyle.setProperty(
+    "--accent-strong",
+    isLatte ? inkTowardText(accent, text) : accent,
+  );
+  rootStyle.setProperty(
+    "--text-secondary",
+    isLatte ? flavor.colors.subtext1.hex : flavor.colors.subtext0.hex,
+  );
+  rootStyle.setProperty("--text-muted", flavor.colors.overlay0.hex);
+
+  // App background is base; raised surfaces use mantle.
+  rootStyle.setProperty("--surface-base", flavor.colors.base.hex);
+  rootStyle.setProperty("--surface-raised", flavor.colors.mantle.hex);
+  rootStyle.setProperty("--surface-sunken", flavor.colors.crust.hex);
+  rootStyle.setProperty(
+    "--surface-hover",
+    `color-mix(in srgb, ${text} 5%, transparent)`,
+  );
+  rootStyle.setProperty(
+    "--surface-hover-strong",
+    `color-mix(in srgb, ${text} 10%, transparent)`,
+  );
+  rootStyle.setProperty(
+    "--border-subtle",
+    `color-mix(in srgb, ${text} 8%, transparent)`,
+  );
+  rootStyle.setProperty(
+    "--border-strong",
+    `color-mix(in srgb, ${text} 16%, transparent)`,
+  );
+
+  rootStyle.setProperty("--danger", red);
+  rootStyle.setProperty("--warning", yellow);
+  rootStyle.setProperty("--success", green);
+  rootStyle.setProperty("--info", blue);
+  rootStyle.setProperty(
+    "--danger-ink",
+    isLatte ? inkTowardText(red, text) : red,
+  );
+  rootStyle.setProperty(
+    "--warning-ink",
+    isLatte ? inkTowardText(yellow, text) : yellow,
+  );
+  rootStyle.setProperty(
+    "--success-ink",
+    isLatte ? inkTowardText(green, text) : green,
+  );
+  rootStyle.setProperty(
+    "--info-ink",
+    isLatte ? inkTowardText(blue, text) : blue,
+  );
+
+  // Toast / panel aliases (were previously undefined).
+  rootStyle.setProperty("--panel-bg", flavor.colors.mantle.hex);
+  rootStyle.setProperty("--panel-text", text);
+  rootStyle.setProperty(
+    "--panel-border",
+    `color-mix(in srgb, ${text} 8%, transparent)`,
+  );
+  rootStyle.setProperty(
+    "--panel-success",
+    isLatte ? inkTowardText(green, text) : green,
+  );
+  rootStyle.setProperty(
+    "--panel-error",
+    isLatte ? inkTowardText(red, text) : red,
+  );
+  rootStyle.setProperty(
+    "--panel-info",
+    isLatte ? inkTowardText(blue, text) : blue,
+  );
+
+  rootStyle.setProperty("--radius-tight", "6px");
+  rootStyle.setProperty("--radius-control", "8px");
+  rootStyle.setProperty("--radius-card", "12px");
+  rootStyle.setProperty("--radius-surface", "16px");
+  rootStyle.setProperty("--motion-fast", "140ms");
+  rootStyle.setProperty("--motion-med", "240ms");
+  rootStyle.setProperty(
+    "--shadow-1",
+    "0 1px 2px color-mix(in srgb, black 18%, transparent)",
+  );
+  rootStyle.setProperty(
+    "--shadow-2",
+    "0 20px 50px -28px color-mix(in srgb, black 60%, transparent)",
+  );
+
+  root.style.colorScheme = isLatte ? "light" : "dark";
+  root.dataset.flavor = name;
 }

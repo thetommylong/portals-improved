@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
@@ -22,7 +22,7 @@
   import EventsView from "./portal/EventsView.svelte";
   import StandingView from "./portal/StandingView.svelte";
   import ClubsView from "./portal/ClubsView.svelte";
-  import ChatSidebar from "./portal/ChatSidebar.svelte";
+  // ChatSidebar (and marked/DOMPurify/agent SDK) load lazily when chat opens.
 
   const NAV_IDS = [
     "home",
@@ -51,19 +51,19 @@
     { id: "standing", label: "nav.standing", icon: "shield_person" },
   ];
 
-  const SUPPORTED_NAV: Record<NavItem["id"], boolean> = {
-    home: runtime.adapter.features.schedule,
-    feedback: runtime.adapter.features.feedback,
-    homeworks: runtime.adapter.features.homeworks,
-    marks: runtime.adapter.features.marks,
-    clubs: runtime.adapter.features.clubs,
-    events: runtime.adapter.features.events,
-    standing: runtime.adapter.features.standing,
-  };
-
-  const navItems = $derived(
-    ALL_NAV_ITEMS.filter((item) => SUPPORTED_NAV[item.id]),
-  );
+  const navItems = $derived.by(() => {
+    const f = runtime.adapter.features;
+    const supported: Record<NavItem["id"], boolean> = {
+      home: f.schedule,
+      feedback: f.feedback,
+      homeworks: f.homeworks,
+      marks: f.marks,
+      clubs: f.clubs,
+      events: f.events,
+      standing: f.standing,
+    };
+    return ALL_NAV_ITEMS.filter((item) => supported[item.id]);
+  });
 
   let { userId }: { userId: string } = $props();
 
@@ -89,9 +89,19 @@
   let lastTrigger = $state<HTMLElement>();
   let chatOpen = $state(false);
   let agentContext = $state<AgentContext | null>(null);
+  let ChatSidebarComp = $state<
+    typeof import("./portal/ChatSidebar.svelte").default | null
+  >(null);
   const CHAT_WIDTH_MIN = 280;
   const CHAT_WIDTH_MAX = 640;
   let chatWidth = $state(340);
+
+  $effect(() => {
+    if (!chatOpen || ChatSidebarComp) return;
+    void import("./portal/ChatSidebar.svelte").then((m) => {
+      ChatSidebarComp = m.default;
+    });
+  });
 
   function onChatResizeStart(e: PointerEvent) {
     e.preventDefault();
@@ -193,7 +203,9 @@
         const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
         termId = term.termId;
         termName = term.semesterName;
-      } catch {}
+      } catch {
+        /* keep Current Term fallback */
+      }
       agentContext = {
         studentId: ctx.studentId,
         userId: ctx.userId,
@@ -235,7 +247,17 @@
 
   function onNav(item: NavItem) {
     if (item.id === activeNav) return;
-    if (!SUPPORTED_NAV[item.id]) {
+    const f = runtime.adapter.features;
+    const supported: Record<PageId, boolean> = {
+      home: f.schedule,
+      feedback: f.feedback,
+      homeworks: f.homeworks,
+      marks: f.marks,
+      clubs: f.clubs,
+      events: f.events,
+      standing: f.standing,
+    };
+    if (!supported[item.id]) {
       notify(t("toast.viewUnavailable", { label: t(item.label) }), "info");
       return;
     }
@@ -246,12 +268,34 @@
   function toggleChat() {
     chatOpen = !chatOpen;
   }
+
+  function onChatResizeKeydown(e: KeyboardEvent) {
+    const step = e.shiftKey ? 32 : 16;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      chatWidth = Math.min(CHAT_WIDTH_MAX, chatWidth + step);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      chatWidth = Math.max(CHAT_WIDTH_MIN, chatWidth - step);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      chatWidth = CHAT_WIDTH_MIN;
+    } else if (e.key === "End") {
+      e.preventDefault();
+      chatWidth = CHAT_WIDTH_MAX;
+    }
+  }
 </script>
 
 <div class="shell">
+  <h1 class="shell-title">{t("aria.appName")}</h1>
   <header class="header">
     <div class="header-left">
-      <button class="icon-btn" aria-label={t("aria.toggleMenu")} onclick={toggleSidebar}>
+      <button
+        class="icon-btn"
+        aria-label={t("aria.toggleMenu")}
+        onclick={toggleSidebar}
+      >
         <span class="material-symbols-rounded" aria-hidden="true">menu</span>
       </button>
       <div class="header-nav">
@@ -305,12 +349,23 @@
             settingsOpen = !settingsOpen;
           }}
         >
-          <span class="material-symbols-rounded" aria-hidden="true">settings</span>
+          <span class="material-symbols-rounded" aria-hidden="true"
+            >settings</span
+          >
         </button>
         {#if settingsOpen}
-          <div class="settings-pop" bind:this={settingsPop} role="dialog" aria-label={t("aria.appearance")}>
+          <div
+            class="settings-pop"
+            bind:this={settingsPop}
+            role="dialog"
+            aria-label={t("aria.appearance")}
+          >
             <p class="settings-title">{t("settings.theme")}</p>
-            <div class="settings-flavors" role="radiogroup" aria-label={t("settings.flavor")}>
+            <div
+              class="settings-flavors"
+              role="radiogroup"
+              aria-label={t("settings.flavor")}
+            >
               {#each FLAVOR_OPTIONS as option (option)}
                 <button
                   class="settings-flavor"
@@ -344,7 +399,11 @@
               </div>
             {/if}
             <p class="settings-title">{t("settings.accent")}</p>
-            <div class="settings-accents" role="radiogroup" aria-label={t("settings.accentColor")}>
+            <div
+              class="settings-accents"
+              role="radiogroup"
+              aria-label={t("settings.accentColor")}
+            >
               {#each ACCENTS as accent (accent)}
                 <button
                   class="accent-dot"
@@ -359,7 +418,11 @@
               {/each}
             </div>
             <p class="settings-title">{t("settings.language")}</p>
-            <div class="settings-flavors" role="radiogroup" aria-label={t("settings.languageGroup")}>
+            <div
+              class="settings-flavors"
+              role="radiogroup"
+              aria-label={t("settings.languageGroup")}
+            >
               {#each LOCALES as choice (choice)}
                 <button
                   class="settings-flavor"
@@ -371,6 +434,28 @@
                   {choice.toUpperCase()}
                 </button>
               {/each}
+            </div>
+            <hr class="settings-sep" />
+            <p class="settings-title">{t("settings.officialPortal")}</p>
+            <div class="escape-links">
+              <a
+                class="about-link"
+                href="https://fsp.fpt.edu.vn/"
+                target="_blank"
+                rel="noreferrer"
+                title={t("escape.passwordHint")}
+              >
+                {t("settings.changePassword")}
+              </a>
+              <a
+                class="about-link"
+                href="https://fsp.fpt.edu.vn/"
+                target="_blank"
+                rel="noreferrer"
+                title={t("escape.dormHint")}
+              >
+                {t("settings.dorm")}
+              </a>
             </div>
             <hr class="settings-sep" />
             <p class="settings-title">{t("settings.about")}</p>
@@ -398,10 +483,14 @@
         <button
           class="icon-btn"
           class:has-badge={unreadCount > 0}
-          aria-label={unreadCount > 0 ? t("aria.notificationsUnread", { n: unreadCount }) : t("aria.notificationsNone")}
+          aria-label={unreadCount > 0
+            ? t("aria.notificationsUnread", { n: unreadCount })
+            : t("aria.notificationsNone")}
           onclick={onNotifications}
         >
-          <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
+          <span class="material-symbols-rounded" aria-hidden="true"
+            >notifications</span
+          >
           {#if unreadCount > 0}
             <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
           {/if}
@@ -417,7 +506,9 @@
       role="presentation"
       aria-hidden={!sidebarOpen}
       onclick={toggleSidebar}
-      onkeydown={(e) => { if (e.key === "Escape" && sidebarOpen) toggleSidebar(); }}
+      onkeydown={(e) => {
+        if (e.key === "Escape" && sidebarOpen) toggleSidebar();
+      }}
     ></div>
 
     <aside
@@ -428,7 +519,11 @@
     >
       <div class="profile">
         {#if avatar}
-          <img class="avatar" src={avatar} alt={t("aria.avatar", { name: name || "" })} />
+          <img
+            class="avatar"
+            src={avatar}
+            alt={t("aria.avatar", { name: name || "" })}
+          />
         {:else}
           <div class="avatar"></div>
         {/if}
@@ -444,14 +539,16 @@
             aria-current={activeNav === item.id ? "page" : undefined}
             onclick={() => onNav(item)}
           >
-            <span class="nav-icon material-symbols-rounded" aria-hidden="true">{item.icon}</span>
+            <span class="nav-icon material-symbols-rounded" aria-hidden="true"
+              >{item.icon}</span
+            >
             <span>{t(item.label)}</span>
           </button>
         {/each}
       </nav>
     </aside>
 
-<main class="main">
+    <main class="main">
       {#if activeNav === "homeworks"}
         {#if runtime.adapter.features.homeworks}
           <HomeworksView studentId={userId} bind:this={pages.homeworks} />
@@ -507,15 +604,23 @@
         style={`width: ${chatWidth}px;`}
         aria-label={t("aria.assistant")}
       >
+        <!-- splitter: APG uses role=separator + tabindex; svelte a11y disagrees with that combo -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <div
           class="chat-resize-handle"
           role="separator"
+          tabindex="0"
           aria-orientation="vertical"
+          aria-valuenow={chatWidth}
+          aria-valuemin={CHAT_WIDTH_MIN}
+          aria-valuemax={CHAT_WIDTH_MAX}
           aria-label={t("aria.resizeAssistant")}
           onpointerdown={onChatResizeStart}
+          onkeydown={onChatResizeKeydown}
         ></div>
-        {#if agentContext}
-          <ChatSidebar {agentContext} />
+        {#if agentContext && ChatSidebarComp}
+          <ChatSidebarComp {agentContext} />
         {:else}
           <div class="chat-loading">{t("chat.loadingContext")}</div>
         {/if}
@@ -528,12 +633,24 @@
       {userId}
       open={notifOpen}
       onclose={() => (notifOpen = false)}
-      onunread={(n) => (unreadCount = n)}
+      onunread={(n: number) => (unreadCount = n)}
     />
   {/if}
 </div>
 
 <style>
+  .shell-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .shell {
     display: flex;
     flex-direction: column;
@@ -581,7 +698,9 @@
     background: transparent;
     cursor: pointer;
     color: var(--text);
-    transition: background 0.15s ease, transform 0.15s ease;
+    transition:
+      background 0.15s ease,
+      transform 0.15s ease;
     position: relative;
   }
 
@@ -590,7 +709,7 @@
   }
 
   .icon-btn:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -611,17 +730,13 @@
     border-radius: 999px;
     background: var(--red);
     color: var(--mantle);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     font-family: "Google Sans Flex", system-ui, sans-serif;
   }
 
   .badge {
     transition: transform 0.15s ease;
-  }
-
-  .badge:hover {
-    transform: scale(1.1);
   }
 
   .content {
@@ -662,7 +777,11 @@
     left: auto;
     border: none;
     box-shadow: none;
-    transition: opacity 0.22s ease, transform 0.22s ease, width 0.22s ease, padding 0.22s ease;
+    transition:
+      opacity 0.22s ease,
+      transform 0.22s ease,
+      width 0.22s ease,
+      padding 0.22s ease;
   }
 
   .sidebar.collapsed {
@@ -701,7 +820,7 @@
 
   .profile-roll {
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     text-align: center;
   }
 
@@ -730,7 +849,9 @@
     font-size: 14px;
     color: var(--text);
     text-align: left;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
 
   .nav-item:hover {
@@ -738,16 +859,16 @@
   }
 
   .nav-item.active {
-    background: var(--accent);
-    color: var(--base);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--text);
   }
 
   .nav-item.active:hover {
-    background: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
   .nav-item:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -804,6 +925,11 @@
     z-index: 5;
   }
 
+  .chat-resize-handle:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+  }
+
   .chat-resize-handle::after {
     content: "";
     position: absolute;
@@ -817,7 +943,7 @@
 
   .chat-resize-handle:hover::after,
   .chat-resize-handle:active::after {
-    background: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
   .chat-loading {
@@ -825,7 +951,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--overlay0);
+    color: var(--text-secondary);
     font-size: 13px;
   }
 
@@ -842,7 +968,7 @@
     padding: 0 14px;
     border: none;
     border-radius: 8px;
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
@@ -855,7 +981,7 @@
   }
 
   .toolbar-btn:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -888,7 +1014,7 @@
     z-index: 20;
     width: 240px;
     background: var(--base);
-    border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+    border: 1px solid var(--border-strong);
     border-radius: 12px;
     padding: 14px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
@@ -902,7 +1028,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .settings-flavors {
@@ -920,16 +1046,19 @@
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 12px;
     color: var(--text);
-    background: var(--surface0);
+    background: var(--surface-base);
     border: 1px solid transparent;
     border-radius: 8px;
     padding: 6px 4px;
     cursor: pointer;
-    transition: background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+    transition:
+      background 0.12s ease,
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
   }
 
   .settings-flavor:active {
-    transform: scale(0.95);
+    transform: scale(0.99);
   }
 
   .settings-flavor:hover {
@@ -950,17 +1079,13 @@
   }
 
   .accent-dot {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
     justify-self: center;
-  }
-
-  .accent-dot:hover {
-    transform: scale(1.15);
   }
 
   .accent-dot.selected {
@@ -971,6 +1096,12 @@
     border: none;
     border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
     margin: 12px 0;
+  }
+
+  .escape-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .about {
@@ -989,13 +1120,13 @@
   .about-detail {
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 11px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .about-link {
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 11px;
-    color: var(--accent);
+    color: var(--info-ink);
     text-decoration: none;
   }
 
@@ -1027,7 +1158,9 @@
       background: color-mix(in srgb, var(--mantle) 55%, transparent);
       opacity: 0;
       visibility: hidden;
-      transition: opacity 0.22s ease, visibility 0.22s ease;
+      transition:
+        opacity 0.22s ease,
+        visibility 0.22s ease;
     }
 
     .scrim.visible {

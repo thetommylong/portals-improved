@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { MarkCommon, Term } from "../../types/portal";
@@ -20,8 +20,8 @@
     requiredFinal,
     yearlyAverage,
   } from "./marksHelpers";
-import { exportGradesToCSV } from "./csvExport";
-import PredictorDrawer from "./PredictorDrawer.svelte";
+  import { exportGradesToCSV } from "./csvExport";
+  import PredictorDrawer from "./PredictorDrawer.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -70,9 +70,7 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
     ];
   });
 
-  const selectedTerm = $derived(
-    terms.find((t) => t.termId === selectedTermId),
-  );
+  const selectedTerm = $derived(terms.find((t) => t.termId === selectedTermId));
 
   const rows = $derived(
     [...marks].sort(
@@ -149,7 +147,10 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
       ]);
       terms = list;
       writeTerms(campusId, list, def.termId);
-      if (!termPicked && (!selectedTermId || !list.some((t) => t.termId === selectedTermId))) {
+      if (
+        !termPicked &&
+        (!selectedTermId || !list.some((t) => t.termId === selectedTermId))
+      ) {
         selectedTermId = def.termId;
       }
     } catch {
@@ -234,27 +235,27 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
           {/each}
         {/if}
       {/each}
-</select>
-      <div class="marks-toolbar-actions">
-        <button
-          type="button"
-          class="btn-marks"
-          onclick={() => exportGradesToCSV(marks, selectedTerm?.semesterName)}
-        >
-          {t("marks.export")}
-        </button>
-        <button
-          type="button"
-          class="btn-marks"
-          onclick={() => {
-            lastTrigger = document.activeElement as HTMLElement;
-            predictorOpen = true;
-          }}
-        >
-          {t("marks.predictor")}
-        </button>
-      </div>
+    </select>
+    <div class="marks-toolbar-actions">
+      <button
+        type="button"
+        class="btn-marks"
+        onclick={() => exportGradesToCSV(marks, selectedTerm?.semesterName)}
+      >
+        {t("marks.export")}
+      </button>
+      <button
+        type="button"
+        class="btn-marks"
+        onclick={() => {
+          lastTrigger = document.activeElement as HTMLElement;
+          predictorOpen = true;
+        }}
+      >
+        {t("marks.predictor")}
+      </button>
     </div>
+  </div>
 
   <div class="marks-body">
     {#if loading}
@@ -262,73 +263,98 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
     {:else if marks.length === 0}
       <p class="marks-empty">{t("marks.empty")}</p>
     {:else}
-      <div class="marks-grid" role="group" aria-label={t("marks.gridAria")} bind:clientWidth={gridWidth}>
+      <div
+        class="marks-grid"
+        role="group"
+        aria-label={t("marks.gridAria")}
+        bind:clientWidth={gridWidth}
+      >
         {#each columns as col, ci (ci)}
           <div class="marks-col">
             {#each col as m (m.courseId)}
               {@const g = classify(m)}
-              <article class="mark-card" class:mark-card-muted={!hasGrades(g, m)}>
-            <header class="mark-card-head">
-              <h3 class="mark-card-title">{m.subjectName}</h3>
-              <div class="mark-card-avgs">
-                {#if m.averageMark}
-                  <span class="avg-badge" aria-label={t("marks.tb", { value: m.averageMark })}>{t("marks.tb", { value: m.averageMark })}</span>
+              <article
+                class="mark-card"
+                class:mark-card-muted={!hasGrades(g, m)}
+              >
+                <header class="mark-card-head">
+                  <h3 class="mark-card-title">{m.subjectName}</h3>
+                  <div class="mark-card-avgs">
+                    {#if m.averageMark}
+                      <span
+                        class="avg-badge"
+                        aria-label={t("marks.tb", { value: m.averageMark })}
+                        >{t("marks.tb", { value: m.averageMark })}</span
+                      >
+                    {/if}
+                    {#if m.averageMarkCN}
+                      <span
+                        class="avg-badge avg-badge-cn"
+                        aria-label={t("marks.cn", { value: m.averageMarkCN })}
+                        >{t("marks.cn", { value: m.averageMarkCN })}</span
+                      >
+                    {/if}
+                  </div>
+                </header>
+
+                {#if g.tx.length > 0}
+                  <section class="mark-section" aria-label={t("marks.ariaTx")}>
+                    <span class="mark-label">{t("marks.tx")}</span>
+                    <div class="chips">
+                      {#each g.tx as [key, value], i (key)}
+                        <span class="chip"><b>{i + 1}</b>{value}</span>
+                      {/each}
+                    </div>
+                  </section>
                 {/if}
-                {#if m.averageMarkCN}
-                  <span class="avg-badge avg-badge-cn" aria-label={t("marks.cn", { value: m.averageMarkCN })}>{t("marks.cn", { value: m.averageMarkCN })}</span>
+
+                {#if g.skills.length > 0}
+                  <section
+                    class="mark-section"
+                    aria-label={t("marks.ariaSkills")}
+                  >
+                    <span class="mark-label">{t("marks.skills")}</span>
+                    <div class="chips">
+                      {#each g.skills as [name, value] (name)}
+                        <span class="chip"><b>{name}</b>{value}</span>
+                      {/each}
+                    </div>
+                  </section>
                 {/if}
-              </div>
-            </header>
 
-            {#if g.tx.length > 0}
-              <section class="mark-section" aria-label={t("marks.ariaTx")}>
-                <span class="mark-label">{t("marks.tx")}</span>
-                <div class="chips">
-                  {#each g.tx as [key, value], i (key)}
-                    <span class="chip"><b>{i + 1}</b>{value}</span>
-                  {/each}
-                </div>
-              </section>
-            {/if}
+                {#if g.milestones.length > 0}
+                  <section
+                    class="mark-section mark-milestones"
+                    aria-label={t("marks.ariaMilestones")}
+                  >
+                    <span class="mark-label">{t("marks.milestones")}</span>
+                    <div class="chips">
+                      {#each g.milestones as [key, value] (key)}
+                        <span class="chip chip-milestone"
+                          ><b>{milestoneLabel(key)}</b>{value}</span
+                        >
+                      {/each}
+                    </div>
+                  </section>
+                {/if}
 
-            {#if g.skills.length > 0}
-              <section class="mark-section" aria-label={t("marks.ariaSkills")}>
-                <span class="mark-label">{t("marks.skills")}</span>
-                <div class="chips">
-                  {#each g.skills as [name, value] (name)}
-                    <span class="chip"><b>{name}</b>{value}</span>
-                  {/each}
-                </div>
-              </section>
-            {/if}
+                {#if g.other.length > 0}
+                  <section
+                    class="mark-section"
+                    aria-label={t("marks.ariaOthers")}
+                  >
+                    <span class="mark-label">{t("marks.others")}</span>
+                    <div class="chips">
+                      {#each g.other as [key, value] (key)}
+                        <span class="chip"><b>{key}</b>{value}</span>
+                      {/each}
+                    </div>
+                  </section>
+                {/if}
 
-            {#if g.milestones.length > 0}
-              <section class="mark-section mark-milestones" aria-label={t("marks.ariaMilestones")}>
-                <span class="mark-label">{t("marks.milestones")}</span>
-                <div class="chips">
-                  {#each g.milestones as [key, value] (key)}
-                    <span class="chip chip-milestone"
-                      ><b>{milestoneLabel(key)}</b>{value}</span
-                    >
-                  {/each}
-                </div>
-              </section>
-            {/if}
-
-            {#if g.other.length > 0}
-              <section class="mark-section" aria-label={t("marks.ariaOthers")}>
-                <span class="mark-label">{t("marks.others")}</span>
-                <div class="chips">
-                  {#each g.other as [key, value] (key)}
-                    <span class="chip"><b>{key}</b>{value}</span>
-                  {/each}
-                </div>
-              </section>
-            {/if}
-
-            {#if !hasGrades(g, m)}
-              <p class="mark-none">{t("marks.none")}</p>
-            {/if}
+                {#if !hasGrades(g, m)}
+                  <p class="mark-none">{t("marks.none")}</p>
+                {/if}
               </article>
             {/each}
           </div>
@@ -338,14 +364,14 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
   </div>
 </div>
 {#if predictorOpen}
-  <PredictorDrawer 
-    marks={marks} 
-    terms={terms} 
-    selectedTermId={selectedTermId} 
+  <PredictorDrawer
+    {marks}
+    {terms}
+    {selectedTermId}
     onclose={() => {
       predictorOpen = false;
       requestAnimationFrame(() => lastTrigger?.focus());
-    }} 
+    }}
   />
 {/if}
 
@@ -362,7 +388,7 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
     padding: 0 12px;
     border: none;
     border-radius: 8px;
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
@@ -379,7 +405,7 @@ import PredictorDrawer from "./PredictorDrawer.svelte";
   }
 
   .btn-marks:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 

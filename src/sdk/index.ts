@@ -15,9 +15,11 @@ import {
   searchFunctions,
   getToolDefinitions,
   getAvailableToolNames,
+  setRegistryAdapter,
 } from "./registry";
 import { executeFunction, MAX_TOOL_TURNS } from "./executor";
 import { handleCommand } from "./commands";
+import type { PortalAdapter } from "./adapter";
 
 export type { AgentEvent, AgentContext, ConfirmRequest };
 
@@ -52,7 +54,11 @@ export interface AgentInstance {
   clear(): void;
 }
 
-export function createAgent(context: AgentContext): AgentInstance {
+export function createAgent(
+  context: AgentContext,
+  adapter: PortalAdapter,
+): AgentInstance {
+  setRegistryAdapter(adapter);
   let history: OpenAIMessage[] = [];
   const systemPrompt = buildSystemPrompt(context);
 

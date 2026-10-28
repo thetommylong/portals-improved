@@ -27,7 +27,13 @@
 
   function getSanitizedHTML(content: string): string {
     const html = marked.parse(content) as string;
-    return DOMPurify.sanitize(html);
+    return DOMPurify.sanitize(html, {
+      USE_PROFILES: { html: true },
+      FORBID_TAGS: ["style", "iframe", "object", "embed", "form"],
+      FORBID_ATTR: ["style"],
+      ALLOWED_URI_REGEXP:
+        /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+    });
   }
 </script>
 
@@ -56,7 +62,12 @@
         {#if isExpanded(event)}
           <span class="tc-args">{JSON.stringify(event.toolArgs)}</span>
         {:else}
-          <span class="tc-args">{JSON.stringify(event.toolArgs).slice(0, 80)}{event.toolArgs && JSON.stringify(event.toolArgs).length > 80 ? "..." : ""}</span>
+          <span class="tc-args"
+            >{JSON.stringify(event.toolArgs).slice(0, 80)}{event.toolArgs &&
+            JSON.stringify(event.toolArgs).length > 80
+              ? "..."
+              : ""}</span
+          >
         {/if}
       {/if}
     </div>
@@ -78,7 +89,10 @@
         {#if isExpanded(event)}
           {event.content ?? ""}
         {:else}
-          {(event.content ?? "").slice(0, 200)}{(event.content ?? "").length > 200 ? "..." : ""}
+          {(event.content ?? "").slice(0, 200)}{(event.content ?? "").length >
+          200
+            ? "..."
+            : ""}
         {/if}
       </span>
     </div>
@@ -115,15 +129,15 @@
   }
 
   .msg.user .bubble {
-    background: var(--accent);
+    background: var(--accent-strong);
     color: var(--base);
     border-bottom-right-radius: 4px;
   }
 
   .msg.assistant .bubble,
   .msg.system .bubble {
-    background: var(--surface0);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    background: var(--surface-base);
+    border: 1px solid var(--border-subtle);
     color: var(--text);
     border-bottom-left-radius: 4px;
   }
@@ -137,9 +151,9 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: var(--surface0);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-    color: var(--subtext0);
+    background: var(--surface-base);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
     border-bottom-left-radius: 4px;
     font-size: 12px;
   }
@@ -147,7 +161,7 @@
   .tool-call span:first-child {
     font-size: 14px;
     flex-shrink: 0;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .tc-name {
@@ -160,16 +174,16 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 160px;
-    color: var(--overlay0);
+    color: var(--text-secondary);
   }
 
   .tool-result {
     display: flex;
     align-items: flex-start;
     gap: 6px;
-    background: var(--surface0);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-    color: var(--subtext0);
+    background: var(--surface-base);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
     border-bottom-left-radius: 4px;
     font-size: 12px;
   }
@@ -177,7 +191,7 @@
   .tool-result span:first-child {
     font-size: 14px;
     flex-shrink: 0;
-    color: var(--green);
+    color: var(--info-ink);
   }
 
   .tool-result.error {
@@ -257,7 +271,8 @@
   }
 
   :global(.bubble code) {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family:
+      "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 12px;
     background: color-mix(in srgb, var(--base) 60%, transparent);
     border-radius: 4px;
@@ -267,7 +282,7 @@
 
   :global(.bubble pre) {
     background: var(--base);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     padding: 10px 12px;
     overflow-x: auto;
@@ -282,7 +297,7 @@
   :global(.bubble blockquote) {
     border-left: 3px solid var(--accent);
     padding-left: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   :global(.bubble table) {
@@ -301,7 +316,7 @@
   :global(.bubble th) {
     background: var(--base);
     font-weight: 600;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   :global(.bubble hr) {

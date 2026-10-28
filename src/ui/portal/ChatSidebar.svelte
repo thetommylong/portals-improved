@@ -1,10 +1,15 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { createAgent } from "../../sdk";
-  import type { AgentEvent, AgentContext, ConfirmRequest } from "../../sdk/types";
+  import type {
+    AgentEvent,
+    AgentContext,
+    ConfirmRequest,
+  } from "../../sdk/types";
   import { isConfigured } from "../../sdk/openai";
+  import { runtime } from "../../adapters/runtime.svelte";
   import ChatMessage from "./ChatMessage.svelte";
   import ConfirmCard from "./ConfirmCard.svelte";
   import ModelPicker from "./ModelPicker.svelte";
@@ -12,7 +17,7 @@
 
   let { agentContext }: { agentContext: AgentContext } = $props();
 
-  let agent = $state(createAgent(agentContext));
+  const agent = $derived(createAgent(agentContext, runtime.adapter));
   let messages = $state<AgentEvent[]>([]);
   let input = $state("");
   let sending = $state(false);
@@ -33,8 +38,8 @@
   });
 
   $effect(() => {
-    // Depend on messages length to scroll when new messages arrive
-    messages.length;
+    const _len = messages.length;
+    void _len;
     if (scrollEl) {
       scrollEl.scrollTop = scrollEl.scrollHeight;
     }
@@ -107,7 +112,9 @@
         aria-label={t("chat.selectModel")}
         onclick={() => (modelPickerOpen = true)}
       >
-        <span class="material-symbols-rounded" aria-hidden="true">smart_toy</span>
+        <span class="material-symbols-rounded" aria-hidden="true"
+          >smart_toy</span
+        >
       </button>
       <button
         class="chat-icon-btn"
@@ -117,7 +124,9 @@
           messages = [];
         }}
       >
-        <span class="material-symbols-rounded" aria-hidden="true">delete_sweep</span>
+        <span class="material-symbols-rounded" aria-hidden="true"
+          >delete_sweep</span
+        >
       </button>
     </div>
   </div>
@@ -131,29 +140,30 @@
       {/if}
     {/each}
 
-{#if confirmRequest}
+    {#if confirmRequest}
       <div class="confirm-inline">
         <ConfirmCard request={confirmRequest} />
       </div>
     {/if}
-
-   </div>
+  </div>
 
   <div class="chat-input">
     <textarea
+      aria-label={t("chat.placeholder")}
       placeholder={t("chat.placeholder")}
       bind:value={input}
       onkeydown={handleKeydown}
       rows={1}
-      disabled={sending}
-    ></textarea>
+      disabled={sending}></textarea>
     <button
       class="send-btn"
       aria-label={t("chat.send")}
       onclick={send}
       disabled={sending || !input.trim()}
     >
-      <span class="material-symbols-rounded" aria-hidden="true">arrow_upward</span>
+      <span class="material-symbols-rounded" aria-hidden="true"
+        >arrow_upward</span
+      >
     </button>
   </div>
 </div>
@@ -198,18 +208,20 @@
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
 
   .chat-icon-btn:hover {
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
   }
 
   .chat-icon-btn:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -240,7 +252,7 @@
     border: none;
     border-radius: 12px;
     padding: 10px 14px;
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
@@ -252,7 +264,7 @@
   }
 
   .chat-input textarea::placeholder {
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .chat-input textarea:focus-visible {
@@ -268,7 +280,7 @@
     height: 36px;
     border: none;
     border-radius: 10px;
-    background: var(--accent);
+    background: var(--accent-strong);
     color: var(--base);
     cursor: pointer;
     display: flex;

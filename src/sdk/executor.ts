@@ -24,13 +24,41 @@ export function validateArgs(
 ): string | null {
   const schema = getFullSchema(name);
   if (!schema) return `Unknown tool: ${name}`;
+  const meta = getToolMeta(name);
 
   if (schema.required) {
     for (const key of schema.required) {
       if (args[key] === undefined || args[key] === null) {
-        const meta = getToolMeta(name);
         const param = meta?.params.find((p) => p.name === key);
         return `Missing required parameter: ${key}${param ? ` (${param.description})` : ""}`;
+      }
+    }
+  }
+
+  const props = schema.properties ?? {};
+  for (const [key, value] of Object.entries(args)) {
+    const prop = props[key] as { type?: string; enum?: unknown[] } | undefined;
+    if (!prop || value === undefined || value === null) continue;
+    if (prop.enum && !prop.enum.includes(value)) {
+      return `Invalid value for ${key}: expected one of ${prop.enum.join(", ")}`;
+    }
+    const expected = prop.type;
+    if (!expected) continue;
+    if (expected === "array" && !Array.isArray(value)) {
+      return `Invalid type for ${key}: expected array`;
+    }
+    if (expected === "string" && typeof value !== "string") {
+      return `Invalid type for ${key}: expected string`;
+    }
+    if (expected === "number" && typeof value !== "number") {
+      return `Invalid type for ${key}: expected number`;
+    }
+    if (expected === "boolean" && typeof value !== "boolean") {
+      return `Invalid type for ${key}: expected boolean`;
+    }
+    if (expected === "integer") {
+      if (typeof value !== "number" || !Number.isInteger(value)) {
+        return `Invalid type for ${key}: expected integer`;
       }
     }
   }

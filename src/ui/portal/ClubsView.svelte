@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Club, Term } from "../../types/portal";
@@ -19,8 +19,8 @@
   let termPicked = false;
 
   const sortedTerms = $derived(
-    [...new Map(terms.map((t) => [t.termId, t])).values()].sort(
-      (a, b) => b.startDate.localeCompare(a.startDate),
+    [...new Map(terms.map((t) => [t.termId, t])).values()].sort((a, b) =>
+      b.startDate.localeCompare(a.startDate),
     ),
   );
 
@@ -48,9 +48,7 @@
     ];
   });
 
-  const selectedTerm = $derived(
-    terms.find((t) => t.termId === selectedTermId),
-  );
+  const selectedTerm = $derived(terms.find((t) => t.termId === selectedTermId));
 
   const colCount = $derived(
     Math.max(1, Math.floor((gridWidth - 40 + 12) / 312)),

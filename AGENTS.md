@@ -4,16 +4,17 @@ Userscript for the FSP portal (fsp.fpt.edu.vn). Svelte 5 + TypeScript + Vite + v
 
 ## Commands
 
-No test suite exists. Verify changes in CI's order: `pnpm lint` → `pnpm check` → `pnpm build`.
+Verify changes in CI's order: `pnpm lint` → `pnpm check` → `pnpm test` → `pnpm build` (CI also runs `pnpm site:build`).
 
 - `pnpm check` — svelte-check plus a separate `tsc` pass over `vite.config.ts`; both must pass.
+- `pnpm test` — Vitest unit tests under `src/**/*.test.ts`.
 - `pnpm build` — emits the userscript to `dist/`.
 - Formatting runs inside ESLint (prettier plugin), so use `pnpm lint:fix` — there is no standalone format script.
-- CI runs only on `workflow_dispatch`; it never runs on push.
+- CI runs on push/PR to `main` and on `workflow_dispatch`.
 
 ## Architecture
 
-The userscript matches **every site** (`match: ['*://*/*']`) but stays a no-op off-portal. Each adapter declares the host fragments it serves in its own `hosts` field, and `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts` is the only registry — adding a portal means adding its class there and nothing else. `hasLiveAdapter()` is the gate; `src/index.ts` bails when nothing matches. The `?adapter=mock` URL param (or GM `portal:adapter` = "mock") overrides the gate so the shell can be previewed anywhere.
+The userscript matches **every site** (`match: ['*://*/*']`) but stays a no-op off-portal. Entry only loads a tiny gate (`src/adapters/gate.ts` / `LIVE_HOST_FRAGMENTS` in `hosts.ts`); the shell boots via dynamic `import("./boot")`. Each adapter declares the host fragments it serves in its own `hosts` field, and `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts` is the only runtime registry — also update `LIVE_HOST_FRAGMENTS` when adding a portal. `hasLiveAdapter()` is the gate. Mock override: GM `portal:adapter` = `"mock"` works anywhere; `?adapter=mock` is honored only on a live-adapter host.
 
 - Entry `src/index.ts` auto-discovers every `src/scripts/*.ts` via `import.meta.glob`. Each script exports a default (optionally async) function and optionally `export const portal` (a host fragment) to restrict itself to one portal — matched via `matchesHost` from `src/sdk/adapter.ts`, and bypassed under a forced mock. Nothing needs registering — drop in a file and it loads.
 - Scripts initialize concurrently (`Promise.all`); the `NN-` filename prefixes do not sequence execution.

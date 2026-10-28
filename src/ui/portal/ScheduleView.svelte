@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { Temporal } from "@js-temporal/polyfill";
   import { runtime } from "../../adapters/runtime.svelte";
@@ -156,9 +156,7 @@
     };
   });
 
-  const gridHeight = $derived(
-    ((range.endMin - range.startMin) / 60) * HOUR_PX,
-  );
+  const gridHeight = $derived(((range.endMin - range.startMin) / 60) * HOUR_PX);
 
   const hours = $derived.by(() => {
     const list: number[] = [];
@@ -229,8 +227,7 @@
   function eventHeight(entry: ScheduleEntry): number {
     const s = Temporal.PlainDateTime.from(entry.startDateTime);
     const e = Temporal.PlainDateTime.from(entry.endDateTime);
-    const duration =
-      e.hour * 60 + e.minute - (s.hour * 60 + s.minute);
+    const duration = e.hour * 60 + e.minute - (s.hour * 60 + s.minute);
     return Math.max((duration / 60) * HOUR_PX, 56);
   }
 
@@ -244,15 +241,11 @@
 
   function maxGrowth(list: ScheduleEntry[], i: number): number {
     const top = eventTop(list[i]);
-    const nextTop =
-      i + 1 < list.length ? eventTop(list[i + 1]) : gridHeight;
+    const nextTop = i + 1 < list.length ? eventTop(list[i + 1]) : gridHeight;
     return Math.max(nextTop - EVENT_GAP, top) - top;
   }
 
-  function effectiveHeight(
-    list: ScheduleEntry[],
-    i: number,
-  ): number {
+  function effectiveHeight(list: ScheduleEntry[], i: number): number {
     const base = eventHeight(list[i]);
     const need = heightOverrides.get(list[i].id);
     if (!need || need <= base) return base;
@@ -281,8 +274,7 @@
     lastAutoScrollKey = key;
     const anchor =
       selectedDate.toString() === todayIso ? nowMinutes : range.startMin + 60;
-    const target =
-      ((anchor - range.startMin) / 60) * HOUR_PX - HOUR_PX * 1.5;
+    const target = ((anchor - range.startMin) / 60) * HOUR_PX - HOUR_PX * 1.5;
     scroller.scrollTop = Math.max(0, target);
   });
 </script>
@@ -296,7 +288,8 @@
             <span
               class="time-label"
               aria-hidden="true"
-              style="top: {DAY_HEADER_H + ((hour * 60 - range.startMin) / 60) * HOUR_PX}px"
+              style="top: {DAY_HEADER_H +
+                ((hour * 60 - range.startMin) / 60) * HOUR_PX}px"
             >
               {formatHour(hour)}
             </span>
@@ -328,7 +321,10 @@
                   {#each list as entry, i (entry.id)}
                     <div
                       class="event"
-                      style="top: {eventTop(entry)}px; height: {effectiveHeight(list, i)}px"
+                      style="top: {eventTop(entry)}px; height: {effectiveHeight(
+                        list,
+                        i,
+                      )}px"
                     >
                       <LessonCard
                         {entry}
@@ -344,9 +340,9 @@
                   <div
                     class="now-line"
                     aria-hidden="true"
-                    style="top: {((nowMinutes - range.startMin) / 60) * HOUR_PX}px"
-                  >
-                  </div>
+                    style="top: {((nowMinutes - range.startMin) / 60) *
+                      HOUR_PX}px"
+                  ></div>
                 {/if}
               </div>
             {/each}
@@ -372,7 +368,10 @@
             {#each dayList as entry, i (entry.id)}
               <div
                 class="event"
-                style="top: {eventTop(entry)}px; height: {effectiveHeight(dayList, i)}px"
+                style="top: {eventTop(entry)}px; height: {effectiveHeight(
+                  dayList,
+                  i,
+                )}px"
               >
                 <LessonCard
                   {entry}
@@ -388,8 +387,7 @@
               class="now-line"
               aria-hidden="true"
               style="top: {((nowMinutes - range.startMin) / 60) * HOUR_PX}px"
-            >
-            </div>
+            ></div>
           {/if}
 
           {#if !loading && dayEntries.length === 0}
@@ -421,7 +419,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-top: 1px solid var(--border-subtle);
     position: relative;
   }
 
@@ -441,18 +439,18 @@
     position: absolute;
     right: 10px;
     transform: translateY(-50%);
-    font-size: 10px;
-    color: var(--subtext0);
+    font-size: 11px;
+    color: var(--text-secondary);
     user-select: none;
   }
 
   .day-grid {
     position: relative;
     flex: 1;
-    border-left: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-left: 1px solid var(--border-subtle);
     background-image:
-      linear-gradient(color-mix(in srgb, var(--text) 16%, transparent) 1px, transparent 1px),
-      linear-gradient(color-mix(in srgb, var(--text) 8%, transparent) 1px, transparent 1px);
+      linear-gradient(var(--border-strong) 1px, transparent 1px),
+      linear-gradient(var(--border-subtle) 1px, transparent 1px);
     background-size:
       100% 96px,
       100% 48px;
@@ -473,7 +471,7 @@
     grid-template-columns: repeat(7, 1fr);
     height: 36px;
     background: var(--mantle);
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .day-header {
@@ -482,7 +480,7 @@
     justify-content: center;
     gap: 6px;
     font-size: 11px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     user-select: none;
   }
 
@@ -498,7 +496,7 @@
   .day-column {
     position: relative;
     min-width: 0;
-    border-left: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-left: 1px solid var(--border-subtle);
   }
 
   .events {
@@ -543,7 +541,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--overlay0);
+    color: var(--text-secondary);
     font-size: 13px;
     user-select: none;
   }
@@ -560,7 +558,7 @@
 
     .time-label {
       right: 6px;
-      font-size: 9px;
+      font-size: 11px;
     }
 
     .event {

@@ -24,7 +24,7 @@ Portals that haven't been wired up yet just don't exist. The shell only renders 
 - 🧩 **One shell, many portals** — a `PortalAdapter` contract per portal; the UI never talks to a concrete backend
 - ♻️ **Capability-aware** — unsupported sections don't render, they don't render broken
 - 📱 **Mobile-first** — responsive layout, touch targets that fit a thumb, collapsible nav
-- 🌙 **Catppuccin themes** — 4 flavors × 14 accents, follows your system light/dark preference
+- 🌙 **Catppuccin themes** — 4 flavors × 13 accents (blue reserved for links), follows your system light/dark preference
 - 🤖 **AI chat sidebar** — ask questions about your own data; it calls whichever portal SDK tools the active adapter exposes. Bring your own OpenAI-compatible key, or point it at any compatible endpoint
 - ♿ **Accessibility** — WCAG-minded: real ARIA roles, focus traps, focus restoration, no unlabelled `<div>` buttons
 - 🧪 **Mockable** — every portal has a fake-data adapter, so the whole shell previews on any host without an account
@@ -89,7 +89,7 @@ Your key is stored in userscript storage, never in `.env`, never sent to us.
 
 ### Previewing without an account
 
-Append `?adapter=mock` to any URL to mount the whole shell against fake data. Works on any host — the fastest way to work on the UI.
+On a live portal host, append `?adapter=mock` to force the mock adapter. Off-portal, set the userscript storage key `portal:adapter` to `mock` (URL `?adapter=mock` is ignored on unknown hosts so a crafted link cannot open the shell). The demo site (`pnpm site:dev`) always uses the mock.
 
 ## Configuration
 
@@ -102,9 +102,10 @@ Everything lives in the UI:
 ## Known Limitations
 
 - **One portal so far.** FSP is live; everything else is a contract waiting for an adapter.
-- **It replaces the whole portal.** Anything the official UI did that this doesn't is simply gone.
+- **It replaces the whole portal.** Anything the official UI did that this doesn't is simply gone. Settings links back to the official FSP site for change-password / dorm when those flows are not reimplemented.
 - **The APIs are undocumented and internal.** When a portal changes its backend, that adapter breaks until someone updates it.
-- **The chatbot costs money.** Your key, your endpoint, your bill. It's optional; everything else works without it.
+- **SSO launch URLs embed the session bearer** in the query string for EduNext handoff (portal contract). The UI opens them locally; the chat agent never receives the raw URL. Treat shared screens / malicious LMS pages carefully.
+- **The chatbot costs money.** Your key, your endpoint, your bill. It's optional; everything else works without it. Custom LLM base URLs should be HTTPS endpoints you trust.
 - **No store listing.** Manual userscript install only; no auto-update, so grab new releases by hand.
 - **Bugs will happen.** It rewrites `document.body` and drops the portal's stylesheets. That's the whole trick.
 

@@ -4,13 +4,13 @@
 import { FspLiveAdapter } from "./fsp-live";
 import { MockAdapter } from "./mock";
 import { matchesHost, type PortalAdapter } from "../sdk/adapter";
+import { ADAPTER_KEY, isMockForced } from "./gate";
+import { LIVE_HOST_FRAGMENTS } from "./hosts";
 
-const ADAPTER_KEY = "portal:adapter";
 const HOST = window.location.hostname;
 
 /** Every live portal adapter. Adding a portal means adding its class here —
- *  the hosts it serves come from the adapter itself, so nothing else in the
- *  codebase needs editing. */
+ *  also update `LIVE_HOST_FRAGMENTS` in `hosts.ts` for the idle gate. */
 const LIVE_ADAPTERS = [FspLiveAdapter];
 
 function firstMatchingLive(): PortalAdapter | null {
@@ -21,26 +21,13 @@ function firstMatchingLive(): PortalAdapter | null {
   return null;
 }
 
-/** Is this a host any live adapter claims? The single gate for whether the
- *  userscript should do anything at all. */
-export function hasLiveAdapter(): boolean {
-  return firstMatchingLive() !== null;
-}
-
 function resolveAdapter(): PortalAdapter {
-  const forced =
-    new URLSearchParams(window.location.search).get("adapter") ??
-    GM_getValue<string>(ADAPTER_KEY, "");
-  if (forced === "mock") return new MockAdapter();
+  if (isMockForced()) return new MockAdapter();
   return firstMatchingLive() ?? new MockAdapter();
 }
 
-export function isMockForced(): boolean {
-  return (
-    new URLSearchParams(window.location.search).get("adapter") === "mock" ||
-    GM_getValue<string>(ADAPTER_KEY, "") === "mock"
-  );
-}
+export { hasLiveAdapter, isMockForced } from "./gate";
+export { LIVE_HOST_FRAGMENTS };
 
 class AdapterRuntime {
   adapter = $state<PortalAdapter>(resolveAdapter());

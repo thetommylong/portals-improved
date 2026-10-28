@@ -4,9 +4,7 @@
 
   import { t } from "../../i18n.svelte";
 
-  let {
-    message = t("unavailable.msg"),
-  }: { message?: string } = $props();
+  let { message = t("unavailable.msg") }: { message?: string } = $props();
 </script>
 
 <div class="unavailable" role="status">
@@ -23,13 +21,13 @@
     gap: 12px;
     height: 100%;
     padding: 32px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     text-align: center;
   }
 
   .unavailable span {
     font-size: 40px;
-    color: var(--overlay0);
+    color: var(--text-secondary);
   }
 
   .unavailable p {

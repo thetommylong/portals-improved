@@ -1,11 +1,12 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { Temporal } from "@js-temporal/polyfill";
   import type { ScheduleEntry } from "../../types/portal";
   import { runtime } from "../../adapters/runtime.svelte";
   import { i18n, t } from "../../i18n.svelte";
+  import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
   let {
     entry,
@@ -46,9 +47,16 @@
   });
 
   let dialogEl = $state<HTMLDivElement>();
+  let focusHandle = $state<OverlayFocusHandle | null>(null);
 
   $effect(() => {
-    dialogEl?.focus();
+    const el = dialogEl;
+    if (!el) return;
+    focusHandle = attachOverlayFocus(el, onclose);
+    return () => {
+      focusHandle?.release();
+      focusHandle = null;
+    };
   });
 
   function onKeydown(e: KeyboardEvent) {
@@ -75,17 +83,20 @@
   class="popup-backdrop"
   role="presentation"
   onclick={onclose}
-  onkeydown={(e) => { if (e.key === "Escape") onclose(); }}
+  onkeydown={(e) => {
+    if (e.key === "Escape") onclose();
+  }}
 >
+  <!-- click stop only: Escape on window; focus trap owns Tab -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="popup"
     role="dialog"
-    aria-modal="false"
+    aria-modal="true"
     aria-label={entry.subjectName}
     tabindex="-1"
     bind:this={dialogEl}
     onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
   >
     <div class="popup-header">
       <div class="popup-title">
@@ -116,7 +127,8 @@
       <section>
         <h3>
           {t("popup.teacherComment")}
-          {#if checking}<span class="popup-checking">{t("popup.checking")}</span>{/if}
+          {#if checking}<span class="popup-checking">{t("popup.checking")}</span
+            >{/if}
         </h3>
         <p class:empty={!entry.comment}>
           {entry.comment ?? "—"}
@@ -133,7 +145,8 @@
       <section>
         <h3>
           {t("popup.absenceRequest")}
-          {#if checking}<span class="popup-checking">{t("popup.checking")}</span>{/if}
+          {#if checking}<span class="popup-checking">{t("popup.checking")}</span
+            >{/if}
         </h3>
         <p class:empty={!entry.hasAbsenceRequest}>
           {entry.hasAbsenceRequest
@@ -147,7 +160,9 @@
           {entry.className}
           {#if attendanceBadge}
             <span class="dot"></span>
-            <span class="att-badge att-{attendanceBadge.cls}">{attendanceBadge.label}</span>
+            <span class="att-badge att-{attendanceBadge.cls}"
+              >{attendanceBadge.label}</span
+            >
           {/if}
         </span>
         {#if entry.eduNextUrl}
@@ -190,7 +205,7 @@
     padding: 36px;
     border-radius: 16px;
     background: var(--base);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border: 1px solid var(--border-subtle);
     font-family: "Google Sans Flex", system-ui, sans-serif;
     animation: popup-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
@@ -217,7 +232,7 @@
 
   .popup-meta {
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -244,17 +259,19 @@
     color: inherit;
     cursor: pointer;
     opacity: 0.7;
-    transition: opacity 0.15s ease, background 0.15s ease;
+    transition:
+      opacity 0.15s ease,
+      background 0.15s ease;
   }
 
   .popup-close:hover {
     opacity: 1;
-    background: color-mix(in srgb, var(--text) 16%, transparent);
+    background: var(--border-strong);
   }
 
   .popup-date {
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     white-space: nowrap;
   }
 
@@ -274,7 +291,7 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--overlay0);
+    color: var(--text-secondary);
   }
 
   .popup-body section p {
@@ -286,15 +303,15 @@
   }
 
   .popup-body section p.empty {
-    color: var(--overlay0);
+    color: var(--text-secondary);
   }
 
   .popup-checking {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 400;
     letter-spacing: normal;
     text-transform: none;
-    color: var(--overlay0);
+    color: var(--text-secondary);
   }
 
   .popup-footer {
@@ -310,13 +327,13 @@
     width: 2px;
     height: 2px;
     border-radius: 50%;
-    background: var(--overlay0);
+    background: var(--surface-sunken);
     flex-shrink: 0;
   }
 
   .popup-class {
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -332,7 +349,7 @@
   }
 
   .att-badge.present {
-    color: var(--green);
+    color: var(--info-ink);
     background: color-mix(in srgb, var(--green) 12%, transparent);
   }
 
@@ -347,14 +364,14 @@
   }
 
   .att-badge.study-leave {
-    color: var(--green);
+    color: var(--info-ink);
     background: color-mix(in srgb, var(--green) 12%, transparent);
   }
 
   .popup-link {
     font-size: 12px;
     font-weight: 600;
-    color: var(--green);
+    color: var(--info-ink);
     text-decoration: none;
   }
 

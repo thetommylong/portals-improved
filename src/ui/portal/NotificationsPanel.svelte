@@ -1,11 +1,12 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { untrack } from "svelte";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Notification, NotificationsResult } from "../../types/portal";
   import { t } from "../../i18n.svelte";
+  import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
   let {
     userId,
@@ -39,9 +40,7 @@
       ]);
       result = res;
       if (types) {
-        typeCodes = new Map(
-          types.map((t) => [t.notificationTypeId, t.code]),
-        );
+        typeCodes = new Map(types.map((t) => [t.notificationTypeId, t.code]));
       }
       onunread?.(res.numberOfUnreadNotifications);
       loadedOnce = true;
@@ -102,28 +101,47 @@
     if (hours < 24) return `${hours}h`;
     return `${Math.floor(hours / 24)}d`;
   }
+
+  let panelEl = $state<HTMLDivElement>();
+  let focusHandle = $state<OverlayFocusHandle | null>(null);
+
+  $effect(() => {
+    if (!open || !panelEl) return;
+    focusHandle = attachOverlayFocus(panelEl, onclose);
+    return () => {
+      focusHandle?.release();
+      focusHandle = null;
+    };
+  });
 </script>
 
+<svelte:window
+  onkeydown={(e) => {
+    if (open && e.key === "Escape") onclose();
+  }}
+/>
+
 {#if open}
-  <div
-    class="notif-backdrop"
-    role="presentation"
-    onclick={onclose}
-    onkeydown={(e) => { if (e.key === "Escape") onclose(); }}
-  >
+  <div class="notif-backdrop" role="presentation" onclick={onclose}>
+    <!-- click stop only: Escape handled on window; focus trap owns Tab -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
       class="notif-panel"
       role="dialog"
-      aria-modal="false"
+      aria-modal="true"
       aria-label={t("notif.title")}
       tabindex="-1"
+      bind:this={panelEl}
       onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
     >
       <div class="notif-header">
         <span class="notif-title">{t("notif.title")}</span>
         {#if result}
-          <span class="notif-unread">{t("notif.unread", { n: result.numberOfUnreadNotifications })}</span>
+          <span class="notif-unread"
+            >{t("notif.unread", {
+              n: result.numberOfUnreadNotifications,
+            })}</span
+          >
         {/if}
         <button
           type="button"
@@ -150,7 +168,9 @@
               class:unread={!n.isRead}
               class:clickable={!n.isRead}
               disabled={n.isRead}
-              aria-label={n.isRead ? n.title : `${t("notif.markRead")}: ${n.title}`}
+              aria-label={n.isRead
+                ? n.title
+                : `${t("notif.markRead")}: ${n.title}`}
               onclick={() => markRead(n)}
             >
               <div class="notif-item-top">
@@ -191,7 +211,7 @@
     max-height: min(560px, calc(100vh - 80px));
     border-radius: 16px;
     background: var(--base);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border: 1px solid var(--border-subtle);
     overflow: hidden;
     font-family: "Google Sans Flex", system-ui, sans-serif;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -203,7 +223,7 @@
     align-items: center;
     gap: 8px;
     padding: 14px 16px;
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .notif-title {
@@ -231,12 +251,14 @@
     color: inherit;
     cursor: pointer;
     opacity: 0.7;
-    transition: opacity 0.15s ease, background 0.15s ease;
+    transition:
+      opacity 0.15s ease,
+      background 0.15s ease;
   }
 
   .notif-close:hover {
     opacity: 1;
-    background: color-mix(in srgb, var(--text) 16%, transparent);
+    background: var(--border-strong);
   }
 
   .notif-list {
@@ -249,7 +271,7 @@
     padding: 24px 16px;
     text-align: center;
     font-size: 12px;
-    color: var(--overlay0);
+    color: var(--text-secondary);
   }
 
   .notif-item {
@@ -259,7 +281,7 @@
     width: 100%;
     padding: 10px 16px;
     border: none;
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-bottom: 1px solid var(--border-subtle);
     background: transparent;
     font: inherit;
     color: inherit;
@@ -285,7 +307,7 @@
   }
 
   .notif-item.clickable:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: -2px;
   }
 
@@ -296,7 +318,7 @@
   }
 
   .notif-type {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -305,8 +327,8 @@
 
   .notif-time {
     flex: 1;
-    font-size: 10px;
-    color: var(--overlay0);
+    font-size: 11px;
+    color: var(--text-secondary);
   }
 
   .notif-dot {
@@ -328,7 +350,7 @@
   .notif-item-content {
     font-size: 11px;
     line-height: 1.45;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     word-break: normal;
     overflow-wrap: break-word;
   }

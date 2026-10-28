@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type {
@@ -42,18 +42,18 @@
   const sortedPending = $derived(
     [...pending].sort(
       (a, b) =>
-        a.subjectName.localeCompare(b.subjectName) || a.description.localeCompare(b.description),
+        a.subjectName.localeCompare(b.subjectName) ||
+        a.description.localeCompare(b.description),
     ),
   );
 
   const sortedSubmitted = $derived(
     [...submitted].sort(
       (a, b) =>
-        a.subjectName.localeCompare(b.subjectName) || a.description.localeCompare(b.description),
+        a.subjectName.localeCompare(b.subjectName) ||
+        a.description.localeCompare(b.description),
     ),
   );
-
-  
 
   async function load(): Promise<void> {
     loading = true;
@@ -78,17 +78,14 @@
     lastTrigger = document.activeElement as HTMLElement;
     active = row;
     try {
-      if (row.termId === "FAKE") {
-        formRow = row;
-      } else {
-        const rows = await runtime.adapter.getUnfinishedFeedbacks(
-          row.termId,
-          studentId,
-        );
-        const found = rows.find((r) => r.feedbackLecturerId === row.feedbackLecturerId);
-        if (!found) throw new Error("Row not found");
-        formRow = found;
-      }
+      const rows = await runtime.adapter.getUnfinishedFeedbacks(
+        row.termId,
+        studentId,
+      );
+      const found = rows.find(
+        (r) => r.feedbackLecturerId === row.feedbackLecturerId,
+      );
+      formRow = found ?? row;
       answers = {};
       for (const [key, val] of Object.entries(formRow.chosenAnswers ?? {})) {
         answers[Number(key)] = val;
@@ -101,18 +98,36 @@
     }
   }
 
-  function pickAnswer(qOrder: number, feedbackAnswerId: string): void {
+  async function pickAnswer(
+    qOrder: number,
+    feedbackQuestionId: string,
+    feedbackAnswerId: string,
+  ): Promise<void> {
     answers = { ...answers, [qOrder]: feedbackAnswerId };
-    notify(t("toast.answerUpdated"), "success");
+    if (!runtime.adapter.features.supportsMutations || !active) return;
+    try {
+      await runtime.adapter.updateFeedbackAnswer({
+        feedbackLecturerId: active.feedbackLecturerId,
+        studentId: studentId ?? "",
+        feedbackQuestionId,
+        feedbackAnswerId,
+      });
+      notify(t("toast.answerUpdated"), "success");
+    } catch {
+      notify(t("toast.feedbackSendFailed"), "error");
+    }
   }
 
   async function saveComment(slot: 1 | 2, value: string): Promise<void> {
     if (slot === 1) comment1 = value;
     else comment2 = value;
-    if (active?.termId === "FAKE") return;
     if (!runtime.adapter.features.supportsMutations) return;
     try {
-      await runtime.adapter.updateFeedbackComment(slot, { feedbackLecturerId: active?.feedbackLecturerId ?? "", studentId: studentId ?? "", comment: value });
+      await runtime.adapter.updateFeedbackComment(slot, {
+        feedbackLecturerId: active?.feedbackLecturerId ?? "",
+        studentId: studentId ?? "",
+        comment: value,
+      });
     } catch {
       notify(t("toast.commentSaveFailed"), "error");
     }
@@ -121,7 +136,9 @@
   const canFinish = $derived.by(() => {
     if (!formRow?.questions?.length) return false;
     const allAnswered = Object.keys(answers).length >= formRow.questions.length;
-    return allAnswered && (comment1.trim().length > 0 || comment2.trim().length > 0);
+    return (
+      allAnswered && (comment1.trim().length > 0 || comment2.trim().length > 0)
+    );
   });
 
   function discardForm(): void {
@@ -137,7 +154,11 @@
     submitting = true;
     try {
       if (!runtime.adapter.features.supportsMutations) return;
-      await runtime.adapter.updateFeedbackStatus({ feedbackLecturerId: formRow.feedbackLecturerId, studentId: studentId ?? "", status: true });
+      await runtime.adapter.updateFeedbackStatus({
+        feedbackLecturerId: formRow.feedbackLecturerId,
+        studentId: studentId ?? "",
+        status: true,
+      });
       notify(t("toast.feedbackSent"), "success");
       discardForm();
       requestAnimationFrame(() => lastTrigger?.focus());
@@ -168,7 +189,9 @@
       <p class="feedback-empty">{t("feedback.empty")}</p>
     {:else}
       {#if pending.length > 0}
-        <h2 class="feedback-group-title" id="fb-pending">{t("feedback.groupPending", { n: pending.length })}</h2>
+        <h2 class="feedback-group-title" id="fb-pending">
+          {t("feedback.groupPending", { n: pending.length })}
+        </h2>
         <ul class="feedback-list" aria-labelledby="fb-pending">
           {#each sortedPending as f (f.feedbackLecturerId)}
             <li class="fb-card-wrapper">
@@ -177,33 +200,39 @@
                 onclick={() => openForm(f)}
                 aria-label={t("feedback.cardAria", { subject: f.subjectName })}
               >
-              <header class="fb-card-head">
-                <div class="fb-card-titlewrap">
-                  <h3 class="fb-card-title">{f.subjectName}</h3>
-                  <p class="fb-card-sub">{f.description || f.className}</p>
-                </div>
-                <span class="fb-badge fb-badge-pending">{t("feedback.badgePending")}</span>
-              </header>
-              <section class="mark-section">
-                <span class="mark-label">{t("label.teacher")}</span>
-                <span class="fb-text">{f.lecturerName || "—"}</span>
-              </section>
+                <header class="fb-card-head">
+                  <div class="fb-card-titlewrap">
+                    <h3 class="fb-card-title">{f.subjectName}</h3>
+                    <p class="fb-card-sub">{f.description || f.className}</p>
+                  </div>
+                  <span class="fb-badge fb-badge-pending"
+                    >{t("feedback.badgePending")}</span
+                  >
+                </header>
+                <section class="mark-section">
+                  <span class="mark-label">{t("label.teacher")}</span>
+                  <span class="fb-text">{f.lecturerName || "—"}</span>
+                </section>
               </button>
             </li>
           {/each}
         </ul>
       {/if}
       {#if submitted.length > 0}
-        <h2 class="feedback-group-title" id="fb-done">{t("feedback.groupDone", { n: submitted.length })}</h2>
+        <h2 class="feedback-group-title" id="fb-done">
+          {t("feedback.groupDone", { n: submitted.length })}
+        </h2>
         <ul class="feedback-list" aria-labelledby="fb-done">
-          {#each sortedSubmitted as f}
+          {#each sortedSubmitted as f (f.feedbackLecturerId)}
             <li class="fb-card">
               <header class="fb-card-head">
                 <div class="fb-card-titlewrap">
                   <h3 class="fb-card-title">{f.subjectName}</h3>
                   <p class="fb-card-sub">{f.description || f.className}</p>
                 </div>
-                <span class="fb-badge fb-badge-done">{t("feedback.badgeDone")}</span>
+                <span class="fb-badge fb-badge-done"
+                  >{t("feedback.badgeDone")}</span
+                >
               </header>
               <section class="mark-section">
                 <span class="mark-label">{t("label.teacher")}</span>
@@ -241,21 +270,40 @@
         <h3 class="fb-card-title">{active.subjectName}</h3>
         <p class="fb-card-sub">{active.description || active.className}</p>
       </div>
-      <button class="fb-close-btn" aria-label={t("feedback.close")} onclick={closeForm} disabled={submitting}>&times;</button>
+      <button
+        class="fb-close-btn"
+        aria-label={t("feedback.close")}
+        onclick={closeForm}
+        disabled={submitting}>&times;</button
+      >
     </header>
 
     <div class="fb-dialog-body">
       <section class="fb-q-list">
         {#each formRow.questions ?? [] as q (q.feedbackQuestion.feedbackQuestionId)}
           <div class="fb-q-card">
-            <h4 class="fb-q-title">{q.feedbackQuestion.content || t("feedback.questionFallback", { n: q.feedbackQuestion.order ?? 0 })}</h4>
+            <h4 class="fb-q-title">
+              {q.feedbackQuestion.content ||
+                t("feedback.questionFallback", {
+                  n: q.feedbackQuestion.order ?? 0,
+                })}
+            </h4>
             <div class="fb-answers">
               {#each q.feedbackAnswers ?? [] as a (a.feedbackAnswerId)}
                 <button
                   class={`fb-opt ${answers[q.feedbackQuestion.order ?? 0] === a.feedbackAnswerId ? "fb-opt-selected" : ""} fb-opt-${a.order ?? 0}`}
-                  onclick={() => pickAnswer(q.feedbackQuestion.order ?? 0, a.feedbackAnswerId)}
-                  aria-pressed={answers[q.feedbackQuestion.order ?? 0] === a.feedbackAnswerId}
-                  aria-label={t("feedback.answerAria", { n: q.feedbackQuestion.order ?? 0, content: a.content || String(a.order) })}
+                  onclick={() =>
+                    pickAnswer(
+                      q.feedbackQuestion.order ?? 0,
+                      q.feedbackQuestion.feedbackQuestionId,
+                      a.feedbackAnswerId,
+                    )}
+                  aria-pressed={answers[q.feedbackQuestion.order ?? 0] ===
+                    a.feedbackAnswerId}
+                  aria-label={t("feedback.answerAria", {
+                    n: q.feedbackQuestion.order ?? 0,
+                    content: a.content || String(a.order),
+                  })}
                 >
                   {a.content || String(a.order)}
                 </button>
@@ -273,8 +321,7 @@
           rows="2"
           placeholder={t("feedback.commentPlaceholder1")}
           bind:value={comment1}
-          onblur={() => saveComment(1, comment1)}
-        ></textarea>
+          onblur={() => saveComment(1, comment1)}></textarea>
         <label class="fb-label" for="fb-comment2">GK2</label>
         <textarea
           id="fb-comment2"
@@ -282,18 +329,23 @@
           rows="2"
           placeholder={t("feedback.commentPlaceholder2")}
           bind:value={comment2}
-          onblur={() => saveComment(2, comment2)}
-        ></textarea>
+          onblur={() => saveComment(2, comment2)}></textarea>
       </section>
     </div>
 
     <footer class="fb-actions">
       {#if canFinish}
-        <button class="btn-primary" onclick={finish} disabled={submitting}>{submitting ? t("feedback.submitting") : t("feedback.submit")}</button>
+        <button class="btn-primary" onclick={finish} disabled={submitting}
+          >{submitting
+            ? t("feedback.submitting")
+            : t("feedback.submit")}</button
+        >
       {:else}
         <span class="fb-disabled">{t("feedback.disabled")}</span>
       {/if}
-      <button class="btn-secondary" onclick={closeForm} disabled={submitting}>{submitting ? t("feedback.closing") : t("feedback.cancel")}</button>
+      <button class="btn-secondary" onclick={closeForm} disabled={submitting}
+        >{submitting ? t("feedback.closing") : t("feedback.cancel")}</button
+      >
     </footer>
   {/if}
 </dialog>
@@ -341,7 +393,7 @@
   .fb-q-card {
     margin-bottom: 12px;
     padding-bottom: 12px;
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .fb-q-title {
@@ -356,13 +408,13 @@
     margin-right: 6px;
     padding: 4px 8px;
     font-size: 12px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     border-radius: 6px;
     cursor: pointer;
   }
 
   .fb-opt-selected {
-    background: var(--surface0);
+    background: var(--surface-base);
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -373,14 +425,14 @@
   .fb-opt-4,
   .fb-opt-5 {
     background: var(--base);
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .fb-comments .fb-label {
     display: block;
     margin-bottom: 4px;
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .fb-textarea {
@@ -388,9 +440,9 @@
     padding: 6px 8px;
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
     resize: vertical;
     min-height: 36px;
@@ -403,14 +455,14 @@
   }
 
   .fb-disabled {
-    color: var(--subtext0);
+    color: var(--text-secondary);
     pointer-events: none;
   }
 
   .btn-primary {
     flex: 1;
     padding: 8px 16px;
-    background: var(--accent);
+    background: var(--accent-strong);
     color: var(--base);
     border: none;
     border-radius: 8px;
@@ -427,9 +479,9 @@
   .btn-secondary {
     flex: 1;
     padding: 8px 16px;
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     font-size: 13px;
     font-weight: 500;

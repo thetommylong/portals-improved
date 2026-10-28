@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Term, MarkCommon } from "../../types/portal";
@@ -17,7 +17,12 @@
   import { notify } from "../../notifications";
   import { t } from "../../i18n.svelte";
 
-  let { marks, terms, selectedTermId, onclose }: {
+  let {
+    marks,
+    terms,
+    selectedTermId,
+    onclose,
+  }: {
     marks: MarkCommon[];
     terms: Term[];
     selectedTermId: string;
@@ -54,9 +59,7 @@
     return milestones;
   }
 
-  const selectedTerm = $derived(
-    terms.find((t) => t.termId === selectedTermId),
-  );
+  const selectedTerm = $derived(terms.find((t) => t.termId === selectedTermId));
 
   const predRows = $derived(
     marks.map((m) => {
@@ -67,10 +70,14 @@
       const tx = getTXNumbers(dto);
       const { value: required, status } = requiredFinal(tx, gk, clampedTarget);
       const tbVal = semesterAverage(tx, gk, ck);
-      const tb = tbVal !== null && Number.isFinite(tbVal) ? tbVal.toFixed(2) : "—";
+      const tb =
+        tbVal !== null && Number.isFinite(tbVal) ? tbVal.toFixed(2) : "—";
       const sib = siblingMarks.find((s) => s.subjectName === m.subjectName);
-      const cnVal = sib?.averageMark ? yearlyAverage(Number(sib.averageMark), tbVal ?? 0) : null;
-      const cn = cnVal !== null && Number.isFinite(cnVal) ? cnVal.toFixed(2) : "—";
+      const cnVal = sib?.averageMark
+        ? yearlyAverage(Number(sib.averageMark), tbVal ?? 0)
+        : null;
+      const cn =
+        cnVal !== null && Number.isFinite(cnVal) ? cnVal.toFixed(2) : "—";
       return {
         courseId: m.courseId,
         subjectName: m.subjectName,
@@ -155,7 +162,7 @@
   const hasLetterGrades = $derived(
     detailSubject &&
       detailSubject.averageMark !== "" &&
-      parseScore(detailSubject.averageMark) === null
+      parseScore(detailSubject.averageMark) === null,
   );
   const detailTB = $derived.by(() => {
     if (!detailSubject) return "—";
@@ -164,9 +171,7 @@
     );
     const gk = detailGK;
     const ck =
-      detailCK !== null
-        ? detailCK
-        : (projections[detailSubject.courseId] ?? 0);
+      detailCK !== null ? detailCK : (projections[detailSubject.courseId] ?? 0);
     const avg = semesterAverage(txVals, gk, ck);
     return avg !== null && Number.isFinite(avg) ? avg.toFixed(2) : "—";
   });
@@ -196,10 +201,7 @@
     void clampedTarget;
     const newProjs: Record<string, number> = {};
     for (const m of marks) {
-      if (
-        !m.averageMark &&
-        !(m.markDTO && Object.keys(m.markDTO).length > 0)
-      ) {
+      if (!m.averageMark && !(m.markDTO && Object.keys(m.markDTO).length > 0)) {
         continue;
       }
       const dto = m.markDTO ?? {};
@@ -221,11 +223,17 @@
   });
 </script>
 
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === "Escape") onclose();
+  }}
+/>
+
 <div class="drawer-backdrop" role="presentation" onclick={onclose}>
   <div
     class="drawer"
     role="dialog"
-    aria-modal="false"
+    aria-modal="true"
     aria-label={t("predictor.title")}
     tabindex="-1"
     bind:this={drawerEl}
@@ -246,7 +254,13 @@
       {#if detailSubject}
         <!-- Detail View -->
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <section class="detail-view" role="group" aria-label={t("predictor.detailGroup")} onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+        <section
+          class="detail-view"
+          role="group"
+          aria-label={t("predictor.detailGroup")}
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => e.stopPropagation()}
+        >
           <div class="detail-header">
             <button
               type="button"
@@ -365,13 +379,21 @@
           </div>
 
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <section class="detail-results" role="group" aria-label={t("predictor.results")} onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+          <section
+            class="detail-results"
+            role="group"
+            aria-label={t("predictor.results")}
+            onclick={(e) => e.stopPropagation()}
+            onkeydown={(e) => e.stopPropagation()}
+          >
             <div class="detail-result">
               <span class="detail-result-label">{t("predictor.tbAvg")}</span>
               <span class="detail-result-value">{detailTB}</span>
             </div>
             <div class="detail-result">
-              <span class="detail-result-label">{t("predictor.targetLabel")}</span>
+              <span class="detail-result-label"
+                >{t("predictor.targetLabel")}</span
+              >
               <input
                 type="number"
                 min="0"
@@ -389,16 +411,28 @@
             </div>
             {#if detailRequired}
               <div class="detail-result detail-target">
-                <span class="detail-result-label">{t("predictor.needOnFinal", { target: detailTarget })}</span>
+                <span class="detail-result-label"
+                  >{t("predictor.needOnFinal", { target: detailTarget })}</span
+                >
                 <span class="detail-result-value">
                   {#if detailRequired.status === "impossible"}
-                    <span class="detail-impossible">{t("predictor.statusImpossible")}</span>
+                    <span class="detail-impossible"
+                      >{t("predictor.statusImpossible")}</span
+                    >
                   {:else if detailRequired.status === "secured"}
-                    <span class="detail-secured">{t("predictor.statusSecured")}</span>
+                    <span class="detail-secured"
+                      >{t("predictor.statusSecured")}</span
+                    >
                   {:else if detailRequired.status === "unknown"}
-                    <span class="detail-unknown">{t("predictor.statusNeedGK")}</span>
+                    <span class="detail-unknown"
+                      >{t("predictor.statusNeedGK")}</span
+                    >
                   {:else}
-                    <span class="detail-need">{Math.max(0, Math.min(10, detailRequired.value)).toFixed(2)}</span>
+                    <span class="detail-need"
+                      >{Math.max(0, Math.min(10, detailRequired.value)).toFixed(
+                        2,
+                      )}</span
+                    >
                   {/if}
                 </span>
               </div>
@@ -408,11 +442,25 @@
       {:else}
         <!-- List View -->
         <div class="drawer-section">
-          <label class="drawer-instruction" for="pred-target">{t("predictor.targetLabel")}</label>
+          <label class="drawer-instruction" for="pred-target"
+            >{t("predictor.targetLabel")}</label
+          >
           <div class="drawer-presets">
-            <button type="button" class="drawer-preset-btn" onclick={() => (target = 8)}>8.0</button>
-            <button type="button" class="drawer-preset-btn" onclick={() => (target = 9)}>9.0</button>
-            <button type="button" class="drawer-preset-btn" onclick={() => (target = 9.5)}>9.5</button>
+            <button
+              type="button"
+              class="drawer-preset-btn"
+              onclick={() => (target = 8)}>8.0</button
+            >
+            <button
+              type="button"
+              class="drawer-preset-btn"
+              onclick={() => (target = 9)}>9.0</button
+            >
+            <button
+              type="button"
+              class="drawer-preset-btn"
+              onclick={() => (target = 9.5)}>9.5</button
+            >
           </div>
           <input
             id="pred-target"
@@ -430,7 +478,9 @@
           <p class="drawer-loading">{t("predictor.loadingSibling")}</p>
         {:else if siblingMarks.length > 0}
           <p class="drawer-note">
-            {t("predictor.yearAvgInclude", { semester: siblingTerm?.semesterName ?? "" })}
+            {t("predictor.yearAvgInclude", {
+              semester: siblingTerm?.semesterName ?? "",
+            })}
           </p>
         {:else}
           <p class="drawer-note">{t("predictor.yearAvgNeed")}</p>
@@ -443,42 +493,69 @@
               class="drawer-row"
               onclick={(e) => {
                 e.stopPropagation();
-                openDetail(marks.find(m => m.courseId === row.courseId)!);
+                openDetail(marks.find((m) => m.courseId === row.courseId)!);
               }}
             >
               <div class="drawer-row-head">
                 <span class="drawer-subject-name">{row.subjectName}</span>
-                <span class="drawer-gk">{t("predictor.gk", { value: row.gk !== null ? row.gk : "—" })}</span>
+                <span class="drawer-gk"
+                  >{t("predictor.gk", {
+                    value: row.gk !== null ? row.gk : "—",
+                  })}</span
+                >
               </div>
 
               <div class="drawer-projection">
                 {#if row.ck === null}
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="0.05"
-                      bind:value={projections[row.courseId]}
-                      class="drawer-slider"
-                      aria-label={t("predictor.projectedAria", { subject: row.subjectName })}
-                    />
-                   <span class="drawer-ck-value">{t("predictor.ck", { value: row.proj.toFixed(2) })}</span>
-                  <span class="drawer-tb-badge">{t("predictor.tb", { value: row.tb })}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.05"
+                    bind:value={projections[row.courseId]}
+                    class="drawer-slider"
+                    aria-label={t("predictor.projectedAria", {
+                      subject: row.subjectName,
+                    })}
+                  />
+                  <span class="drawer-ck-value"
+                    >{t("predictor.ck", { value: row.proj.toFixed(2) })}</span
+                  >
+                  <span class="drawer-tb-badge"
+                    >{t("predictor.tb", { value: row.tb })}</span
+                  >
                   {#if siblingMarks.length > 0}
-                    <span class="drawer-cn-badge">{t("predictor.cn", { value: row.cn })}</span>
+                    <span class="drawer-cn-badge"
+                      >{t("predictor.cn", { value: row.cn })}</span
+                    >
                   {/if}
                   {#if row.status === "impossible"}
-                    <span class="drawer-status impossible">{t("predictor.statusImpossible")}</span>
+                    <span class="drawer-status impossible"
+                      >{t("predictor.statusImpossible")}</span
+                    >
                   {:else if row.status === "secured"}
-                    <span class="drawer-status secured">{t("predictor.statusSecured")}</span>
+                    <span class="drawer-status secured"
+                      >{t("predictor.statusSecured")}</span
+                    >
                   {:else if row.status === "unknown"}
-                    <span class="drawer-status unknown">{t("predictor.statusNeedGK")}</span>
+                    <span class="drawer-status unknown"
+                      >{t("predictor.statusNeedGK")}</span
+                    >
                   {:else}
-                    <span class="drawer-status on-track">{t("predictor.statusNeedFinal", { value: Math.max(0, Math.min(10, row.required)).toFixed(2) })}</span>
+                    <span class="drawer-status on-track"
+                      >{t("predictor.statusNeedFinal", {
+                        value: Math.max(0, Math.min(10, row.required)).toFixed(
+                          2,
+                        ),
+                      })}</span
+                    >
                   {/if}
                 {:else}
                   <span class="drawer-finalized">
-                    {t("predictor.finalized")} · {t("predictor.tb", { value: row.tb })}{#if row.cn !== "—"} · {t("predictor.cn", { value: row.cn })}{/if}
+                    {t("predictor.finalized")} · {t("predictor.tb", {
+                      value: row.tb,
+                    })}{#if row.cn !== "—"}
+                      · {t("predictor.cn", { value: row.cn })}{/if}
                   </span>
                 {/if}
               </div>
@@ -490,8 +567,12 @@
 
     {#if !detailSubject}
       <div class="drawer-footer">
-        <button type="button" class="drawer-apply" onclick={onclose}>{t("predictor.apply")}</button>
-        <button type="button" class="drawer-cancel" onclick={onclose}>{t("predictor.cancel")}</button>
+        <button type="button" class="drawer-apply" onclick={onclose}
+          >{t("predictor.apply")}</button
+        >
+        <button type="button" class="drawer-cancel" onclick={onclose}
+          >{t("predictor.cancel")}</button
+        >
       </div>
     {/if}
   </div>
@@ -516,7 +597,7 @@
     max-width: 100%;
     height: 100%;
     background: var(--base);
-    border-left: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-left: 1px solid var(--border-subtle);
     font-family: "Google Sans Flex", system-ui, sans-serif;
     animation: drawer-in 0.18s ease-out;
   }
@@ -532,7 +613,7 @@
     gap: 10px;
     padding: 16px 20px;
     flex-shrink: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .drawer-title {
@@ -552,7 +633,7 @@
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     font-family: inherit;
     font-size: 13px;
     cursor: pointer;
@@ -560,11 +641,11 @@
 
   .drawer-close:hover {
     color: var(--text);
-    background: var(--surface0);
+    background: var(--surface-base);
   }
 
   .drawer-close:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -589,7 +670,7 @@
     margin: 0;
     font-size: 13px;
     font-weight: 600;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .drawer-presets {
@@ -615,7 +696,7 @@
   }
 
   .drawer-preset-btn:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -626,14 +707,14 @@
     margin-left: auto;
     border: none;
     border-radius: 8px;
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
     font-family: inherit;
     font-size: 13px;
   }
 
   .drawer-input:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -641,7 +722,7 @@
   .drawer-note {
     margin: 0;
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .drawer-subjects {
@@ -655,8 +736,8 @@
     flex-direction: column;
     gap: 8px;
     padding: 12px 14px;
-    background: var(--surface0);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    background: var(--surface-base);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
     width: 100%;
     font: inherit;
@@ -664,7 +745,9 @@
     text-align: left;
     cursor: pointer;
     appearance: none;
-    transition: background 0.12s ease, transform 0.12s ease;
+    transition:
+      background 0.12s ease,
+      transform 0.12s ease;
   }
 
   .drawer-row:hover {
@@ -676,7 +759,7 @@
   }
 
   .drawer-row:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -701,7 +784,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .drawer-projection {
@@ -725,7 +808,7 @@
   }
 
   .drawer-slider:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 2px;
   }
 
@@ -769,7 +852,7 @@
   }
 
   .drawer-status.unknown {
-    color: var(--subtext0);
+    color: var(--text-secondary);
     background: color-mix(in srgb, var(--surface1) 80%, transparent);
   }
 
@@ -780,7 +863,7 @@
 
   .drawer-finalized {
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .drawer-footer {
@@ -788,7 +871,7 @@
     gap: 8px;
     padding: 14px 20px;
     flex-shrink: 0;
-    border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-top: 1px solid var(--border-subtle);
   }
 
   .drawer-apply,
@@ -823,7 +906,7 @@
 
   .drawer-apply:focus-visible,
   .drawer-cancel:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -845,7 +928,7 @@
     border: none;
     border-radius: 999px;
     background: color-mix(in srgb, var(--surface0) 70%, transparent);
-    color: var(--subtext0);
+    color: var(--text-secondary);
     font-family: inherit;
     font-size: 12px;
     font-weight: 600;
@@ -855,11 +938,11 @@
 
   .detail-back:hover {
     color: var(--text);
-    background: var(--surface0);
+    background: var(--surface-base);
   }
 
   .detail-back:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -873,8 +956,8 @@
   }
 
   .detail-table-wrap {
-    background: var(--surface0);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    background: var(--surface-base);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
     overflow: hidden;
   }
@@ -892,9 +975,9 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     background: var(--base);
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .detail-table td {
@@ -935,7 +1018,7 @@
   }
 
   .detail-input:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
@@ -950,8 +1033,8 @@
     flex-direction: column;
     gap: 4px;
     padding: 10px 12px;
-    background: var(--surface0);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    background: var(--surface-base);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
   }
 
@@ -960,7 +1043,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .detail-result-value {
@@ -982,7 +1065,7 @@
   }
 
   .detail-unknown {
-    color: var(--subtext0);
+    color: var(--text-secondary);
   }
 
   .detail-need {

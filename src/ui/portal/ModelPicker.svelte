@@ -1,25 +1,35 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import { fetchModels, getModel, setModel } from "../../sdk/openai";
   import type { ModelInfo } from "../../sdk/types";
   import { t } from "../../i18n.svelte";
+  import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
-  let {
-    open = false,
-    onclose,
-  }: { open?: boolean; onclose: () => void } = $props();
+  let { open = false, onclose }: { open?: boolean; onclose: () => void } =
+    $props();
 
   let models = $state<ModelInfo[]>([]);
   let loading = $state(false);
   let error = $state("");
   let currentModel = $state(getModel());
+  let panelEl = $state<HTMLDivElement>();
+  let focusHandle = $state<OverlayFocusHandle | null>(null);
 
   $effect(() => {
     if (open && models.length === 0) {
       loadModels();
     }
+  });
+
+  $effect(() => {
+    if (!open || !panelEl) return;
+    focusHandle = attachOverlayFocus(panelEl, onclose);
+    return () => {
+      focusHandle?.release();
+      focusHandle = null;
+    };
   });
 
   async function loadModels() {
@@ -41,22 +51,44 @@
   }
 </script>
 
+<svelte:window
+  onkeydown={(e) => {
+    if (open && e.key === "Escape") onclose();
+  }}
+/>
+
 {#if open}
-  <div class="picker-overlay" role="dialog" aria-label={t("modelPicker.title")}>
-    <div class="picker">
+  <div class="picker-overlay" role="presentation" onclick={onclose}>
+    <!-- click stop only: Escape handled on window; focus trap owns Tab -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="picker"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("modelPicker.title")}
+      tabindex="-1"
+      bind:this={panelEl}
+      onclick={(e) => e.stopPropagation()}
+    >
       <div class="picker-header">
         <span class="picker-title">{t("modelPicker.title")}</span>
-        <button class="picker-close" aria-label={t("aria.close")} onclick={onclose}>
+        <button
+          class="picker-close"
+          aria-label={t("aria.close")}
+          onclick={onclose}
+        >
           <span class="material-symbols-rounded" aria-hidden="true">close</span>
         </button>
       </div>
 
-      <div class="picker-body">
+      <div class="picker-body" role="status">
         {#if loading}
           <div class="picker-status">{t("modelPicker.loading")}</div>
         {:else if error}
           <div class="picker-status error">{error}</div>
-          <button class="picker-retry" onclick={loadModels}>{t("modelPicker.retry")}</button>
+          <button class="picker-retry" onclick={loadModels}
+            >{t("modelPicker.retry")}</button
+          >
         {:else if models.length === 0}
           <div class="picker-status">{t("modelPicker.empty")}</div>
         {:else}
@@ -72,8 +104,9 @@
                   <span class="model-owner">{model.owned_by}</span>
                 {/if}
                 {#if model.id === currentModel}
-                  <span class="material-symbols-rounded model-check" aria-hidden="true"
-                    >check</span
+                  <span
+                    class="material-symbols-rounded model-check"
+                    aria-hidden="true">check</span
                   >
                 {/if}
               </button>
@@ -93,68 +126,88 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2147484;
+    z-index: 40;
   }
 
   .picker {
-    background: var(--base);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-    border-radius: 16px;
-    width: 360px;
-    max-height: 70vh;
+    width: min(420px, calc(100vw - 32px));
+    max-height: min(560px, calc(100vh - 48px));
     display: flex;
     flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    animation: picker-in 0.15s ease-out;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-surface);
+    box-shadow: var(--shadow-2);
+    overflow: hidden;
   }
 
   .picker-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    padding: 16px;
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .picker-title {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
-    color: var(--text);
   }
 
   .picker-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     background: transparent;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
   }
 
   .picker-close:hover {
-    background: var(--surface0);
-    color: var(--text);
+    background: var(--surface-hover);
   }
 
-  .picker-close span {
-    font-size: 18px;
+  .picker-close:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
   }
 
   .picker-body {
-    padding: 8px;
     overflow-y: auto;
-    flex: 1;
+    padding: 12px;
+  }
+
+  .picker-status {
+    padding: 24px 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  .picker-status.error {
+    color: var(--danger-ink);
+  }
+
+  .picker-retry {
+    display: block;
+    margin: 0 auto 12px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: var(--radius-control);
+    background: var(--surface-hover);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
   }
 
   .model-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
 
   .model-item {
@@ -162,76 +215,42 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    height: 36px;
-    flex-shrink: 0;
-    padding: 4px 12px;
-    border: none;
-    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-card);
     background: transparent;
     color: var(--text);
-    cursor: pointer;
     text-align: left;
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 13px;
-    transition: background 0.15s ease;
+    cursor: pointer;
   }
 
   .model-item:hover {
-    background: var(--surface0);
+    background: var(--surface-hover);
   }
 
   .model-item.selected {
+    border-color: var(--border-strong);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .model-item:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
   }
 
   .model-id {
     flex: 1;
-    font-family: monospace;
-    font-size: 12px;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
   }
 
   .model-owner {
-    font-size: 11px;
-    color: var(--subtext0);
-    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
   }
 
   .model-check {
-    font-size: 16px;
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-
-  .picker-status {
-    padding: 28px 16px;
-    text-align: center;
-    font-size: 13px;
-    color: var(--subtext0);
-  }
-
-  .picker-status.error {
-    color: var(--red);
-  }
-
-  .picker-retry {
-    display: block;
-    margin: 0 auto 12px;
-    padding: 6px 18px;
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-    border-radius: 8px;
-    background: var(--surface0);
-    color: var(--text);
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-
-  .picker-retry:hover {
-    background: var(--surface1);
+    color: var(--accent-strong);
+    font-size: 20px;
   }
 </style>

@@ -12,14 +12,33 @@ export interface TermMarksCache {
   marks: MarkCommon[];
 }
 
+/** Client-side TTL for marks/terms (24 hours). */
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 export function readTermMarks(
   studentId: string,
   termId: string,
 ): TermMarksCache | null {
-  return GM_getValue<TermMarksCache | null>(
+  const raw = GM_getValue<TermMarksCache | null>(
     `${MARKS_PREFIX}${studentId}:${termId}`,
     null,
   );
+  if (!raw) return null;
+  if (Date.now() - raw.savedAt > CACHE_TTL_MS) {
+    GM_deleteValue(`${MARKS_PREFIX}${studentId}:${termId}`);
+    return null;
+  }
+  return raw;
+}
+
+export function clearMarksCaches(studentId?: string): void {
+  if (!studentId) return;
+  const indexKey = `${MARKS_PREFIX}${studentId}:index`;
+  const index: string[] = GM_getValue<string[]>(indexKey, []);
+  for (const termId of index) {
+    GM_deleteValue(`${MARKS_PREFIX}${studentId}:${termId}`);
+  }
+  GM_deleteValue(indexKey);
 }
 
 export function writeTermMarks(
@@ -53,7 +72,16 @@ export interface TermsCache {
 }
 
 export function readTerms(campusId: string): TermsCache | null {
-  return GM_getValue<TermsCache | null>(`${TERMS_PREFIX}${campusId}`, null);
+  const raw = GM_getValue<TermsCache | null>(
+    `${TERMS_PREFIX}${campusId}`,
+    null,
+  );
+  if (!raw) return null;
+  if (Date.now() - raw.savedAt > CACHE_TTL_MS) {
+    GM_deleteValue(`${TERMS_PREFIX}${campusId}`);
+    return null;
+  }
+  return raw;
 }
 
 export function writeTerms(

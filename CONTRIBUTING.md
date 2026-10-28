@@ -8,8 +8,8 @@ Thanks for your interest in Portals Improved.
 - **Verify before submitting**: `pnpm lint`, then `pnpm check`, then `pnpm build` — in that order. Both halves of `pnpm check` (svelte-check *and* the `vite.config.ts` pass) must be clean.
 - **Architecture**: UI and SDK talk only to the `PortalAdapter` contract in `src/sdk/adapter.ts`, never to a concrete adapter directly. New features go through the contract so every portal — and the mock — stays usable for previews.
 - **Portable by default**: don't put portal-specific behavior in the shell. If FSP needs something another portal won't, gate it behind `AdapterFeatures` and implement it in that portal's adapter.
-- **New portal**: implement the contract, set `features` honestly, register the host in `src/site.ts`, and ship a mock twin. Highest-value contribution here.
-- **New scripts**: drop a file in `src/scripts/` — they're auto-discovered via `import.meta.glob`. Export a default function and, if it's site-specific, `export const site`.
+- **New portal**: implement the contract, set `features` honestly, add the class to `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts` (hosts live on the adapter), and ship a mock twin. Highest-value contribution here.
+- **New scripts**: drop a file in `src/scripts/` — they're auto-discovered via `import.meta.glob`. Export a default function and, if it's portal-specific, `export const portal` (a host fragment matched via `matchesHost`).
 - **New GM APIs**: `vite.config.ts` owns the `grant` list. Using an ungranted `GM_*` API means `undefined` at runtime.
 
 ## Building locally

@@ -2,8 +2,19 @@
 // Copyright (C) 2026 thetommylong
 
 import type { ToolMeta, ParamMeta, JsonSchema, ToolDefinition } from "./types";
-import type { FeatureFlag } from "./adapter";
+import type { FeatureFlag, PortalAdapter } from "./adapter";
 import { runtime } from "../adapters/runtime.svelte";
+
+let injectedAdapter: PortalAdapter | null = null;
+
+/** Prefer an explicitly injected adapter (agent composition root). */
+export function setRegistryAdapter(adapter: PortalAdapter): void {
+  injectedAdapter = adapter;
+}
+
+function activeAdapter(): PortalAdapter {
+  return injectedAdapter ?? runtime.adapter;
+}
 
 const CATEGORY_CAPABILITY: Record<string, FeatureFlag> = {
   session: "session",
@@ -942,10 +953,10 @@ export function getToolMeta(name: string): ToolMeta | null {
 export function isToolSupported(name: string): boolean {
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) return false;
-  if (!tool.read && !runtime.adapter.features.supportsMutations) return false;
+  if (!tool.read && !activeAdapter().features.supportsMutations) return false;
   const capability = CATEGORY_CAPABILITY[tool.category];
   if (!capability) return false;
-  return runtime.adapter.features[capability];
+  return activeAdapter().features[capability];
 }
 
 export function getAvailableToolNames(): string[] {
@@ -1020,170 +1031,176 @@ export function callApiFunction(
 ): Promise<unknown> {
   switch (name) {
     case "getStudentContext":
-      return runtime.adapter.getStudentContext();
+      return activeAdapter().getStudentContext();
     case "getDefaultTerm":
-      return runtime.adapter.getDefaultTerm(args.campusId as string);
+      return activeAdapter().getDefaultTerm(args.campusId as string);
     case "getTermsByCampus":
-      return runtime.adapter.getTermsByCampus(args.campusId as string);
+      return activeAdapter().getTermsByCampus(args.campusId as string);
     case "getFeedbackStatus":
-      return runtime.adapter.getFeedbackStatus(args.studentId as string);
+      return activeAdapter().getFeedbackStatus(args.studentId as string);
     case "getUnfinishedFeedbacks":
-      return runtime.adapter.getUnfinishedFeedbacks(
+      return activeAdapter().getUnfinishedFeedbacks(
         args.termId as string,
         args.studentId as string,
       );
     case "updateFeedbackAnswer":
-      return runtime.adapter.updateFeedbackAnswer({
+      return activeAdapter().updateFeedbackAnswer({
         feedbackLecturerId: args.feedbackLecturerId as string,
         studentId: args.studentId as string,
         feedbackQuestionId: args.feedbackQuestionId as string,
         feedbackAnswerId: args.feedbackAnswerId as string,
       });
     case "updateFeedbackComment":
-      return runtime.adapter.updateFeedbackComment(args.slot as 1 | 2, {
+      return activeAdapter().updateFeedbackComment(args.slot as 1 | 2, {
         feedbackLecturerId: args.feedbackLecturerId as string,
         studentId: args.studentId as string,
         comment: args.comment as string,
       });
     case "updateFeedbackStatus":
-      return runtime.adapter.updateFeedbackStatus({
+      return activeAdapter().updateFeedbackStatus({
         feedbackLecturerId: args.feedbackLecturerId as string,
         studentId: args.studentId as string,
         status: args.status as boolean,
       });
     case "getStudentHomeWorks":
-      return runtime.adapter.getStudentHomeWorks(
+      return activeAdapter().getStudentHomeWorks(
         args.studentId as string,
         args.termId as string,
       );
     case "getCoursesByTerm":
-      return runtime.adapter.getCoursesByTerm(
+      return activeAdapter().getCoursesByTerm(
         args.termId as string,
         args.studentId as string,
       );
     case "getAcademicYears":
-      return runtime.adapter.getAcademicYears(args.studentId as string);
+      return activeAdapter().getAcademicYears(args.studentId as string);
     case "getMarkCommonByStudent":
-      return runtime.adapter.getMarkCommonByStudent(
+      return activeAdapter().getMarkCommonByStudent(
         args.academicYear as string,
         args.termOrder as number,
         args.studentId as string,
       );
     case "getBlockMarkPeriods":
-      return runtime.adapter.getBlockMarkPeriods(args.campusId as string);
+      return activeAdapter().getBlockMarkPeriods(args.campusId as string);
     case "getMainClassesByStudent":
-      return runtime.adapter.getMainClassesByStudent(
+      return activeAdapter().getMainClassesByStudent(
         args.studentId as string,
         args.termId as string,
       );
     case "getKqrlByStudent":
-      return runtime.adapter.getKqrlByStudent(
+      return activeAdapter().getKqrlByStudent(
         args.academicYear as string,
         args.termOrder as number,
         args.studentId as string,
       );
     case "getNlpcByStudent":
-      return runtime.adapter.getNlpcByStudent(
+      return activeAdapter().getNlpcByStudent(
         args.academicYear as string,
         args.termOrder as number,
         args.studentId as string,
       );
     case "getGradesByCampus":
-      return runtime.adapter.getGradesByCampus(args.campusId as string);
+      return activeAdapter().getGradesByCampus(args.campusId as string);
     case "getClubsByTerm":
-      return runtime.adapter.getClubsByTerm(
+      return activeAdapter().getClubsByTerm(
         args.termId as string,
         args.studentId as string,
       );
     case "getUndoneHomework":
-      return runtime.adapter.getUndoneHomework(
+      return activeAdapter().getUndoneHomework(
         args.studentId as string,
         args.termId as string,
       );
     case "getEventsByTerm":
-      return runtime.adapter.getEventsByTerm(
+      return activeAdapter().getEventsByTerm(
         args.termId as string,
         args.studentId as string,
       );
     case "getCampusesByIds":
-      return runtime.adapter.getCampusesByIds(args.campusIds as string[]);
+      return activeAdapter().getCampusesByIds(args.campusIds as string[]);
     case "getCampus":
-      return runtime.adapter.getCampus(args.campusId as string);
+      return activeAdapter().getCampus(args.campusId as string);
     case "buildSsoUrl":
-      return runtime.adapter.buildSsoUrl(args.url as string);
+      // Never return the live bearer-bearing SSO URL to the model.
+      return activeAdapter()
+        .buildSsoUrl(args.url as string)
+        .then(() => ({
+          ok: true,
+          note: "SSO URL built for local launch only; token redacted from tool results.",
+        }));
     case "getClubSubjectsByIds":
-      return runtime.adapter.getClubSubjectsByIds(
+      return activeAdapter().getClubSubjectsByIds(
         args.clubSubjectIds as string[],
       );
     case "getClubSubjectTypesByIds":
-      return runtime.adapter.getClubSubjectTypesByIds(
+      return activeAdapter().getClubSubjectTypesByIds(
         args.clubSubjectIds as string[],
       );
     case "getClubStudentStatistics":
-      return runtime.adapter.getClubStudentStatistics(
+      return activeAdapter().getClubStudentStatistics(
         args.studentIds as string[],
       );
     case "getDiscountAndPriceByStudent":
-      return runtime.adapter.getDiscountAndPriceByStudent(
+      return activeAdapter().getDiscountAndPriceByStudent(
         args.termId as string,
         args.studentId as string,
       );
     case "getEventStatistics":
-      return runtime.adapter.getEventStatistics(args.eventIds as string[]);
+      return activeAdapter().getEventStatistics(args.eventIds as string[]);
     case "getEventImages":
-      return runtime.adapter.getEventImages(args.eventIds as string[]);
+      return activeAdapter().getEventImages(args.eventIds as string[]);
     case "toggleEventRegistration":
-      return runtime.adapter.toggleEventRegistration(
+      return activeAdapter().toggleEventRegistration(
         args.eventId as string,
         args.studentId as string,
         args.eventData as Record<string, unknown>,
       );
     case "getDisciplineLevels":
-      return runtime.adapter.getDisciplineLevels(args.campusId as string);
+      return activeAdapter().getDisciplineLevels(args.campusId as string);
     case "getDisciplineRules":
-      return runtime.adapter.getDisciplineRules(args.campusId as string);
+      return activeAdapter().getDisciplineRules(args.campusId as string);
     case "getDisciplineRulesByStudent":
-      return runtime.adapter.getDisciplineRulesByStudent(
+      return activeAdapter().getDisciplineRulesByStudent(
         args.studentId as string,
       );
     case "getRewardBonusTypes":
-      return runtime.adapter.getRewardBonusTypes(args.campusId as string);
+      return activeAdapter().getRewardBonusTypes(args.campusId as string);
     case "getRewardFrequencies":
-      return runtime.adapter.getRewardFrequencies(args.campusId as string);
+      return activeAdapter().getRewardFrequencies(args.campusId as string);
     case "getRewardsByCampus":
-      return runtime.adapter.getRewardsByCampus(args.campusId as string);
+      return activeAdapter().getRewardsByCampus(args.campusId as string);
     case "getRewardsByStudent":
-      return runtime.adapter.getRewardsByStudent(args.studentId as string);
+      return activeAdapter().getRewardsByStudent(args.studentId as string);
     case "hasDormBedStudent":
-      return runtime.adapter.hasDormBedStudent(args.studentId as string);
+      return activeAdapter().hasDormBedStudent(args.studentId as string);
     case "getSurveyLink":
-      return runtime.adapter.getSurveyLink();
+      return activeAdapter().getSurveyLink();
     case "getAllNotificationTypes":
-      return runtime.adapter.getAllNotificationTypes();
+      return activeAdapter().getAllNotificationTypes();
     case "getNotificationsByRecords":
-      return runtime.adapter.getNotificationsByRecords(
+      return activeAdapter().getNotificationsByRecords(
         args.userId as string,
         args.records as number,
       );
     case "markNotificationAsRead":
-      return runtime.adapter.markNotificationAsRead(
+      return activeAdapter().markNotificationAsRead(
         args.notificationId as string,
       );
     case "getMenuRoleCampuses":
-      return runtime.adapter.getMenuRoleCampuses(
+      return activeAdapter().getMenuRoleCampuses(
         args.roleCode as string,
         args.campusId as string,
       );
     case "getUserById":
-      return runtime.adapter.getUserById(args.userId as string);
+      return activeAdapter().getUserById(args.userId as string);
     case "getUserImage":
-      return runtime.adapter.getUserImage(args.userId as string);
+      return activeAdapter().getUserImage(args.userId as string);
     case "getStudentById":
-      return runtime.adapter.getStudentById(args.studentId as string);
+      return activeAdapter().getStudentById(args.studentId as string);
     case "getTimeSlotsByTerm":
-      return runtime.adapter.getTimeSlotsByTerm(args.termIds as string[]);
+      return activeAdapter().getTimeSlotsByTerm(args.termIds as string[]);
     case "getCalendarByStudentAndDateRange":
-      return runtime.adapter.getCalendarByStudentAndDateRange(
+      return activeAdapter().getCalendarByStudentAndDateRange(
         args.studentId as string,
         args.startDate as string,
         args.endDate as string,

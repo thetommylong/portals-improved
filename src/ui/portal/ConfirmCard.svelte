@@ -1,6 +1,6 @@
 <script lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 thetommylong
+  // SPDX-License-Identifier: AGPL-3.0-only
+  // Copyright (C) 2026 thetommylong
 
   import type { ConfirmRequest } from "../../sdk";
   import { t } from "../../i18n.svelte";
@@ -23,15 +23,18 @@
   </div>
   <p class="confirm-desc">{request.description}</p>
   <div class="confirm-args">
-    {#each Object.entries(request.args) as [key, value]}
+    {#each Object.entries(request.args) as [key, value] (key)}
       <div class="arg-row">
         <span class="arg-key">{key}:</span>
-        <span class="arg-val">{typeof value === "string" ? value : JSON.stringify(value)}</span>
+        <span class="arg-val"
+          >{typeof value === "string" ? value : JSON.stringify(value)}</span
+        >
       </div>
     {/each}
   </div>
   <div class="confirm-actions">
-    <button class="btn-approve" onclick={approve}>{t("confirm.approve")}</button>
+    <button class="btn-approve" onclick={approve}>{t("confirm.approve")}</button
+    >
     <button class="btn-reject" onclick={reject}>{t("confirm.reject")}</button>
   </div>
 </div>
@@ -63,7 +66,7 @@
 
   .confirm-desc {
     font-size: 12px;
-    color: var(--subtext0);
+    color: var(--text-secondary);
     margin: 0 0 8px;
   }
 
@@ -107,11 +110,13 @@
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s ease, opacity 0.15s ease;
+    transition:
+      background 0.15s ease,
+      opacity 0.15s ease;
   }
 
   .btn-approve {
-    background: var(--green);
+    background: var(--accent-strong);
     color: var(--base);
   }
 
@@ -120,9 +125,9 @@
   }
 
   .btn-reject {
-    background: var(--surface0);
+    background: var(--surface-base);
     color: var(--text);
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border: 1px solid var(--border-subtle);
   }
 
   .btn-reject:hover {
