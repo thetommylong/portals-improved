@@ -226,11 +226,6 @@
   "chat.help": "Available commands:\n  /models  — List and select available models\n  /key     — Set your API key\n  /url     — Set the API base URL\n  /model   — Show or set the current model\n  /clear   — Clear chat history\n  /help    — Show this help",
   "unavailable.msg": "This feature is unavailable for the current portal provider.",
   "schedule.empty": "No lessons this week — swipe to another week",
-  "settings.officialPortal": "Official portal",
-  "settings.changePassword": "Change password (official)",
-  "settings.dorm": "Dormitory (official)",
-  "escape.passwordHint": "Password changes stay on the official portal",
-  "escape.dormHint": "Dorm attendance stays on the official portal",
   "aria.appName": "Portals Improved",
   "aria.skipToMain": "Skip to main content"
 }

@@ -226,11 +226,6 @@
   "chat.help": "Các lệnh có sẵn:\n  /models  — Liệt kê và chọn model\n  /key     — Cài API key\n  /url     — Đặt base URL\n  /model   — Xem hoặc đặt model hiện tại\n  /clear   — Xóa lịch sử hội thoại\n  /help    — Xem trợ giúp này",
   "unavailable.msg": "Tính năng này không khả dụng với cổng hiện tại.",
   "schedule.empty": "Không có tiết tuần này — chuyển sang tuần khác",
-  "settings.officialPortal": "Cổng chính thức",
-  "settings.changePassword": "Đổi mật khẩu (cổng chính thức)",
-  "settings.dorm": "Ký túc xá (cổng chính thức)",
-  "escape.passwordHint": "Đổi mật khẩu vẫn trên cổng chính thức",
-  "escape.dormHint": "Điểm danh KTX vẫn trên cổng chính thức",
   "aria.appName": "Portals Improved",
   "aria.skipToMain": "Chuyển tới nội dung chính"
 }

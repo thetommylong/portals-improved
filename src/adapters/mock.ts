@@ -29,6 +29,7 @@ import type {
   EventStudent,
   Homework,
   StudentContext,
+  Notification,
   NotificationType,
   NotificationsResult,
   MenuItem,
@@ -572,9 +573,28 @@ export class MockAdapter implements PortalAdapter {
   }
 
   getNotificationsByRecords(): Promise<NotificationsResult> {
+    const sample: Notification = {
+      notificationId: "mock-notif-1",
+      notificationTypeId: "mock-nt",
+      fromUserId: "system",
+      groupId: "",
+      relationId: "",
+      userId: MOCK_USER_ID,
+      appliedUserId: MOCK_USER_ID,
+      isRead: false,
+      canBroadcast: false,
+      previousValueJson: "",
+      currentValueJson: "",
+      title: "Welcome to the demo",
+      content: "This is a sample unread notification for the mock portal.",
+      campusId: MOCK_CAMPUS_ID,
+      userType: "student",
+      createdDate: MOCK_DATE,
+      updatedDate: MOCK_DATE,
+    };
     return Promise.resolve({
       numberOfUnreadNotifications: 1,
-      notifications: [],
+      notifications: [sample],
     });
   }
 

@@ -5,7 +5,7 @@
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
   import { notify } from "../notifications";
-  import { LOCALES, i18n, t, type MessageKey } from "../i18n.svelte";
+  import { i18n, t, type MessageKey } from "../i18n.svelte";
   import UnavailableState from "./portal/UnavailableState.svelte";
   import ScheduleView from "./portal/ScheduleView.svelte";
   import MarksView from "./portal/MarksView.svelte";
@@ -418,45 +418,18 @@
               {/each}
             </div>
             <p class="settings-title">{t("settings.language")}</p>
-            <div
-              class="settings-flavors"
-              role="radiogroup"
+            <select
+              class="settings-select"
               aria-label={t("settings.languageGroup")}
+              value={i18n.locale}
+              onchange={(e) => {
+                const next = (e.currentTarget as HTMLSelectElement).value;
+                if (next === "vi" || next === "en") i18n.setLocale(next);
+              }}
             >
-              {#each LOCALES as choice (choice)}
-                <button
-                  class="settings-flavor"
-                  class:selected={i18n.locale === choice}
-                  role="radio"
-                  aria-checked={i18n.locale === choice}
-                  onclick={() => i18n.setLocale(choice)}
-                >
-                  {choice.toUpperCase()}
-                </button>
-              {/each}
-            </div>
-            <hr class="settings-sep" />
-            <p class="settings-title">{t("settings.officialPortal")}</p>
-            <div class="escape-links">
-              <a
-                class="about-link"
-                href="https://fsp.fpt.edu.vn/"
-                target="_blank"
-                rel="noreferrer"
-                title={t("escape.passwordHint")}
-              >
-                {t("settings.changePassword")}
-              </a>
-              <a
-                class="about-link"
-                href="https://fsp.fpt.edu.vn/"
-                target="_blank"
-                rel="noreferrer"
-                title={t("escape.dormHint")}
-              >
-                {t("settings.dorm")}
-              </a>
-            </div>
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
+            </select>
             <hr class="settings-sep" />
             <p class="settings-title">{t("settings.about")}</p>
             <div class="about">
@@ -698,14 +671,20 @@
     background: transparent;
     cursor: pointer;
     color: var(--text);
-    transition:
-      background 0.15s ease,
-      transform 0.15s ease;
+    transition: transform 0.15s ease;
     position: relative;
   }
 
-  .icon-btn:hover {
-    background: color-mix(in srgb, var(--surface0) 70%, transparent);
+  .icon-btn > .material-symbols-rounded {
+    display: block;
+    line-height: 1;
+    font-size: 22px;
+    font-variation-settings: "FILL" 0;
+  }
+
+  .icon-btn:hover > .material-symbols-rounded,
+  .icon-btn.active > .material-symbols-rounded {
+    font-variation-settings: "FILL" 1;
   }
 
   .icon-btn:focus-visible {
@@ -806,6 +785,8 @@
     background: var(--text);
     object-fit: cover;
     display: block;
+    align-self: center;
+    margin-inline: auto;
   }
 
   .profile-name {
@@ -880,6 +861,7 @@
     justify-content: center;
     flex-shrink: 0;
     font-size: 22px;
+    line-height: 1;
     font-variation-settings: "FILL" 0;
   }
 
@@ -1074,13 +1056,14 @@
 
   .settings-accents {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
+    gap: 6px;
+    margin-bottom: 14px;
   }
 
   .accent-dot {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     padding: 0;
     border-radius: 50%;
     border: 2px solid transparent;
@@ -1092,16 +1075,33 @@
     border-color: var(--text);
   }
 
+  .settings-select {
+    display: block;
+    width: 100%;
+    margin-bottom: 0;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface-base);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+  }
+
+  .settings-select:hover {
+    background: var(--surface1);
+  }
+
+  .settings-select:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
+  }
+
   .settings-sep {
     border: none;
     border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
     margin: 12px 0;
-  }
-
-  .escape-links {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
   }
 
   .about {
