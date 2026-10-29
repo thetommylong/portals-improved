@@ -53,7 +53,9 @@
   color: inherit;
 }
 
-#fsp-qol-root .material-symbols-rounded {
+/* :where() keeps the root scope without an ID bump so .nav-icon / .icon-btn
+   can override display/size for optical centering. */
+:where(#fsp-qol-root) .material-symbols-rounded {
   font-family: "Material Symbols Rounded";
   font-weight: normal;
   font-style: normal;

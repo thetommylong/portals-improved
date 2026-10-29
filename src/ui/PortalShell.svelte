@@ -676,15 +676,25 @@
   }
 
   .icon-btn > .material-symbols-rounded {
-    display: block;
+    display: inline-grid;
+    place-items: center;
     line-height: 1;
     font-size: 22px;
-    font-variation-settings: "FILL" 0;
+    translate: 0 -0.5px;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
   }
 
   .icon-btn:hover > .material-symbols-rounded,
   .icon-btn.active > .material-symbols-rounded {
-    font-variation-settings: "FILL" 1;
+    font-variation-settings:
+      "FILL" 1,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
   }
 
   .icon-btn:focus-visible {
@@ -854,19 +864,29 @@
   }
 
   .nav-icon {
+    box-sizing: border-box;
     width: 28px;
     height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-grid;
+    place-items: center;
     flex-shrink: 0;
     font-size: 22px;
     line-height: 1;
-    font-variation-settings: "FILL" 0;
+    /* Material Symbols sit slightly low in the em box; nudge up optically. */
+    translate: 0 -0.5px;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
   }
 
   .nav-item.active .nav-icon {
-    font-variation-settings: "FILL" 1;
+    font-variation-settings:
+      "FILL" 1,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
   }
 
   .sidebar .nav-item {
