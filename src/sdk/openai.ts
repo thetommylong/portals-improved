@@ -7,7 +7,14 @@ import type {
   ModelsResponse,
   ModelInfo,
 } from "./types";
-import { getSecret, setSecret } from "../secrets";
+import { deleteSecret, getSecret, setSecret } from "../secrets";
+import { DEFAULT_LLM_BASE_URL, validateOutboundUrl } from "./outbound-url";
+
+export {
+  OutboundUrlError,
+  needsNonDefaultHostConfirm,
+  validateOutboundUrl,
+} from "./outbound-url";
 
 const SECRET_KEYS = {
   baseUrl: "sdk:base_url",
@@ -15,15 +22,23 @@ const SECRET_KEYS = {
   model: "sdk:model",
 } as const;
 
-const DEFAULT_BASE_URL = "https://api.openai.com/v1";
+export const DEFAULT_BASE_URL = DEFAULT_LLM_BASE_URL;
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 export function getBaseUrl(): string {
-  return getSecret(SECRET_KEYS.baseUrl) ?? DEFAULT_BASE_URL;
+  const stored = getSecret(SECRET_KEYS.baseUrl);
+  if (!stored) return DEFAULT_BASE_URL;
+  try {
+    return validateOutboundUrl(stored);
+  } catch {
+    // Stale / pre-policy secrets must not bypass the scheme policy on read.
+    deleteSecret(SECRET_KEYS.baseUrl);
+    return DEFAULT_BASE_URL;
+  }
 }
 
 export function setBaseUrl(url: string): void {
-  setSecret(SECRET_KEYS.baseUrl, url.replace(/\/+$/, ""));
+  setSecret(SECRET_KEYS.baseUrl, validateOutboundUrl(url));
 }
 
 export function getApiKey(): string | null {

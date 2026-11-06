@@ -30,6 +30,6 @@ function boot(userId: string) {
   void Promise.allSettled([
     document.fonts.load('400 16px "Google Sans Flex"'),
     document.fonts.load('600 16px "Google Sans Flex"'),
-    document.fonts.load('900 16px "Google Sans Flex"'),
+    document.fonts.load('700 16px "Google Sans Flex"'),
   ]);
 }

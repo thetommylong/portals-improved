@@ -6,6 +6,7 @@
   import type { ScheduleEntry } from "../../types/portal";
   import { runtime } from "../../adapters/runtime.svelte";
   import { i18n, t } from "../../i18n.svelte";
+  import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
   let {
@@ -110,7 +111,7 @@
           aria-label={t("aria.close")}
           onclick={onclose}
         >
-          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+          <Icon name="close" size={22} />
         </button>
         <p class="popup-date">{dateLabel}</p>
       </div>
@@ -342,7 +343,7 @@
   .att-badge {
     font-size: 11px;
     font-weight: 700;
-    border-radius: 999px;
+    border-radius: var(--radius-control);
     padding: 2px 8px;
     white-space: nowrap;
     flex-shrink: 0;
@@ -354,12 +355,12 @@
   }
 
   .att-badge.late {
-    color: var(--yellow);
+    color: var(--warning-ink);
     background: color-mix(in srgb, var(--yellow) 12%, transparent);
   }
 
   .att-badge.absent {
-    color: var(--red);
+    color: var(--danger-ink);
     background: color-mix(in srgb, var(--red) 12%, transparent);
   }
 

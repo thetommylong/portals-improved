@@ -186,7 +186,7 @@
     {#if loading}
       <p class="feedback-empty" role="status">{t("status.loading")}</p>
     {:else if pending.length === 0 && submitted.length === 0}
-      <p class="feedback-empty">{t("feedback.empty")}</p>
+      <p class="feedback-empty" role="status">{t("feedback.empty")}</p>
     {:else}
       {#if pending.length > 0}
         <h2 class="feedback-group-title" id="fb-pending">

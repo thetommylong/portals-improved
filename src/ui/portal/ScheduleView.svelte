@@ -299,11 +299,7 @@
         <div class="week-main">
           <div class="day-headers">
             {#each weekDays as day (day.toString())}
-              <div
-                class="day-header"
-                aria-hidden="true"
-                class:today={day.toString() === todayIso}
-              >
+              <div class="day-header" class:today={day.toString() === todayIso}>
                 <span class="day-header-name">{dayHeaderLabel(day)}</span>
                 <span class="day-header-num">{day.day}</span>
               </div>
@@ -391,7 +387,9 @@
           {/if}
 
           {#if !loading && dayEntries.length === 0}
-            <div class="schedule-empty">{t("schedule.noClasses")}</div>
+            <div class="schedule-empty" role="status">
+              {t("schedule.noClasses")}
+            </div>
           {/if}
         </div>
       </div>

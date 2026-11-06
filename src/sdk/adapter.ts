@@ -180,12 +180,20 @@ export interface PortalAdapter {
   ): Promise<ScheduleEntry[]>;
 }
 
-/** Does `hostname` belong to any of the given host fragments? The single
- *  definition of what "on this portal" means, shared by the adapter registry
- *  and by scripts that opt into one portal via `export const portal`. */
+/** Does `hostname` belong to any of the given host fragments as a DNS label
+ *  or suffix (not a bare substring)? Shared by the adapter registry and by
+ *  scripts that opt into one portal via `export const portal`. */
 export function matchesHost(
   hostname: string,
   fragments: readonly string[],
 ): boolean {
-  return fragments.some((fragment) => hostname.includes(fragment));
+  const host = hostname.toLowerCase();
+  return fragments.some((fragment) => {
+    const f = fragment.toLowerCase();
+    if (!f) return false;
+    if (host === f) return true;
+    if (host.startsWith(`${f}.`)) return true;
+    if (host.endsWith(`.${f}`)) return true;
+    return host.includes(`.${f}.`);
+  });
 }

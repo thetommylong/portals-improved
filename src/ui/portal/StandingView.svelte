@@ -141,13 +141,13 @@
     {#if loading}
       <p class="marks-empty" role="status">{t("status.loading")}</p>
     {:else if items.length === 0}
-      <p class="marks-empty">{t("standing.empty")}</p>
+      <p class="marks-empty" role="status">{t("standing.empty")}</p>
     {:else if filtered.length === 0}
-      <p class="marks-empty">{t("standing.emptyYear")}</p>
+      <p class="marks-empty" role="status">{t("standing.emptyYear")}</p>
     {:else}
       <div
         class="marks-grid"
-        role="list"
+        role="group"
         aria-label={t("standing.gridAria")}
         bind:clientWidth={gridWidth}
       >
@@ -166,8 +166,8 @@
 {#snippet card(item: StandingItem)}
   {@const id = item.kind + "-" + item.date + "-" + item.title}
   {@const isExpanded = expandedId === id}
-  <li
-    class="mark-card fb-card-clickable list-item-plain"
+  <article
+    class="mark-card fb-card-clickable"
     class:fb-card-expanded={isExpanded}
   >
     <button
@@ -250,7 +250,7 @@
         </div>
       {/if}
     </button>
-  </li>
+  </article>
 {/snippet}
 
 <style>

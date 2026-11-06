@@ -5,24 +5,15 @@
   import type { AgentEvent } from "../../sdk";
   import { marked } from "marked";
   import DOMPurify from "dompurify";
+  import Icon from "../Icon.svelte";
+  import { t } from "../../i18n.svelte";
 
   let { event }: { event: AgentEvent } = $props();
 
-  const expandedState = new WeakMap<AgentEvent, boolean>();
+  let expanded = $state(false);
 
-  function isExpanded(event: AgentEvent): boolean {
-    return expandedState.get(event) ?? false;
-  }
-
-  function toggleExpanded(event: AgentEvent): void {
-    expandedState.set(event, !(expandedState.get(event) ?? false));
-  }
-
-  function handleKeydown(event: AgentEvent, e: KeyboardEvent): void {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggleExpanded(event);
-    }
+  function toggleExpanded(): void {
+    expanded = !expanded;
   }
 
   function getSanitizedHTML(content: string): string {
@@ -49,17 +40,17 @@
   {/if}
 {:else if event.type === "tool_call"}
   <div class="msg system">
-    <div
+    <button
+      type="button"
       class="bubble tool-call"
-      role="button"
-      tabindex="0"
-      onclick={() => toggleExpanded(event)}
-      onkeydown={(e) => handleKeydown(event, e)}
+      aria-expanded={expanded}
+      aria-label={t("chat.toolCall", { name: event.toolName ?? "" })}
+      onclick={toggleExpanded}
     >
-      <span class="material-symbols-rounded" aria-hidden="true">build</span>
+      <Icon name="build" size={18} />
       <span class="tc-name">{event.toolName}</span>
       {#if event.toolArgs}
-        {#if isExpanded(event)}
+        {#if expanded}
           <span class="tc-args">{JSON.stringify(event.toolArgs)}</span>
         {:else}
           <span class="tc-args"
@@ -70,23 +61,21 @@
           >
         {/if}
       {/if}
-    </div>
+    </button>
   </div>
 {:else if event.type === "tool_result"}
   <div class="msg system">
-    <div
+    <button
+      type="button"
       class="bubble tool-result"
       class:error={event.error}
-      role="button"
-      tabindex="0"
-      onclick={() => toggleExpanded(event)}
-      onkeydown={(e) => handleKeydown(event, e)}
+      aria-expanded={expanded}
+      aria-label={t("chat.toolResult", { name: event.toolName ?? "" })}
+      onclick={toggleExpanded}
     >
-      <span class="material-symbols-rounded" aria-hidden="true">
-        {event.error ? "error" : "check_circle"}
-      </span>
+      <Icon name={event.error ? "error" : "check_circle"} size={18} />
       <span class="tr-text">
-        {#if isExpanded(event)}
+        {#if expanded}
           {event.content ?? ""}
         {:else}
           {(event.content ?? "").slice(0, 200)}{(event.content ?? "").length >
@@ -95,7 +84,7 @@
             : ""}
         {/if}
       </span>
-    </div>
+    </button>
   </div>
 {:else if event.type === "error"}
   <div class="msg system">
@@ -140,6 +129,19 @@
     border: 1px solid var(--border-subtle);
     color: var(--text);
     border-bottom-left-radius: 4px;
+  }
+
+  button.bubble {
+    font: inherit;
+    text-align: left;
+    appearance: none;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  button.bubble:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 
   .msg.system .bubble.tool-call,
@@ -199,7 +201,7 @@
   }
 
   .tool-result.error span:first-child {
-    color: var(--red);
+    color: var(--danger-ink);
   }
 
   .tr-text {
@@ -211,7 +213,7 @@
   .error-msg {
     background: color-mix(in srgb, var(--red) 12%, var(--surface0));
     border: 1px solid color-mix(in srgb, var(--red) 25%, transparent);
-    color: var(--red);
+    color: var(--danger-ink);
     border-bottom-left-radius: 4px;
   }
 

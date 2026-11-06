@@ -7,10 +7,6 @@
   import { notify } from "../notifications";
   import { i18n, t, type MessageKey } from "../i18n.svelte";
   import UnavailableState from "./portal/UnavailableState.svelte";
-  import ScheduleView from "./portal/ScheduleView.svelte";
-  import MarksView from "./portal/MarksView.svelte";
-  import FeedbackView from "./portal/FeedbackView.svelte";
-  import HomeworksView from "./portal/HomeworksView.svelte";
   import NotificationsPanel from "./portal/NotificationsPanel.svelte";
   import {
     ACCENTS,
@@ -19,10 +15,15 @@
     applyTheme,
     theme,
   } from "../theme.svelte";
-  import EventsView from "./portal/EventsView.svelte";
-  import StandingView from "./portal/StandingView.svelte";
-  import ClubsView from "./portal/ClubsView.svelte";
-  // ChatSidebar (and marked/DOMPurify/agent SDK) load lazily when chat opens.
+  import Icon from "./Icon.svelte";
+  import type { IconName } from "./icons";
+  import {
+    attachOverlayFocus,
+    type OverlayFocusHandle,
+  } from "./portal/overlayFocus";
+  // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
+  // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
+  // of the initial System.register entry execute path.
 
   const NAV_IDS = [
     "home",
@@ -38,7 +39,7 @@
   interface NavItem {
     id: PageId;
     label: MessageKey;
-    icon: string;
+    icon: IconName;
   }
 
   const ALL_NAV_ITEMS: NavItem[] = [
@@ -67,9 +68,22 @@
 
   let { userId }: { userId: string } = $props();
 
+  // Narrow Google Sans Flex to fixed width + needed weights (no Material Symbols).
   const FONT_URL =
-    "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wdth,wght@75..100,100..900&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap";
+    "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wdth,wght@100,400;100,600;100,700&display=swap";
   if (!document.querySelector(`link[href="${FONT_URL}"]`)) {
+    for (const [rel, href, crossOrigin] of [
+      ["preconnect", "https://fonts.googleapis.com", undefined],
+      ["preconnect", "https://fonts.gstatic.com", "anonymous"],
+    ] as const) {
+      if (document.querySelector(`link[rel="${rel}"][href="${href}"]`))
+        continue;
+      const pre = document.createElement("link");
+      pre.rel = rel;
+      pre.href = href;
+      if (crossOrigin) pre.crossOrigin = crossOrigin;
+      document.head.appendChild(pre);
+    }
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = FONT_URL;
@@ -83,6 +97,14 @@
   let name = $state("");
   let rollNumber = $state("");
   let avatar = $state<string | null>(null);
+  const avatarInitials = $derived.by(() => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    return parts
+      .slice(0, 2)
+      .map((p) => p.charAt(0).toUpperCase())
+      .join("");
+  });
   let notifOpen = $state(false);
   let unreadCount = $state(0);
   let scheduleDate = $state("");
@@ -91,6 +113,27 @@
   let agentContext = $state<AgentContext | null>(null);
   let ChatSidebarComp = $state<
     typeof import("./portal/ChatSidebar.svelte").default | null
+  >(null);
+  let ScheduleViewComp = $state<
+    typeof import("./portal/ScheduleView.svelte").default | null
+  >(null);
+  let MarksViewComp = $state<
+    typeof import("./portal/MarksView.svelte").default | null
+  >(null);
+  let FeedbackViewComp = $state<
+    typeof import("./portal/FeedbackView.svelte").default | null
+  >(null);
+  let HomeworksViewComp = $state<
+    typeof import("./portal/HomeworksView.svelte").default | null
+  >(null);
+  let EventsViewComp = $state<
+    typeof import("./portal/EventsView.svelte").default | null
+  >(null);
+  let StandingViewComp = $state<
+    typeof import("./portal/StandingView.svelte").default | null
+  >(null);
+  let ClubsViewComp = $state<
+    typeof import("./portal/ClubsView.svelte").default | null
   >(null);
   const CHAT_WIDTH_MIN = 280;
   const CHAT_WIDTH_MAX = 640;
@@ -101,6 +144,68 @@
     void import("./portal/ChatSidebar.svelte").then((m) => {
       ChatSidebarComp = m.default;
     });
+  });
+
+  $effect(() => {
+    const nav = activeNav;
+    switch (nav) {
+      case "home":
+        if (!ScheduleViewComp) {
+          void import("./portal/ScheduleView.svelte").then((m) => {
+            if (activeNav !== nav) return;
+            ScheduleViewComp = m.default;
+          });
+        }
+        break;
+      case "marks":
+        if (!MarksViewComp) {
+          void import("./portal/MarksView.svelte").then((m) => {
+            if (activeNav !== nav) return;
+            MarksViewComp = m.default;
+          });
+        }
+        break;
+      case "feedback":
+        if (!FeedbackViewComp) {
+          void import("./portal/FeedbackView.svelte").then((m) => {
+            if (activeNav !== nav) return;
+            FeedbackViewComp = m.default;
+          });
+        }
+        break;
+      case "homeworks":
+        if (!HomeworksViewComp) {
+          void import("./portal/HomeworksView.svelte").then((m) => {
+            if (activeNav !== nav) return;
+            HomeworksViewComp = m.default;
+          });
+        }
+        break;
+      case "events":
+        if (!EventsViewComp) {
+          void import("./portal/EventsView.svelte").then((m) => {
+            if (activeNav !== nav) return;
+            EventsViewComp = m.default;
+          });
+        }
+        break;
+      case "standing":
+        if (!StandingViewComp) {
+          void import("./portal/StandingView.svelte").then((m) => {
+            if (activeNav !== nav) return;
+            StandingViewComp = m.default;
+          });
+        }
+        break;
+      case "clubs":
+        if (!ClubsViewComp) {
+          void import("./portal/ClubsView.svelte").then((m) => {
+            if (activeNav !== nav) return;
+            ClubsViewComp = m.default;
+          });
+        }
+        break;
+    }
   });
 
   function onChatResizeStart(e: PointerEvent) {
@@ -136,11 +241,6 @@
   }
   let pages: Partial<Record<PageId, PageRef>> & {
     home?: SchedulePageRef;
-    feedback?: FeedbackView;
-    homeworks?: HomeworksView;
-    events?: EventsView;
-    standing?: StandingView;
-    clubs?: ClubsView;
   } = {};
   let settingsOpen = $state(false);
   let settingsBtn: HTMLButtonElement | undefined = $state();
@@ -152,28 +252,29 @@
     applyTheme();
   });
 
-  $effect(() => {
+  function closeSettings() {
     if (!settingsOpen) return;
-    function onKeydown(e: Event) {
-      if ((e as KeyboardEvent).key === "Escape") {
-        settingsOpen = false;
-        restoreFocus();
-      }
-    }
+    settingsOpen = false;
+  }
+
+  $effect(() => {
+    if (!settingsOpen || !settingsPop) return;
+    const handle: OverlayFocusHandle = attachOverlayFocus(
+      settingsPop,
+      closeSettings,
+    );
     function onPointerdown(e: Event) {
       if (!(e.target instanceof Node)) return;
       const pop = settingsPop;
       if (pop && pop.contains(e.target)) return;
       const btn = settingsBtn;
       if (btn && btn.contains(e.target)) return;
-      settingsOpen = false;
-      restoreFocus();
+      closeSettings();
     }
-    document.addEventListener("keydown", onKeydown);
     document.addEventListener("pointerdown", onPointerdown);
     return () => {
-      document.removeEventListener("keydown", onKeydown);
       document.removeEventListener("pointerdown", onPointerdown);
+      handle.release();
     };
   });
 
@@ -192,6 +293,17 @@
     runtime.adapter.getUserImage(id).then((image) => {
       if (image) avatar = image;
     });
+
+    if (runtime.adapter.features.notifications) {
+      runtime.adapter
+        .getNotificationsByRecords(id, 1)
+        .then((res) => {
+          unreadCount = res.numberOfUnreadNotifications;
+        })
+        .catch(() => {
+          /* badge stays at last known */
+        });
+    }
   });
 
   $effect(() => {
@@ -265,8 +377,19 @@
     if (isMobile.matches) sidebarOpen = false;
   }
 
+  function closeChat() {
+    if (!chatOpen) return;
+    chatOpen = false;
+    restoreFocus();
+  }
+
   function toggleChat() {
-    chatOpen = !chatOpen;
+    if (chatOpen) {
+      closeChat();
+    } else {
+      lastTrigger = document.activeElement as HTMLElement;
+      chatOpen = true;
+    }
   }
 
   function onChatResizeKeydown(e: KeyboardEvent) {
@@ -288,6 +411,7 @@
 </script>
 
 <div class="shell">
+  <a class="skip-link" href="#fsp-main">{t("aria.skipToMain")}</a>
   <h1 class="shell-title">{t("aria.appName")}</h1>
   <header class="header">
     <div class="header-left">
@@ -296,7 +420,7 @@
         aria-label={t("aria.toggleMenu")}
         onclick={toggleSidebar}
       >
-        <span class="material-symbols-rounded" aria-hidden="true">menu</span>
+        <Icon name="menu" size={22} />
       </button>
       <div class="header-nav">
         {#if activeNav === "home"}
@@ -330,7 +454,7 @@
           aria-expanded={chatOpen}
           onclick={toggleChat}
         >
-          <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+          <Icon name="chat" size={22} />
         </button>
       {/if}
       <div class="settings-wrap">
@@ -342,23 +466,23 @@
           aria-expanded={settingsOpen}
           onclick={() => {
             if (settingsOpen) {
-              restoreFocus();
+              closeSettings();
             } else {
               lastTrigger = document.activeElement as HTMLElement;
+              settingsOpen = true;
             }
-            settingsOpen = !settingsOpen;
           }}
         >
-          <span class="material-symbols-rounded" aria-hidden="true"
-            >settings</span
-          >
+          <Icon name="settings" size={22} />
         </button>
         {#if settingsOpen}
           <div
             class="settings-pop"
             bind:this={settingsPop}
             role="dialog"
+            aria-modal="true"
             aria-label={t("aria.appearance")}
+            tabindex="-1"
           >
             <p class="settings-title">{t("settings.theme")}</p>
             <div
@@ -450,7 +574,7 @@
         {/if}
       </div>
       <button class="icon-btn" aria-label={t("aria.refresh")} onclick={refresh}>
-        <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
+        <Icon name="refresh" size={22} />
       </button>
       {#if runtime.adapter.features.notifications}
         <button
@@ -461,9 +585,7 @@
             : t("aria.notificationsNone")}
           onclick={onNotifications}
         >
-          <span class="material-symbols-rounded" aria-hidden="true"
-            >notifications</span
-          >
+          <Icon name="notifications" size={22} />
           {#if unreadCount > 0}
             <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
           {/if}
@@ -498,7 +620,13 @@
             alt={t("aria.avatar", { name: name || "" })}
           />
         {:else}
-          <div class="avatar"></div>
+          <div
+            class="avatar avatar-fallback"
+            aria-label={t("aria.avatar", { name: name || "" })}
+            role="img"
+          >
+            {avatarInitials}
+          </div>
         {/if}
         <p class="profile-name">{name || "..."}</p>
         <p class="profile-roll">{rollNumber}</p>
@@ -512,59 +640,85 @@
             aria-current={activeNav === item.id ? "page" : undefined}
             onclick={() => onNav(item)}
           >
-            <span class="nav-icon material-symbols-rounded" aria-hidden="true"
-              >{item.icon}</span
-            >
+            <Icon class="nav-icon" name={item.icon} size={22} />
             <span>{t(item.label)}</span>
           </button>
         {/each}
       </nav>
     </aside>
 
-    <main class="main">
+    <main id="fsp-main" class="main" tabindex="-1">
       {#if activeNav === "homeworks"}
         {#if runtime.adapter.features.homeworks}
-          <HomeworksView studentId={userId} bind:this={pages.homeworks} />
+          {#if HomeworksViewComp}
+            <HomeworksViewComp studentId={userId} bind:this={pages.homeworks} />
+          {:else}
+            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+          {/if}
         {:else}
           <UnavailableState />
         {/if}
       {:else if activeNav === "feedback"}
         {#if runtime.adapter.features.feedback}
-          <FeedbackView studentId={userId} bind:this={pages.feedback} />
+          {#if FeedbackViewComp}
+            <FeedbackViewComp studentId={userId} bind:this={pages.feedback} />
+          {:else}
+            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+          {/if}
         {:else}
           <UnavailableState />
         {/if}
       {:else if activeNav === "marks"}
         {#if runtime.adapter.features.marks}
-          <MarksView studentId={userId} bind:this={pages.marks} />
+          {#if MarksViewComp}
+            <MarksViewComp studentId={userId} bind:this={pages.marks} />
+          {:else}
+            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+          {/if}
         {:else}
           <UnavailableState />
         {/if}
       {:else if activeNav === "events"}
         {#if runtime.adapter.features.events}
-          <EventsView studentId={userId} bind:this={pages.events} />
+          {#if EventsViewComp}
+            <EventsViewComp studentId={userId} bind:this={pages.events} />
+          {:else}
+            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+          {/if}
         {:else}
           <UnavailableState />
         {/if}
       {:else if activeNav === "standing"}
         {#if runtime.adapter.features.standing}
-          <StandingView studentId={userId} bind:this={pages.standing} />
+          {#if StandingViewComp}
+            <StandingViewComp studentId={userId} bind:this={pages.standing} />
+          {:else}
+            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+          {/if}
         {:else}
           <UnavailableState />
         {/if}
       {:else if activeNav === "clubs"}
         {#if runtime.adapter.features.clubs}
-          <ClubsView studentId={userId} bind:this={pages.clubs} />
+          {#if ClubsViewComp}
+            <ClubsViewComp studentId={userId} bind:this={pages.clubs} />
+          {:else}
+            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+          {/if}
         {:else}
           <UnavailableState />
         {/if}
       {:else if activeNav === "home"}
         {#if runtime.adapter.features.schedule}
-          <ScheduleView
-            studentId={userId}
-            bind:dateLabel={scheduleDate}
-            bind:this={pages.home}
-          />
+          {#if ScheduleViewComp}
+            <ScheduleViewComp
+              studentId={userId}
+              bind:dateLabel={scheduleDate}
+              bind:this={pages.home}
+            />
+          {:else}
+            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+          {/if}
         {:else}
           <UnavailableState />
         {/if}
@@ -593,7 +747,7 @@
           onkeydown={onChatResizeKeydown}
         ></div>
         {#if agentContext && ChatSidebarComp}
-          <ChatSidebarComp {agentContext} />
+          <ChatSidebarComp {agentContext} onclose={closeChat} />
         {:else}
           <div class="chat-loading">{t("chat.loadingContext")}</div>
         {/if}
@@ -601,7 +755,7 @@
     {/if}
   </div>
 
-  {#if runtime.adapter.features.notifications}
+  {#if runtime.adapter.features.notifications && notifOpen}
     <NotificationsPanel
       {userId}
       open={notifOpen}
@@ -612,6 +766,28 @@
 </div>
 
 <style>
+  .skip-link {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    z-index: 2;
+    padding: 8px 12px;
+    border-radius: var(--radius-control);
+    background: var(--surface-raised);
+    color: var(--accent-strong);
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
+
   .shell-title {
     position: absolute;
     width: 1px;
@@ -662,10 +838,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
-    min-height: 32px;
-    width: 32px;
-    height: 32px;
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
     border: none;
     border-radius: 8px;
     background: transparent;
@@ -675,26 +851,8 @@
     position: relative;
   }
 
-  .icon-btn > .material-symbols-rounded {
-    display: inline-grid;
-    place-items: center;
-    line-height: 1;
-    font-size: 22px;
-    translate: 0 -0.5px;
-    font-variation-settings:
-      "FILL" 0,
-      "wght" 400,
-      "GRAD" 0,
-      "opsz" 24;
-  }
-
-  .icon-btn:hover > .material-symbols-rounded,
-  .icon-btn.active > .material-symbols-rounded {
-    font-variation-settings:
-      "FILL" 1,
-      "wght" 400,
-      "GRAD" 0,
-      "opsz" 24;
+  .icon-btn > :global(.fsp-icon) {
+    display: block;
   }
 
   .icon-btn:focus-visible {
@@ -703,7 +861,7 @@
   }
 
   .icon-btn.active {
-    color: var(--accent);
+    color: var(--accent-strong);
   }
 
   .icon-btn .badge {
@@ -716,7 +874,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 999px;
+    border-radius: var(--radius-control);
     background: var(--red);
     color: var(--mantle);
     font-size: 11px;
@@ -799,6 +957,18 @@
     margin-inline: auto;
   }
 
+  .avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--accent) 22%, var(--surface-raised));
+    color: var(--accent-strong);
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
   .profile-name {
     font-size: 16px;
     color: var(--text);
@@ -863,30 +1033,12 @@
     outline-offset: 1px;
   }
 
-  .nav-icon {
+  .nav-item :global(.nav-icon) {
     box-sizing: border-box;
     width: 28px;
     height: 28px;
-    display: inline-grid;
-    place-items: center;
+    padding: 3px;
     flex-shrink: 0;
-    font-size: 22px;
-    line-height: 1;
-    /* Material Symbols sit slightly low in the em box; nudge up optically. */
-    translate: 0 -0.5px;
-    font-variation-settings:
-      "FILL" 0,
-      "wght" 400,
-      "GRAD" 0,
-      "opsz" 24;
-  }
-
-  .nav-item.active .nav-icon {
-    font-variation-settings:
-      "FILL" 1,
-      "wght" 400,
-      "GRAD" 0,
-      "opsz" 24;
   }
 
   .sidebar .nav-item {
@@ -948,7 +1100,8 @@
     background: color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
-  .chat-loading {
+  .chat-loading,
+  .view-loading {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -988,7 +1141,10 @@
   }
 
   .toolbar-nav {
-    width: 30px;
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     font-size: 16px;
     line-height: 1;
@@ -1069,26 +1225,28 @@
 
   .settings-flavor.selected {
     border-color: var(--accent);
-    color: var(--accent);
+    color: var(--accent-strong);
     font-weight: 600;
     box-shadow: 0 0 0 2px var(--accent);
   }
 
   .settings-accents {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 4px;
     margin-bottom: 14px;
   }
 
   .accent-dot {
-    width: 24px;
-    height: 24px;
-    padding: 0;
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+    box-sizing: border-box;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
     justify-self: center;
+    background-clip: content-box;
   }
 
   .accent-dot.selected {
@@ -1225,7 +1383,10 @@
     }
 
     .toolbar-nav {
-      width: 26px;
+      min-width: 44px;
+      min-height: 44px;
+      width: 44px;
+      height: 44px;
     }
 
     .schedule-date {

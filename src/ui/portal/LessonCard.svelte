@@ -50,10 +50,12 @@
   const lessonLabel = $derived.by(() => {
     const start = new Date(entry.startDateTime);
     const end = new Date(entry.endDateTime);
+    const weekday = start.toLocaleDateString(i18n.locale, { weekday: "long" });
     const fmt = (d: Date) =>
       d.toLocaleTimeString(i18n.locale, { hour: "numeric", minute: "2-digit" });
     const base = t("schedule.lessonAria", {
       subject: entry.subjectName,
+      weekday,
       start: fmt(start),
       end: fmt(end),
       teacher: entry.lecturerName,

@@ -4,6 +4,7 @@
 
   import type { ConfirmRequest } from "../../sdk";
   import { t } from "../../i18n.svelte";
+  import Icon from "../Icon.svelte";
 
   let { request }: { request: ConfirmRequest } = $props();
 
@@ -18,7 +19,7 @@
 
 <div class="confirm-card" role="alert">
   <div class="confirm-header">
-    <span class="material-symbols-rounded" aria-hidden="true">warning</span>
+    <Icon name="warning" size={24} />
     <span>{t("confirm.title")}</span>
   </div>
   <p class="confirm-desc">{request.description}</p>
@@ -61,7 +62,7 @@
 
   .confirm-header span:first-child {
     font-size: 16px;
-    color: var(--yellow);
+    color: var(--warning-ink);
   }
 
   .confirm-desc {

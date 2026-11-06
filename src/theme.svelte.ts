@@ -48,15 +48,15 @@ function storedFlavor(): FlavorChoice {
 }
 
 function storedAccent(): AccentChoice {
-  const raw = GM_getValue<string>(ACCENT_KEY, "mauve");
-  // Migrate legacy default / removed blue accent.
+  const raw = GM_getValue<string>(ACCENT_KEY, "teal");
+  // Migrate legacy / removed blue accent to the current default.
   if (raw === "blue") {
-    GM_setValue(ACCENT_KEY, "mauve");
-    return "mauve";
+    GM_setValue(ACCENT_KEY, "teal");
+    return "teal";
   }
   return (ACCENTS as readonly string[]).includes(raw)
     ? (raw as AccentChoice)
-    : "mauve";
+    : "teal";
 }
 
 function storedSystemDark(): DarkFlavorChoice {

@@ -10,6 +10,9 @@ import {
   getModel,
   setModel,
   fetchModels,
+  OutboundUrlError,
+  needsNonDefaultHostConfirm,
+  validateOutboundUrl,
 } from "./openai";
 import { t } from "../i18n.svelte";
 
@@ -84,13 +87,47 @@ export async function handleCommand(input: string): Promise<CommandResult> {
           ],
         };
       }
-      setBaseUrl(arg);
+      let url: string;
+      try {
+        url = validateOutboundUrl(arg);
+      } catch (err) {
+        const message =
+          err instanceof OutboundUrlError
+            ? err.message
+            : t("chat.baseUrlInvalid");
+        return {
+          handled: true,
+          events: [
+            {
+              type: "message",
+              content: t("chat.baseUrlRejected", { message }),
+              role: "assistant",
+            },
+          ],
+        };
+      }
+      if (needsNonDefaultHostConfirm(url)) {
+        const ok = window.confirm(t("chat.baseUrlConfirm", { url }));
+        if (!ok) {
+          return {
+            handled: true,
+            events: [
+              {
+                type: "message",
+                content: t("chat.baseUrlCancelled"),
+                role: "assistant",
+              },
+            ],
+          };
+        }
+      }
+      setBaseUrl(url);
       return {
         handled: true,
         events: [
           {
             type: "message",
-            content: t("chat.baseUrlSet", { url: arg }),
+            content: t("chat.baseUrlSet", { url: getBaseUrl() }),
             role: "assistant",
           },
         ],
