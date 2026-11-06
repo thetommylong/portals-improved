@@ -261,7 +261,7 @@
     {#if loading}
       <p class="marks-empty" role="status">{t("status.loading")}</p>
     {:else if marks.length === 0}
-      <p class="marks-empty">{t("marks.empty")}</p>
+      <p class="marks-empty" role="status">{t("marks.empty")}</p>
     {:else}
       <div
         class="marks-grid"
@@ -401,7 +401,7 @@
 
   .btn-marks:hover {
     background: var(--surface1);
-    color: var(--accent);
+    color: var(--accent-strong);
   }
 
   .btn-marks:focus-visible {

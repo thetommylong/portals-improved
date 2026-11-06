@@ -142,7 +142,7 @@
     {#if loading}
       <p class="feedback-empty" role="status">{t("status.loading")}</p>
     {:else if items.length === 0}
-      <p class="feedback-empty">{t("events.empty")}</p>
+      <p class="feedback-empty" role="status">{t("events.empty")}</p>
     {:else}
       {#if pending.length > 0}
         <h2 class="feedback-group-title" id="ev-pending">
@@ -162,7 +162,7 @@
         <h2 class="feedback-group-title" id="ev-done">
           {t("events.groupDone", { n: done.length })}
         </h2>
-        <div class="events-grid" role="list" aria-labelledby="ev-done">
+        <div class="events-grid" role="group" aria-labelledby="ev-done">
           {#each columnsOf(done) as col, ci (ci)}
             <div class="events-col">
               {#each col as ev (ev.event.eventId)}

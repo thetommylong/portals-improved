@@ -152,7 +152,7 @@
     {#if loading}
       <p class="marks-empty" role="status">{t("status.loading")}</p>
     {:else if clubs.length === 0}
-      <p class="marks-empty">{t("clubs.empty")}</p>
+      <p class="marks-empty" role="status">{t("clubs.empty")}</p>
     {:else}
       <div
         class="marks-grid"

@@ -6,6 +6,7 @@
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Notification, NotificationsResult } from "../../types/portal";
   import { t } from "../../i18n.svelte";
+  import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
   let {
@@ -149,17 +150,17 @@
           aria-label={t("aria.close")}
           onclick={onclose}
         >
-          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+          <Icon name="close" size={22} />
         </button>
       </div>
 
       <div class="notif-list">
         {#if loading && !result}
-          <p class="notif-status">{t("status.loading")}</p>
+          <p class="notif-status" role="status">{t("status.loading")}</p>
         {:else if error}
-          <p class="notif-status">{t("notif.failed")}</p>
+          <p class="notif-status" role="status">{t("notif.failed")}</p>
         {:else if result && result.notifications.length === 0}
-          <p class="notif-status">{t("notif.empty")}</p>
+          <p class="notif-status" role="status">{t("notif.empty")}</p>
         {:else if result}
           {#each result.notifications as n (n.notificationId)}
             <button

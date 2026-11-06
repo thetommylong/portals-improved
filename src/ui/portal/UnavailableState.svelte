@@ -3,12 +3,13 @@
   // Copyright (C) 2026 thetommylong
 
   import { t } from "../../i18n.svelte";
+  import Icon from "../Icon.svelte";
 
   let { message = t("unavailable.msg") }: { message?: string } = $props();
 </script>
 
 <div class="unavailable" role="status">
-  <span class="material-symbols-rounded" aria-hidden="true">block</span>
+  <Icon class="unavailable-icon" name="block" size={40} />
   <p>{message}</p>
 </div>
 
@@ -25,8 +26,7 @@
     text-align: center;
   }
 
-  .unavailable span {
-    font-size: 40px;
+  .unavailable :global(.unavailable-icon) {
     color: var(--text-secondary);
   }
 

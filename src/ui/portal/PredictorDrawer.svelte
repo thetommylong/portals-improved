@@ -16,6 +16,7 @@
   } from "./marksHelpers";
   import { notify } from "../../notifications";
   import { t } from "../../i18n.svelte";
+  import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
   let {
     marks,
@@ -30,6 +31,15 @@
   } = $props();
 
   let drawerEl = $state<HTMLDivElement>();
+  let focusHandle = $state<OverlayFocusHandle | null>(null);
+
+  function handleEscape() {
+    if (detailSubject) {
+      closeDetail();
+      return;
+    }
+    onclose();
+  }
 
   let target = $state(8);
   let projections = $state<Record<string, number>>({});
@@ -219,17 +229,18 @@
   });
 
   $effect(() => {
-    if (!detailSubject && drawerEl) drawerEl.focus();
+    if (!drawerEl) return;
+    focusHandle = attachOverlayFocus(drawerEl, handleEscape);
+    return () => {
+      focusHandle?.release();
+      focusHandle = null;
+    };
   });
 </script>
 
-<svelte:window
-  onkeydown={(e) => {
-    if (e.key === "Escape") onclose();
-  }}
-/>
-
 <div class="drawer-backdrop" role="presentation" onclick={onclose}>
+  <!-- click stop only: Escape + Tab owned by attachOverlayFocus -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="drawer"
     role="dialog"
@@ -237,6 +248,7 @@
     aria-label={t("predictor.title")}
     tabindex="-1"
     bind:this={drawerEl}
+    onclick={(e) => e.stopPropagation()}
   >
     <div class="drawer-header">
       <h2 class="drawer-title">{t("predictor.title")}</h2>
@@ -246,7 +258,19 @@
         aria-label={t("aria.close")}
         onclick={onclose}
       >
-        X
+        <svg
+          class="drawer-close-icon"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            fill="currentColor"
+            d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+          />
+        </svg>
       </button>
     </div>
 
@@ -488,22 +512,21 @@
 
         <div class="drawer-subjects">
           {#each predRows as row (row.courseId)}
-            <button
-              type="button"
-              class="drawer-row"
-              onclick={(e) => {
-                e.stopPropagation();
-                openDetail(marks.find((m) => m.courseId === row.courseId)!);
-              }}
-            >
-              <div class="drawer-row-head">
+            <div class="drawer-row" role="group" aria-label={row.subjectName}>
+              <button
+                type="button"
+                class="drawer-row-open"
+                onclick={() => {
+                  openDetail(marks.find((m) => m.courseId === row.courseId)!);
+                }}
+              >
                 <span class="drawer-subject-name">{row.subjectName}</span>
                 <span class="drawer-gk"
                   >{t("predictor.gk", {
                     value: row.gk !== null ? row.gk : "—",
                   })}</span
                 >
-              </div>
+              </button>
 
               <div class="drawer-projection">
                 {#if row.ck === null}
@@ -559,7 +582,7 @@
                   </span>
                 {/if}
               </div>
-            </button>
+            </div>
           {/each}
         </div>
       {/if}
@@ -682,9 +705,9 @@
     height: 26px;
     padding: 0 10px;
     border: none;
-    border-radius: 999px;
+    border-radius: var(--radius-control);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-strong);
     font-family: inherit;
     font-size: 12px;
     font-weight: 700;
@@ -740,34 +763,33 @@
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
     width: 100%;
+  }
+
+  .drawer-row-open {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
     font: inherit;
     color: inherit;
     text-align: left;
     cursor: pointer;
     appearance: none;
-    transition:
-      background 0.12s ease,
-      transform 0.12s ease;
   }
 
-  .drawer-row:hover {
-    transform: translateY(-1px);
-  }
-
-  .drawer-row:active {
-    transform: translateY(0);
-  }
-
-  .drawer-row:focus-visible {
+  .drawer-row-open:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
+    border-radius: 6px;
   }
 
-  .drawer-row-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
+  .drawer-close-icon {
+    display: block;
+    flex-shrink: 0;
   }
 
   .drawer-subject-name {
@@ -816,18 +838,18 @@
   .drawer-cn-badge {
     font-size: 12px;
     font-weight: 700;
-    border-radius: 999px;
+    border-radius: var(--radius-control);
     padding: 3px 10px;
     white-space: nowrap;
   }
 
   .drawer-tb-badge {
-    color: var(--accent);
+    color: var(--accent-strong);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
 
   .drawer-cn-badge {
-    color: var(--green);
+    color: var(--success-ink);
     background: color-mix(in srgb, var(--green) 12%, transparent);
   }
 
@@ -836,18 +858,18 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    border-radius: 999px;
+    border-radius: var(--radius-control);
     padding: 3px 10px;
     white-space: nowrap;
   }
 
   .drawer-status.on-track {
-    color: var(--yellow);
+    color: var(--warning-ink);
     background: color-mix(in srgb, var(--yellow) 12%, transparent);
   }
 
   .drawer-status.secured {
-    color: var(--green);
+    color: var(--success-ink);
     background: color-mix(in srgb, var(--green) 12%, transparent);
   }
 
@@ -857,7 +879,7 @@
   }
 
   .drawer-status.impossible {
-    color: var(--red);
+    color: var(--danger-ink);
     background: color-mix(in srgb, var(--red) 12%, transparent);
   }
 
@@ -926,7 +948,7 @@
     height: 26px;
     padding: 0 12px;
     border: none;
-    border-radius: 999px;
+    border-radius: var(--radius-control);
     background: color-mix(in srgb, var(--surface0) 70%, transparent);
     color: var(--text-secondary);
     font-family: inherit;
@@ -1039,17 +1061,20 @@
   }
 
   .detail-result-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: var(--text-secondary);
   }
 
   .detail-result-value {
-    font-size: 20px;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 28px;
     font-weight: 700;
+    line-height: 1.15;
     color: var(--text);
+    font-variant-numeric: tabular-nums;
   }
 
   .detail-target {
@@ -1057,11 +1082,11 @@
   }
 
   .detail-impossible {
-    color: var(--red);
+    color: var(--danger-ink);
   }
 
   .detail-secured {
-    color: var(--green);
+    color: var(--success-ink);
   }
 
   .detail-unknown {
@@ -1069,7 +1094,7 @@
   }
 
   .detail-need {
-    color: var(--yellow);
+    color: var(--warning-ink);
   }
 
   @media (prefers-reduced-motion: reduce) {

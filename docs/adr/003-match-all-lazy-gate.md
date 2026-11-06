@@ -15,3 +15,5 @@ Keep `@match *://*/*`. Entry (`src/index.ts`) only loads the lightweight gate (`
 ## Consequences
 
 Idle pages avoid shell/chat parse cost. Mock-anywhere requires the GM flag (or a live host + query).
+
+Wildcard `@connect *` is kept so `GM_xmlhttpRequest` can reach configurable LLM bases and portal APIs without a host allowlist (hosts change; mock/dev targets vary). Mitigations: (1) Scheme policy via `validateOutboundUrl` on setters **and** `getBaseUrl` (stale evil stored URLs are cleared and fall back to the default). (2) `/url` prompts with `needsNonDefaultHostConfirm` before saving a non-default host. (3) SystemJS is inlined (`build.systemjs: "inline"`) so the bundle does not `@require` jsDelivr without SRI. vite-plugin-monkey still concatenates lazy `System.register` chunks into one `.user.js`, so dynamic `import()` delays *execution* of ChatSidebar/marked/DOMPurify (and nav views), not download/parse of those module texts.

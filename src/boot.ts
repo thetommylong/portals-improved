@@ -8,11 +8,13 @@ import { matchesHost } from "./sdk/adapter";
 const log = createLogger("boot");
 
 export async function boot(): Promise<void> {
-  console.log(
-    `%c portals-improved v${__BUILD__.version} (${__BUILD__.commit}) — AGPL-3.0-only`,
-    "color:#cba6f7;font-weight:bold",
-  );
-  console.log("https://github.com/thetommylong/portals-improved");
+  if (import.meta.env.DEV) {
+    console.log(
+      `%c portals-improved v${__BUILD__.version} (${__BUILD__.commit}) — AGPL-3.0-only`,
+      "color:#cba6f7;font-weight:bold",
+    );
+    console.log("https://github.com/thetommylong/portals-improved");
+  }
 
   // Side-effect: resolve runtime adapter (live or mock).
   await import("./adapters/runtime.svelte");

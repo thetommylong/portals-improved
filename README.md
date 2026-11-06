@@ -1,119 +1,75 @@
-# Portals Improved 🌐
+# Portals Improved
 
-A userscript that throws out your university's student portal and replaces it with something you can actually use on a phone at 2am.
-
-> *Because official portals are so broken it felt like a personal insult.*
+A userscript that replaces FSP’s student portal UI (`fsp.fpt.edu.vn`) with a phone-usable shell on the same backend.
 
 > [!WARNING]
 > **Vibe-coded software ahead.** Proceed at your own risk!
 
-## The Problem
+## Install
 
-Every student portal is the same app. Desktop-only, light-mode, tables that scroll sideways, data the backend already sends but the UI hides behind three clicks. It reloads the whole page to change a filter. On a phone it's unusable, and it fights devtools hard enough that you can't inspect what's going wrong.
-
-And you can't fix it. It's not your software.
-
-## The Solution
-
-One shell, one adapter per portal. The shell replaces the portal's entire UI with a mobile-first, dark-mode app that talks to the same backend the official frontend does — but faster, and without the page reloads.
-
-Portals that haven't been wired up yet just don't exist. The shell only renders what the active adapter says it can do.
-
-## Features
-
-- 🧩 **One shell, many portals** — a `PortalAdapter` contract per portal; the UI never talks to a concrete backend
-- ♻️ **Capability-aware** — unsupported sections don't render, they don't render broken
-- 📱 **Mobile-first** — responsive layout, touch targets that fit a thumb, collapsible nav
-- 🌙 **Catppuccin themes** — 4 flavors × 13 accents (blue reserved for links), follows your system light/dark preference
-- 🤖 **AI chat sidebar** — ask questions about your own data; it calls whichever portal SDK tools the active adapter exposes. Bring your own OpenAI-compatible key, or point it at any compatible endpoint
-- ♿ **Accessibility** — WCAG-minded: real ARIA roles, focus traps, focus restoration, no unlabelled `<div>` buttons
-- 🧪 **Mockable** — every portal has a fake-data adapter, so the whole shell previews on any host without an account
-- 🔓 **AGPL-3.0** — free and open source. No telemetry, no paywall, no closed forks
-
-## Portals
-
-| Portal | Host | Status |
-|--------|------|--------|
-| **FPT University** | `fsp.fpt.edu.vn` | ✅ Live — the original, and the reference implementation |
-
-### FPT University
-
-Where this started. The shell was reverse-engineered against FSP's internal API, so most of its features are things FSP specifically exposes.
-
-- 📅 **Schedule** — timetable with lesson popups and attendance status, cached so it opens offline
-- 🏆 **Marks** — full mark breakdown per subject, plus the **Final Grade Predictor**: drag a target average and see what every remaining assessment needs to hit it
-- 📤 **CSV export** — dump your grades to a spreadsheet
-- 💬 **Feedback** — answer lecturer feedback without the multi-page form dance
-- 📚 **Homework, Clubs, Events, Standing** — the rest of the portal, minus the friction
-- 🔔 **Notifications** — in-app panel with unread count
-
-<details>
-<summary>Adding a portal</summary>
-
-1. Implement `PortalAdapter` from `src/sdk/adapter.ts` — the method set is the whole contract.
-2. Declare the hosts you serve in the adapter's own `hosts` field. Nothing else needs to know your portal exists.
-3. Set `features` honestly. The shell hides what you mark `false`; it doesn't validate it.
-4. Add your class to `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts`. That list is the only registry.
-
-Copy `src/adapters/mock.ts` for the fake-data twin so the new portal is previewable immediately.
-
-</details>
-
-## Installation
-
-1. Install a userscript manager — **Violentmonkey** or **Tampermonkey** (desktop or Firefox Android).
+1. Install **Violentmonkey** or **Tampermonkey** (desktop or Firefox Android).
 2. Click **[Portals Improved.user.js](https://github.com/thetommylong/portals-improved/releases/latest/download/script.user.js)**.
-3. Open a supported portal. Enjoy.
+3. Open FSP and log in. After the session resolves, the userscript replaces the official UI.
 
-The userscript declares `match: *://*/*` so it survives portals moving to new hosts, but it self-gates on hostname and does nothing anywhere else.
+The userscript declares `match: *://*/*` so it survives host moves, but it self-gates on hostname and does nothing anywhere else.
 
-## Usage
+## What you get (FSP)
 
-1. **Log into the portal normally** — the script picks up your existing session
-2. **It takes over** — the official UI is replaced once your session resolves
-3. **Tap around** — nav on the left on desktop, collapsible on mobile
-4. **Ask the chatbot** anything about your schedule, grades, or feedback
+- Mobile-first schedule, marks, feedback, homework, clubs, events, standing, and notifications
+- Final Grade Predictor: set a target average and see what remaining assessments need
+- CSV export for grades
+- Optional AI chat over your own portal data (bring an OpenAI-compatible key / endpoint)
+- Catppuccin themes (4 flavors × 13 accents; blue reserved for links)
+- Mock adapter for previews without an account
 
-### Chat commands
+One shell, one `PortalAdapter` per portal. Unsupported sections stay hidden. Only FSP is live today; other portals need an adapter.
+
+## Chat commands
 
 | Command   | What it does |
 |-----------|--------------|
 | `/help`   | List commands |
 | `/key`    | Set your API key |
-| `/url`    | Point at a different OpenAI-compatible endpoint |
+| `/url`    | Point at a different OpenAI-compatible endpoint (https; http only for localhost) |
 | `/model`  | Pick a model |
 | `/models` | List models available on that endpoint |
 | `/clear`  | Clear the conversation |
 
-Your key is stored in userscript storage, never in `.env`, never sent to us.
+Keys live in userscript storage, never in `.env`, never sent to us.
 
-### Previewing without an account
+## Preview without an account
 
-On a live portal host, append `?adapter=mock` to force the mock adapter. Off-portal, set the userscript storage key `portal:adapter` to `mock` (URL `?adapter=mock` is ignored on unknown hosts so a crafted link cannot open the shell). The demo site (`pnpm site:dev`) always uses the mock.
+On a live portal host, append `?adapter=mock`. Off-portal, set userscript storage `portal:adapter` to `mock` (URL `?adapter=mock` is ignored on unknown hosts).
+
+The demo site (`pnpm site:dev` / `pnpm site:build`) is a **developer preview** of the mock shell, not a marketing site.
 
 ## Configuration
 
-Everything lives in the UI:
+- **Theme:** flavor (System / Latte / Frappé / Macchiato / Mocha) and accent, both persisted
+- **Chat:** API key, base URL, and model in userscript storage
+- **Adapter:** `?adapter=live` / `?adapter=mock`, or stored `portal:adapter`
 
-- **Theme** — flavor (System / Latte / Frappé / Macchiato / Mocha) and accent, both persisted
-- **Chat** — API key, base URL, and model, persisted in userscript storage
-- **Adapter** — `?adapter=live` / `?adapter=mock` in the URL, or the stored `portal:adapter` value
+<details>
+<summary>Adding a portal</summary>
 
-## Known Limitations
+1. Implement `PortalAdapter` from `src/sdk/adapter.ts`.
+2. Declare hosts on the adapter’s `hosts` field.
+3. Set `features` for what the portal supports; the shell hides the rest.
+4. Add the class to `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts`.
 
-- **One portal so far.** FSP is live; everything else is a contract waiting for an adapter.
-- **It replaces the whole portal.** Anything the official UI did that this doesn't is simply gone. Settings links back to the official FSP site for change-password / dorm when those flows are not reimplemented.
-- **The APIs are undocumented and internal.** When a portal changes its backend, that adapter breaks until someone updates it.
-- **SSO launch URLs embed the session bearer** in the query string for EduNext handoff (portal contract). The UI opens them locally; the chat agent never receives the raw URL. Treat shared screens / malicious LMS pages carefully.
-- **The chatbot costs money.** Your key, your endpoint, your bill. It's optional; everything else works without it. Custom LLM base URLs should be HTTPS endpoints you trust.
-- **No store listing.** Manual userscript install only; no auto-update, so grab new releases by hand.
-- **Bugs will happen.** It rewrites `document.body` and drops the portal's stylesheets. That's the whole trick.
+Copy `src/adapters/mock.ts` for a fake-data twin.
 
----
+</details>
 
-## Seriously, That's It
+## Known limitations
 
-It's a userscript that replaces university portal UIs. It doesn't touch your grades, doesn't touch your account, doesn't phone home. If you need a real student information system with support contracts and compliance guarantees, use your university's official portal.
+- Only FSP is live; other portals wait on adapters.
+- Flows the official UI still owns (password change, dorm, etc.) link back to FSP.
+- APIs are undocumented; backend changes can break an adapter until someone updates it.
+- SSO launch URLs embed a session bearer for EduNext handoff. The UI opens them locally; the chat agent never receives the raw URL.
+- Chat is optional and billed to your key. Custom base URLs should be HTTPS endpoints you trust (localhost http is allowed for local servers).
+- Manual userscript install only; grab new releases by hand.
+- The script rewrites `document.body` and drops the portal’s stylesheets.
 
 ## License
 
@@ -121,4 +77,4 @@ AGPL-3.0. Read [LICENSE](LICENSE).
 
 ## Contributing
 
-Issues and PRs are welcome — see [CONTRIBUTING](CONTRIBUTING.md) and the [issue tracker](docs/agents/issue-tracker.md). Adding a portal is the highest-value contribution here.
+Issues and PRs welcome. See [CONTRIBUTING](CONTRIBUTING.md) and the [issue tracker](docs/agents/issue-tracker.md). Adding a portal is the highest-value contribution.

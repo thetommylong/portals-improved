@@ -53,22 +53,10 @@
   color: inherit;
 }
 
-/* :where() keeps the root scope without an ID bump so .nav-icon / .icon-btn
-   can override display/size for optical centering. */
-:where(#fsp-qol-root) .material-symbols-rounded {
-  font-family: "Material Symbols Rounded";
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  -webkit-font-smoothing: antialiased;
-  font-feature-settings: "liga";
+:where(#fsp-qol-root) .fsp-icon {
+  display: block;
+  flex-shrink: 0;
+  fill: currentColor;
 }
 
 #fsp-qol-root ::-webkit-scrollbar {
@@ -143,6 +131,8 @@
   border-radius: var(--radius-card);
   padding: 14px 16px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
 }
 
 #fsp-qol-root .fb-card:hover {
@@ -187,8 +177,9 @@
 #fsp-qol-root .fb-card-title {
   margin: 0;
   font-family: "Google Sans Flex", system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
   color: var(--text);
   overflow-wrap: anywhere;
 }
@@ -221,7 +212,7 @@
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   padding: 3px 10px;
   white-space: nowrap;
 }
@@ -330,6 +321,8 @@
   border-radius: var(--radius-card);
   padding: 14px 16px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
 }
 
 #fsp-qol-root .mark-card:hover {
@@ -351,8 +344,9 @@
 #fsp-qol-root .mark-card-title {
   margin: 0;
   font-family: "Google Sans Flex", system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
   color: var(--text);
   min-width: 0;
   overflow-wrap: anywhere;
@@ -397,7 +391,7 @@
   font-weight: 700;
   color: var(--text);
   background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   padding: 3px 10px;
   white-space: nowrap;
 }
@@ -407,17 +401,17 @@
 }
 
 #fsp-qol-root .avg-badge-cn {
-  color: var(--green);
+  color: var(--success-ink);
   background: color-mix(in srgb, var(--green) 12%, transparent);
 }
 
 #fsp-qol-root .avg-badge-done {
-  color: var(--green);
+  color: var(--success-ink);
   background: color-mix(in srgb, var(--green) 12%, transparent);
 }
 
 #fsp-qol-root .avg-badge-overdue {
-  color: var(--red);
+  color: var(--danger-ink);
   background: color-mix(in srgb, var(--red) 12%, transparent);
 }
 

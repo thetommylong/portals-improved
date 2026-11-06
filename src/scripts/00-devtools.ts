@@ -3,6 +3,33 @@
 
 export const portal = "fsp";
 
+/**
+ * Narrow anti-devtools interval heuristic.
+ *
+ * Matches known library / detector markers (disable-devtool's
+ * `ondevtoolclose` / `DisableDevtool`, `devtoolsDetector`, or an explicit
+ * `debugger` statement in the callback source). Does **not** blank every
+ * short timer or anything that merely mentions "devtools".
+ *
+ * Residual risk: a heavily obfuscated detector whose stringified source
+ * lacks these tokens will still run; a legitimate callback that embeds the
+ * same tokens would be nooped (unlikely). Not smoke-tested against live FSP
+ * in this change — verify on-portal if anti-devtools behavior regresses.
+ */
+const ANTI_DEVTOOLS_RE =
+  /ondevtool(?:open|close)|disable[-_]?devtool|DisableDevtool|devtoolsDetector|(?:^|[^\w$])debugger(?:;|\s|$)/;
+
+function looksLikeAntiDevtools(fn: unknown): boolean {
+  if (typeof fn === "string") return ANTI_DEVTOOLS_RE.test(fn);
+  if (typeof fn !== "function") return false;
+  try {
+    return ANTI_DEVTOOLS_RE.test(Function.prototype.toString.call(fn));
+  } catch {
+    // Native / cross-realm functions: leave them alone.
+    return false;
+  }
+}
+
 export default function () {
   if (unsafeWindow.__devtoolsPatchActive) return;
   unsafeWindow.__devtoolsPatchActive = true;
@@ -11,12 +38,15 @@ export default function () {
   const _si = unsafeWindow.setInterval.bind(unsafeWindow);
 
   unsafeWindow.setInterval = function (
-    _fn: unknown,
+    fn: TimerHandler,
     delay?: number,
-    ..._args: unknown[]
+    ...args: unknown[]
   ) {
-    return _si(noop, delay ?? 0);
-  } as unknown as typeof setInterval;
+    if (looksLikeAntiDevtools(fn)) {
+      return _si(noop, delay ?? 0);
+    }
+    return _si(fn, delay ?? 0, ...(args as []));
+  } as typeof setInterval;
 
   unsafeWindow.close = noop;
 

@@ -163,9 +163,27 @@ function gmFetchRaw(
   });
 }
 
+/** Soft preference: when both exist, favor compact data URLs over huge ones. */
+const PREFERRED_DATA_URL_CHARS = 32_768;
+
+function pickPreferredImageUrl(candidates: string[]): string | null {
+  const https = candidates.find((u) => /^https:\/\//i.test(u));
+  if (https) return https;
+  const http = candidates.find((u) => /^http:\/\//i.test(u));
+  if (http) return http;
+  const dataUrls = candidates.filter((u) => /^data:image\//i.test(u));
+  if (dataUrls.length === 0) return null;
+  // Prefer a small data URL when available, but never drop a data-only avatar.
+  return (
+    dataUrls.find((u) => u.length <= PREFERRED_DATA_URL_CHARS) ?? dataUrls[0]
+  );
+}
+
 function extractImageUrl(text: string): string | null {
   const trimmed = text.trim();
-  if (/^(data:image\/|https?:\/\/)/.test(trimmed)) return trimmed;
+  if (/^(data:image\/|https?:\/\/)/.test(trimmed)) {
+    return pickPreferredImageUrl([trimmed]);
+  }
 
   try {
     const data = JSON.parse(trimmed) as unknown;
@@ -176,30 +194,36 @@ function extractImageUrl(text: string): string | null {
   }
 
   if (/^[A-Za-z0-9+/=]+$/.test(trimmed) && trimmed.length > 100) {
-    return `data:image/png;base64,${trimmed}`;
+    const dataUrl = `data:image/png;base64,${trimmed}`;
+    return pickPreferredImageUrl([dataUrl]);
   }
   return null;
 }
 
-function findImageUrl(data: unknown, depth = 0): string | null {
-  if (depth > 4) return null;
+function collectImageUrls(
+  data: unknown,
+  depth = 0,
+  out: string[] = [],
+): string[] {
+  if (depth > 4) return out;
   if (typeof data === "string") {
-    return /^(data:image\/|https?:\/\/)/.test(data) ? data : null;
+    if (/^(data:image\/|https?:\/\/)/.test(data)) out.push(data);
+    return out;
   }
   if (Array.isArray(data)) {
-    for (const item of data) {
-      const found = findImageUrl(item, depth + 1);
-      if (found) return found;
-    }
-    return null;
+    for (const item of data) collectImageUrls(item, depth + 1, out);
+    return out;
   }
   if (data && typeof data === "object") {
     for (const value of Object.values(data)) {
-      const found = findImageUrl(value, depth + 1);
-      if (found) return found;
+      collectImageUrls(value, depth + 1, out);
     }
   }
-  return null;
+  return out;
+}
+
+function findImageUrl(data: unknown, depth = 0): string | null {
+  return pickPreferredImageUrl(collectImageUrls(data, depth));
 }
 
 export class FspLiveAdapter implements PortalAdapter {
@@ -211,20 +235,29 @@ export class FspLiveAdapter implements PortalAdapter {
 
   waitForValidSession(timeoutMs: number): Promise<string | null> {
     const startedAt = Date.now();
+    const immediate = getTokenPayload();
+    if (immediate && !isTokenExpired(immediate)) {
+      return Promise.resolve(immediate.userId as string);
+    }
 
     return new Promise((resolve) => {
-      const timer = setInterval(() => {
+      let delay = 250;
+
+      const tick = () => {
         const payload = getTokenPayload();
         if (payload && !isTokenExpired(payload)) {
-          clearInterval(timer);
           resolve(payload.userId as string);
           return;
         }
         if (Date.now() - startedAt > timeoutMs) {
-          clearInterval(timer);
           resolve(null);
+          return;
         }
-      }, 250);
+        delay = Math.min(delay * 2, 2000);
+        setTimeout(tick, delay);
+      };
+
+      setTimeout(tick, delay);
     });
   }
 

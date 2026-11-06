@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
+import { createIconSvg, type IconName } from "./ui/icons";
+
 export type ToastKind = "info" | "success" | "error";
 /** @deprecated Use ToastKind */
 export type NotificationType = ToastKind;
 
 const DURATION = 4000;
 
-const ICONS: Record<ToastKind, string> = {
+const ICONS: Record<ToastKind, IconName> = {
   success: "check_circle",
   error: "error",
   info: "info",
@@ -45,9 +47,10 @@ function ensureStack(): HTMLDivElement {
   document.body.append(stack);
 
   escapeHandler = (e: KeyboardEvent) => {
-    if (e.key === "Escape" && stack && stack.lastElementChild) {
-      (stack.lastElementChild as HTMLElement).click();
-    }
+    if (e.key !== "Escape" || !stack?.lastElementChild) return;
+    // Let modal dialogs own Escape; don't dismiss a toast underneath them.
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    (stack.lastElementChild as HTMLElement).click();
   };
   document.addEventListener("keydown", escapeHandler);
 
@@ -81,16 +84,12 @@ export function notify(message: string, type: ToastKind = "info") {
     transition: REDUCED ? "none" : "transform 0.05s linear",
   });
 
-  const icon = document.createElement("span");
-  icon.className = "material-symbols-rounded";
-  icon.textContent = ICONS[type];
-  icon.setAttribute("aria-hidden", "true");
+  const icon = createIconSvg(ICONS[type], {
+    className: "fsp-icon",
+    size: 20,
+  });
   Object.assign(icon.style, {
-    fontFamily: '"Material Symbols Rounded"',
-    fontSize: "20px",
     color: COLORS[type],
-    lineHeight: "1",
-    flexShrink: "0",
     transition: REDUCED ? "none" : "transform 0.25s ease",
     transform: "scale(0.6)",
   });

@@ -68,7 +68,7 @@
     {#if loading}
       <p class="feedback-empty" role="status">{t("status.loading")}</p>
     {:else if items.length === 0}
-      <p class="feedback-empty">{t("homeworks.empty")}</p>
+      <p class="feedback-empty" role="status">{t("homeworks.empty")}</p>
     {:else}
       {#if pending.length > 0}
         <h2 class="feedback-group-title" id="hw-pending">

@@ -5,6 +5,7 @@
   import { fetchModels, getModel, setModel } from "../../sdk/openai";
   import type { ModelInfo } from "../../sdk/types";
   import { t } from "../../i18n.svelte";
+  import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
   let { open = false, onclose }: { open?: boolean; onclose: () => void } =
@@ -77,7 +78,7 @@
           aria-label={t("aria.close")}
           onclick={onclose}
         >
-          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+          <Icon name="close" size={22} />
         </button>
       </div>
 
@@ -104,10 +105,7 @@
                   <span class="model-owner">{model.owned_by}</span>
                 {/if}
                 {#if model.id === currentModel}
-                  <span
-                    class="material-symbols-rounded model-check"
-                    aria-hidden="true">check</span
-                  >
+                  <Icon class="model-check" name="check" size={20} />
                 {/if}
               </button>
             {/each}
@@ -249,8 +247,7 @@
     color: var(--text-secondary);
   }
 
-  .model-check {
+  :global(.model-check) {
     color: var(--accent-strong);
-    font-size: 20px;
   }
 </style>
