@@ -41,7 +41,7 @@ Keys live in userscript storage, never in `.env`, never sent to us.
 
 On a live portal host, append `?adapter=mock`. Off-portal, set userscript storage `portal:adapter` to `mock` (URL `?adapter=mock` is ignored on unknown hosts).
 
-The demo site (`pnpm site:dev` / `pnpm site:build:static`) is a **developer preview** of the mock shell, not a marketing site. Production demo deploys to [GitHub Pages](https://thetommylong.github.io/portals-improved/) on `main`; open PRs get a Cloudflare Pages preview URL commented on the PR.
+The demo site (`pnpm site:dev` / `pnpm site:build:static`) is a **developer preview** of the mock shell, not a marketing site. Production demo deploys to [Cloudflare Pages](https://portals-improved.pages.dev/) on `main`; open PRs get a preview alias commented on the PR.
 
 ## Configuration
 

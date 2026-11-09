@@ -3,7 +3,7 @@
 // Copyright (C) 2026 thetommylong
 //
 // Vite emits site/index.html under dist-site/site/ with ../assets/ links.
-// Static hosts (GitHub Pages, Cloudflare Pages) expect dist-site/index.html
+// Static hosts (Cloudflare Pages, etc.) expect dist-site/index.html
 // with assets/ beside it.
 
 import { readFileSync, writeFileSync, rmSync, existsSync } from "node:fs";
