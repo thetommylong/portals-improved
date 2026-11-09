@@ -4,6 +4,17 @@ on:
   pull_request:
     branches:
       - main
+    # Skip docs/CI-only PRs — only deploy when the demo build inputs change.
+    paths:
+      - "src/**"
+      - "site/**"
+      - "scripts/flatten-site.mjs"
+      - "vite.site.config.ts"
+      - "svelte.config.js"
+      - "tsconfig.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/preview.yml"
 
 permissions:
   contents: read
