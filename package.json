@@ -14,6 +14,8 @@
     "preview": "vite preview",
     "site:dev": "vite --config vite.site.config.ts",
     "site:build": "vite build --config vite.site.config.ts",
+    "site:flatten": "node scripts/flatten-site.mjs",
+    "site:build:static": "pnpm site:build && pnpm site:flatten",
     "site:preview": "vite preview --config vite.site.config.ts",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json",
     "lint": "eslint .",
