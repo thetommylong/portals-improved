@@ -26,16 +26,14 @@
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
   // of the initial System.register entry execute path.
 
-  const NAV_IDS = [
-    "home",
-    "feedback",
-    "homeworks",
-    "marks",
-    "clubs",
-    "events",
-    "standing",
-  ] as const;
-  type PageId = (typeof NAV_IDS)[number];
+  type PageId =
+    | "home"
+    | "feedback"
+    | "homeworks"
+    | "marks"
+    | "clubs"
+    | "events"
+    | "standing";
 
   interface NavItem {
     id: PageId;
@@ -240,9 +238,11 @@
     goTo(delta: number): void;
     goToday(): void;
   }
-  let pages: Partial<Record<PageId, PageRef>> & {
-    home?: SchedulePageRef;
-  } = {};
+  let pages = $state<
+    Partial<Record<PageId, PageRef>> & {
+      home?: SchedulePageRef;
+    }
+  >({});
   let settingsOpen = $state(false);
   let settingsBtn: HTMLButtonElement | undefined = $state();
   let settingsPop: HTMLDivElement | undefined = $state();
@@ -258,6 +258,38 @@
   function closeSettings() {
     if (!settingsOpen) return;
     settingsOpen = false;
+  }
+
+  /** Arrow/Home/End navigation for settings role=radiogroup clusters. */
+  function onRadioGroupKeydown(
+    e: KeyboardEvent,
+    options: readonly string[],
+    current: string,
+    set: (value: string) => void,
+  ) {
+    const keys = [
+      "ArrowRight",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowUp",
+      "Home",
+      "End",
+    ];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const i = Math.max(0, options.indexOf(current));
+    let next = i;
+    if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = options.length - 1;
+    else if (e.key === "ArrowRight" || e.key === "ArrowDown")
+      next = (i + 1) % options.length;
+    else next = (i - 1 + options.length) % options.length;
+    const value = options[next];
+    if (value === undefined) return;
+    set(value);
+    const group = e.currentTarget as HTMLElement;
+    const radios = group.querySelectorAll<HTMLElement>('[role="radio"]');
+    radios[next]?.focus();
   }
 
   $effect(() => {
@@ -282,9 +314,9 @@
   });
 
   $effect(() => {
-    const id = userId;
+    void userId;
     runtime.adapter
-      .getUserById(id)
+      .getUserById(userId)
       .then((user) => {
         name = user.name;
         rollNumber = user.rollNumber;
@@ -293,13 +325,13 @@
         notify(t("toast.profileFailed"), "error");
       });
 
-    runtime.adapter.getUserImage(id).then((image) => {
+    runtime.adapter.getUserImage(userId).then((image) => {
       if (image) avatar = image;
     });
 
     if (runtime.adapter.features.notifications) {
       runtime.adapter
-        .getNotificationsByRecords(id, 1)
+        .getNotificationsByRecords(userId, 1)
         .then((res) => {
           unreadCount = res.numberOfUnreadNotifications;
         })
@@ -310,7 +342,7 @@
   });
 
   $effect(() => {
-    const id = userId;
+    void userId;
     runtime.adapter.getStudentContext().then(async (ctx) => {
       let termId = "";
       let termName = "Current Term";
@@ -491,7 +523,12 @@
             <div
               class="settings-flavors"
               role="radiogroup"
+              tabindex="0"
               aria-label={t("settings.flavor")}
+              onkeydown={(e) =>
+                onRadioGroupKeydown(e, FLAVOR_OPTIONS, theme.flavor, (v) =>
+                  theme.setFlavor(v as (typeof FLAVOR_OPTIONS)[number]),
+                )}
             >
               {#each FLAVOR_OPTIONS as option (option)}
                 <button
@@ -499,6 +536,7 @@
                   class:selected={theme.flavor === option}
                   role="radio"
                   aria-checked={theme.flavor === option}
+                  tabindex={theme.flavor === option ? 0 : -1}
                   onclick={() => theme.setFlavor(option)}
                 >
                   {option[0].toUpperCase() + option.slice(1)}
@@ -510,7 +548,12 @@
               <div
                 class="settings-flavors trio"
                 role="radiogroup"
+                tabindex="0"
                 aria-label={t("settings.darkFlavor")}
+                onkeydown={(e) =>
+                  onRadioGroupKeydown(e, DARK_FLAVORS, theme.systemDark, (v) =>
+                    theme.setSystemDark(v as (typeof DARK_FLAVORS)[number]),
+                  )}
               >
                 {#each DARK_FLAVORS as dark (dark)}
                   <button
@@ -518,6 +561,7 @@
                     class:selected={theme.systemDark === dark}
                     role="radio"
                     aria-checked={theme.systemDark === dark}
+                    tabindex={theme.systemDark === dark ? 0 : -1}
                     onclick={() => theme.setSystemDark(dark)}
                   >
                     {dark[0].toUpperCase() + dark.slice(1)}
@@ -529,7 +573,12 @@
             <div
               class="settings-accents"
               role="radiogroup"
+              tabindex="0"
               aria-label={t("settings.accentColor")}
+              onkeydown={(e) =>
+                onRadioGroupKeydown(e, ACCENTS, theme.accent, (v) =>
+                  theme.setAccent(v as (typeof ACCENTS)[number]),
+                )}
             >
               {#each ACCENTS as accent (accent)}
                 <button
@@ -538,6 +587,7 @@
                   style={`background: var(--${accent});`}
                   role="radio"
                   aria-checked={theme.accent === accent}
+                  tabindex={theme.accent === accent ? 0 : -1}
                   aria-label={accent}
                   title={accent}
                   onclick={() => theme.setAccent(accent)}
@@ -716,7 +766,7 @@
           {#if ScheduleViewComp}
             <ScheduleViewComp
               studentId={userId}
-              bind:dateLabel={scheduleDate}
+              ondatelabel={(label) => (scheduleDate = label)}
               bind:this={pages.home}
             />
           {:else}
@@ -1126,7 +1176,8 @@
   }
 
   .toolbar-btn {
-    height: 30px;
+    height: var(--hit-step);
+    min-height: var(--hit-step);
     padding: 0 14px;
     border: none;
     border-radius: 8px;
@@ -1214,12 +1265,19 @@
     background: var(--surface-base);
     border: 1px solid transparent;
     border-radius: 8px;
+    min-height: var(--hit-step);
     padding: 6px 4px;
     cursor: pointer;
     transition:
       background 0.12s ease,
       transform 0.12s ease,
       box-shadow 0.12s ease;
+  }
+
+  .settings-flavor:focus-visible,
+  .accent-dot:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 
   .settings-flavor:active {
@@ -1384,7 +1442,6 @@
     }
 
     .toolbar-btn {
-      height: 26px;
       padding: 0 10px;
       font-size: 12px;
     }

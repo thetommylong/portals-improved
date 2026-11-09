@@ -56,6 +56,7 @@ The demo site (`pnpm site:dev` / `pnpm site:build:static`) is a **developer prev
 2. Declare hosts on the adapter’s `hosts` field.
 3. Set `features` for what the portal supports; the shell hides the rest.
 4. Add the class to `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts`.
+5. Add the same host fragment to `LIVE_HOST_FRAGMENTS` in `src/adapters/hosts.ts` (idle gate).
 
 Copy `src/adapters/mock.ts` for a fake-data twin.
 

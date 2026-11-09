@@ -293,7 +293,8 @@
 
 #fsp-qol-root .marks-select {
   max-width: 340px;
-  height: 30px;
+  height: var(--hit-step);
+  min-height: var(--hit-step);
   padding: 0 10px;
   border: none;
   border-radius: 8px;
@@ -425,7 +426,7 @@
 }
 
 #fsp-qol-root .avg-badge:hover {
-  /* no scale on hover — DESIGN-SPEC §4 */
+  /* no scale on hover — DESIGN.md shapes */
 }
 
 #fsp-qol-root .avg-badge-cn {
@@ -510,10 +511,6 @@
   color: var(--text-secondary);
 }
 
-#fsp-qol-root .list-item-plain {
-  list-style: none;
-}
-
 /* ---------- global keyframes (shared across components) ---------- */
 
 @keyframes drawer-in {
@@ -557,13 +554,6 @@
   from {
     opacity: 0;
     transform: translateY(12px) scale(0.97);
-  }
-}
-
-@keyframes picker-in {
-  from {
-    transform: scale(0.96);
-    opacity: 0;
   }
 }
 

@@ -69,16 +69,14 @@
       const ctx = await runtime.adapter.getStudentContext();
       const campusId = ctx.campusId;
 
-      const [rewardStudents, disciplineStudents, levels, rules, campusRewards] =
+      const [rewardStudents, disciplineStudents, rules, campusRewards] =
         await Promise.all([
           runtime.adapter.getRewardsByStudent(studentId),
           runtime.adapter.getDisciplineRulesByStudent(studentId),
-          runtime.adapter.getDisciplineLevels(campusId),
           runtime.adapter.getDisciplineRules(campusId),
           runtime.adapter.getRewardsByCampus(campusId),
         ]);
 
-      const levelMap = new Map(levels.map((l) => [l.disciplineLevelId, l]));
       const ruleMap = new Map(rules.map((r) => [r.disciplineRuleId, r]));
       const rewardMap = new Map(campusRewards.map((r) => [r.rewardId, r]));
 

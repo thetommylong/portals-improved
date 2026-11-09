@@ -27,16 +27,6 @@ export function readWeek(studentId: string, weekKey: string): WeekCache | null {
   return raw;
 }
 
-export function clearScheduleCaches(studentId?: string): void {
-  if (!studentId) return;
-  const indexKey = `${PREFIX}${studentId}:index`;
-  const index: string[] = GM_getValue<string[]>(indexKey, []);
-  for (const weekKey of index) {
-    GM_deleteValue(`${PREFIX}${studentId}:${weekKey}`);
-  }
-  GM_deleteValue(indexKey);
-}
-
 export function writeWeek(
   studentId: string,
   weekKey: string,

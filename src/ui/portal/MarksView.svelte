@@ -5,21 +5,13 @@
   import { runtime } from "../../adapters/runtime.svelte";
   import type { MarkCommon, Term } from "../../types/portal";
   import { notify } from "../../notifications";
-  import { i18n, t } from "../../i18n.svelte";
+  import { t } from "../../i18n.svelte";
   import {
     readTermMarks,
     readTerms,
     writeTermMarks,
     writeTerms,
   } from "../../marksCache";
-  import {
-    parseScore,
-    getGKValue,
-    getCKValue,
-    semesterAverage,
-    requiredFinal,
-    yearlyAverage,
-  } from "./marksHelpers";
   import { exportGradesToCSV } from "./csvExport";
   import PredictorDrawer from "./PredictorDrawer.svelte";
 
@@ -45,11 +37,6 @@
   const sortedTerms = $derived(
     [...terms].sort((a, b) => b.startDate.localeCompare(a.startDate)),
   );
-
-  interface TermGroup {
-    label: string | null;
-    items: Term[];
-  }
 
   const termGroups = $derived.by(() => {
     const main: Term[] = [];
@@ -384,7 +371,8 @@
   }
 
   .btn-marks {
-    height: 30px;
+    height: var(--hit-step);
+    min-height: var(--hit-step);
     padding: 0 12px;
     border: none;
     border-radius: 8px;

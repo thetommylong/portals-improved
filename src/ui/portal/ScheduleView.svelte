@@ -14,10 +14,10 @@
 
   let {
     studentId,
-    dateLabel = $bindable(""),
+    ondatelabel,
   }: {
     studentId: string;
-    dateLabel?: string;
+    ondatelabel?: (label: string) => void;
   } = $props();
 
   const HOUR_PX = 96;
@@ -202,7 +202,7 @@
   );
 
   $effect(() => {
-    dateLabel = computedLabel;
+    ondatelabel?.(computedLabel);
   });
 
   export function goTo(delta: number) {

@@ -4,8 +4,6 @@
 import { flavors, type FlavorName } from "@catppuccin/palette";
 import { inkTowardText } from "./themeTokens";
 
-export { inkTowardText } from "./themeTokens";
-
 export const FLAVOR_OPTIONS = [
   "system",
   "latte",

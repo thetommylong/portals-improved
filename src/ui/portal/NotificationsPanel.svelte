@@ -116,15 +116,9 @@
   });
 </script>
 
-<svelte:window
-  onkeydown={(e) => {
-    if (open && e.key === "Escape") onclose();
-  }}
-/>
-
 {#if open}
   <div class="notif-backdrop" role="presentation" onclick={onclose}>
-    <!-- click stop only: Escape handled on window; focus trap owns Tab -->
+    <!-- click stop only: Escape + Tab owned by attachOverlayFocus -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
       class="notif-panel"
@@ -259,6 +253,11 @@
   .notif-close > :global(.fsp-icon) {
     display: block;
     translate: 0 -0.5px;
+  }
+
+  .notif-close:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 
   .notif-close:hover {

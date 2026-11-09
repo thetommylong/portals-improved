@@ -39,5 +39,3 @@ ${buildCompactIndex()}`);
 
   return sections.join("\n\n");
 }
-
-export { buildCompactIndex };

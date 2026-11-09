@@ -4,8 +4,6 @@
 import { createIconSvg, type IconName } from "./ui/icons";
 
 export type ToastKind = "info" | "success" | "error";
-/** @deprecated Use ToastKind */
-export type NotificationType = ToastKind;
 
 const DURATION = 4000;
 
