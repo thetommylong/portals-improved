@@ -284,8 +284,8 @@ export class MockAdapter implements PortalAdapter {
     });
   }
 
-  getNlpcByStudent(): Promise<void> {
-    return Promise.resolve();
+  getNlpcByStudent(): Promise<unknown> {
+    return Promise.resolve({ mock: true });
   }
 
   getGradesByCampus(): Promise<Grade[]> {

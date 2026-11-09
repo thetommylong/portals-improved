@@ -283,7 +283,12 @@
   <div class="schedule-body" bind:this={scroller}>
     {#if isDesktop}
       <div class="schedule-inner" style="height: {gridHeight + DAY_HEADER_H}px">
-        <div class="time-gutter" style="padding-top: {DAY_HEADER_H}px">
+        <div class="time-gutter">
+          <div
+            class="time-gutter-corner"
+            aria-hidden="true"
+            style="height: {DAY_HEADER_H}px"
+          ></div>
           {#each hours as hour (hour)}
             <span
               class="time-label"
@@ -433,6 +438,15 @@
     flex-shrink: 0;
   }
 
+  /* Sticky cap aligned with .day-headers so hour labels don't scroll past. */
+  .time-gutter-corner {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    background: var(--mantle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
   .time-label {
     position: absolute;
     right: 10px;
@@ -550,13 +564,8 @@
   }
 
   @media (max-width: 768px) {
-    .time-gutter {
-      width: 44px;
-    }
-
     .time-label {
       right: 6px;
-      font-size: 11px;
     }
 
     .event {

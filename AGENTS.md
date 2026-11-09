@@ -20,6 +20,7 @@ The userscript matches **every site** (`match: ['*://*/*']`) but stays a no-op o
 - Entry `src/index.ts` auto-discovers every `src/scripts/*.ts` via `import.meta.glob`. Each script exports a default (optionally async) function and optionally `export const portal` (a host fragment) to restrict itself to one portal — matched via `matchesHost`, and bypassed under a forced mock. Nothing needs registering — drop in a file and it loads.
 - Scripts initialize concurrently (`Promise.all`); the `NN-` filename prefixes do not sequence execution.
 - `src/adapters/` implements the `PortalAdapter` contract from `src/sdk/adapter.ts`: `FspLiveAdapter` talks to https://api.fpt.edu.vn/fsp/api and claims `hosts: ["fsp"]` (auth token scraped at call time from localStorage / `<meta name="Authorization">` / cookie, DTOs in `src/types/portal.ts`), `MockAdapter` fakes it for previews and claims no hosts. UI and SDK only ever call through the abstract adapter, never the concrete classes.
+- Chat/agent tools in `src/sdk/registry.ts` expose many adapter methods that the UI never calls — that surface is intentional for the assistant, not dead code.
 - UI is Svelte 5 `mount()`ed into the host page; portal styles ship as a `?inline` CSS import.
 - Runtime secrets go through GM storage via `src/secrets.ts` (keys prefixed `fsp:`), not `.env`.
 
