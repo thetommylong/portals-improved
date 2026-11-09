@@ -4,12 +4,20 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "src/**"
+      - "site/**"
+      - "scripts/flatten-site.mjs"
+      - "vite.site.config.ts"
+      - "svelte.config.js"
+      - "tsconfig.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/site.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -18,9 +26,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -37,11 +42,24 @@ jobs:
       - name: Build site
         run: pnpm site:build:static
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
-        with:
-          path: dist-site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+      # Same direct-upload path as PR preview (npx wrangler; see preview.yml).
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          LOG=$(mktemp)
+          npx --yes wrangler@4 pages deploy dist-site \
+            --project-name=portals-improved \
+            --branch=main \
+            --commit-hash="${{ github.sha }}" \
+            --commit-dirty=true \
+            | tee "$LOG"
+          URLS=$(grep -oE 'https://[a-zA-Z0-9._-]+\.pages\.dev' "$LOG" | sort -u)
+          URL=$(printf '%s\n' "$URLS" | grep -v '^https://pr-' | head -n1 || true)
+          if [ -z "$URL" ]; then URL=$(printf '%s\n' "$URLS" | head -n1 || true); fi
+          echo "deployment-url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Parsed URL=$URL"
+          test -n "$URL"
