@@ -15,7 +15,7 @@ export function hasLiveAdapter(): boolean {
 /**
  * Mock override. GM storage always wins. The `?adapter=mock` query param is
  * honored only on a live-adapter host so arbitrary pages cannot force the
- * shell via a crafted URL (DESIGN-SPEC / security remediation).
+ * shell via a crafted URL (DESIGN.md / security remediation).
  */
 export function isMockForced(): boolean {
   if (GM_getValue<string>(ADAPTER_KEY, "") === "mock") return true;

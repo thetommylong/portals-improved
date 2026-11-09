@@ -5,7 +5,6 @@ import { FspLiveAdapter } from "./fsp-live";
 import { MockAdapter } from "./mock";
 import { matchesHost, type PortalAdapter } from "../sdk/adapter";
 import { ADAPTER_KEY, isMockForced } from "./gate";
-import { LIVE_HOST_FRAGMENTS } from "./hosts";
 
 const HOST = window.location.hostname;
 
@@ -27,7 +26,6 @@ function resolveAdapter(): PortalAdapter {
 }
 
 export { hasLiveAdapter, isMockForced } from "./gate";
-export { LIVE_HOST_FRAGMENTS };
 
 class AdapterRuntime {
   adapter = $state<PortalAdapter>(resolveAdapter());

@@ -647,22 +647,28 @@
   }
 
   .send-btn {
-    width: 36px;
-    height: 36px;
+    width: var(--hit-icon);
+    height: var(--hit-icon);
+    min-width: var(--hit-icon);
+    min-height: var(--hit-icon);
     border: none;
     border-radius: 10px;
     background: var(--accent-strong);
     color: var(--base);
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-grid;
+    place-items: center;
     flex-shrink: 0;
     transition: opacity 0.15s ease;
   }
 
   .send-btn:hover:not(:disabled) {
     opacity: 0.85;
+  }
+
+  .send-btn:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
   }
 
   .send-btn:disabled {

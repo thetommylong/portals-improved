@@ -3,9 +3,6 @@
 
 import { modeFromPointerType, type PointerMode } from "./pointer";
 
-export type { PointerMode } from "./pointer";
-export { modeFromPointerType } from "./pointer";
-
 function seedMode(): PointerMode {
   return window.matchMedia("(pointer: coarse)").matches ? "coarse" : "fine";
 }

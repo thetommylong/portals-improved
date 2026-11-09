@@ -98,6 +98,6 @@ Radius scale: tight 6 / control 8 / card 12 / surface 16. Status pills and badge
 
 - Introduce purple-on-white gradient marketing chrome or flat single-hex backgrounds as the brand.
 - Use `999px` pill radii for status badges.
-- Claim SVG icons or route-level code-splitting in docs until those land on the branch.
 - Put stats, schedules, or promo chips in a marketing hero (demo site is preview-only).
 - Bypass the adapter boundary or talk to FSP APIs from UI components directly.
+

@@ -31,16 +31,6 @@ export function readTermMarks(
   return raw;
 }
 
-export function clearMarksCaches(studentId?: string): void {
-  if (!studentId) return;
-  const indexKey = `${MARKS_PREFIX}${studentId}:index`;
-  const index: string[] = GM_getValue<string[]>(indexKey, []);
-  for (const termId of index) {
-    GM_deleteValue(`${MARKS_PREFIX}${studentId}:${termId}`);
-  }
-  GM_deleteValue(indexKey);
-}
-
 export function writeTermMarks(
   studentId: string,
   termId: string,

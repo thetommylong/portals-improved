@@ -3,15 +3,10 @@
   // Copyright (C) 2026 thetommylong
 
   import { runtime } from "../../adapters/runtime.svelte";
-  import type {
-    StudentFeedbackLecturerResult,
-    FeedbackQuestionResponse,
-    FeedbackAnswerUpdate,
-    FeedbackCommentUpdate,
-    FeedbackStatusUpdate,
-  } from "../../types/portal";
+  import type { StudentFeedbackLecturerResult } from "../../types/portal";
   import { notify } from "../../notifications";
   import { t } from "../../i18n.svelte";
+  import Icon from "../Icon.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -274,8 +269,10 @@
         class="fb-close-btn"
         aria-label={t("feedback.close")}
         onclick={closeForm}
-        disabled={submitting}>&times;</button
+        disabled={submitting}
       >
+        <Icon name="close" size={18} />
+      </button>
     </header>
 
     <div class="fb-dialog-body">
@@ -381,13 +378,37 @@
   }
 
   .fb-close-btn {
+    display: inline-grid;
+    place-items: center;
+    width: var(--hit-close);
+    height: var(--hit-close);
+    padding: 0;
     background: none;
     border: none;
-    padding: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
     color: inherit;
+  }
+
+  .fb-close-btn > :global(.fsp-icon) {
+    display: block;
+    translate: 0 -0.5px;
+  }
+
+  .fb-close-btn:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
+  }
+
+  .fb-answers .fb-opt:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
+  }
+
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 
   .fb-q-card {

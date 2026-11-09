@@ -2,11 +2,14 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { onMount } from "svelte";
   import type { ConfirmRequest } from "../../sdk";
   import { t } from "../../i18n.svelte";
   import Icon from "../Icon.svelte";
 
   let { request }: { request: ConfirmRequest } = $props();
+
+  let approveBtn: HTMLButtonElement | undefined = $state();
 
   function approve() {
     request.resolve(true);
@@ -15,9 +18,13 @@
   function reject() {
     request.resolve(false);
   }
+
+  onMount(() => {
+    approveBtn?.focus();
+  });
 </script>
 
-<div class="confirm-card" role="alert">
+<div class="confirm-card" role="group" aria-label={t("confirm.title")}>
   <div class="confirm-header">
     <Icon name="warning" size={24} />
     <span>{t("confirm.title")}</span>
@@ -34,7 +41,8 @@
     {/each}
   </div>
   <div class="confirm-actions">
-    <button class="btn-approve" onclick={approve}>{t("confirm.approve")}</button
+    <button class="btn-approve" bind:this={approveBtn} onclick={approve}
+      >{t("confirm.approve")}</button
     >
     <button class="btn-reject" onclick={reject}>{t("confirm.reject")}</button>
   </div>
@@ -104,6 +112,7 @@
 
   .confirm-actions button {
     flex: 1;
+    min-height: var(--hit-nav);
     padding: 7px 14px;
     border: none;
     border-radius: 8px;
@@ -114,6 +123,11 @@
     transition:
       background 0.15s ease,
       opacity 0.15s ease;
+  }
+
+  .confirm-actions button:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 
   .btn-approve {

@@ -155,7 +155,7 @@
     // always show exactly 4 ĐGTX slots; fill from sorted entries, ignore 5th+
     detailTXSlots = [null, null, null, null];
     let i = 0;
-    for (const [key, val] of txEntries) {
+    for (const [, val] of txEntries) {
       if (i < 4) detailTXSlots[i] = val;
       i++;
     }
@@ -206,8 +206,10 @@
     return requiredFinal(txVals, gk, detailTarget);
   });
 
-  // re-seed slider positions when target changes
+  // Seed + re-seed slider positions when marks/target change.
+  // Must stay writable $state (sliders bind:value into projections[courseId]).
   $effect(() => {
+    void marks;
     void clampedTarget;
     const newProjs: Record<string, number> = {};
     for (const m of marks) {

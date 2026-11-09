@@ -52,7 +52,6 @@
   "toast.marksStale": "Không làm mới được. Đang hiển thị điểm đã lưu.",
   "toast.standingFailed": "Không tải được dữ liệu",
   "status.loading": "Đang tải…",
-  "status.retry": "Thử lại",
   "label.term": "Học kỳ",
   "label.teacher": "GV",
   "label.files": "Tệp",
@@ -63,7 +62,6 @@
   "label.certificate": "Chứng chỉ",
   "label.attendance": "Điểm danh",
   "label.created": "Ngày tạo",
-  "label.all": "Tất cả",
   "label.yes": "Có",
   "label.done": "Đã có",
   "label.tickets": "{n} vé",
@@ -244,7 +242,6 @@
   "chat.unknownCommand": "Lệnh không xác định: {cmd}\n\n{help}",
   "chat.help": "Các lệnh có sẵn:\n  /models  Liệt kê và chọn model\n  /key     Cài API key\n  /url     Đặt base URL\n  /model   Xem hoặc đặt model hiện tại\n  /clear   Xóa lịch sử hội thoại\n  /help    Xem trợ giúp này",
   "unavailable.msg": "Tính năng này không khả dụng với cổng hiện tại.",
-  "schedule.empty": "Không có tiết tuần này. Chuyển sang tuần khác.",
   "aria.appName": "Portals Improved",
   "aria.skipToMain": "Chuyển tới nội dung chính"
 }

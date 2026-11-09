@@ -24,11 +24,6 @@
     ),
   );
 
-  interface TermGroup {
-    label: string | null;
-    items: Term[];
-  }
-
   const termGroups = $derived.by(() => {
     const main: Term[] = [];
     const extras = new Map<string, Term[]>();
@@ -47,8 +42,6 @@
       ...[...extras].map(([label, items]) => ({ label, items })),
     ];
   });
-
-  const selectedTerm = $derived(terms.find((t) => t.termId === selectedTermId));
 
   const colCount = $derived(
     Math.max(1, Math.floor((gridWidth - 40 + 12) / 312)),

@@ -52,7 +52,6 @@
   "toast.marksStale": "Couldn't refresh. Showing saved marks.",
   "toast.standingFailed": "Failed to load standing",
   "status.loading": "Loading…",
-  "status.retry": "Retry",
   "label.term": "Semester",
   "label.teacher": "Lecturer",
   "label.files": "Files",
@@ -63,7 +62,6 @@
   "label.certificate": "Certificate",
   "label.attendance": "Attendance",
   "label.created": "Created",
-  "label.all": "All",
   "label.yes": "Yes",
   "label.done": "Recorded",
   "label.tickets": "{n} tickets",
@@ -244,7 +242,6 @@
   "chat.unknownCommand": "Unknown command: {cmd}\n\n{help}",
   "chat.help": "Available commands:\n  /models  List and select available models\n  /key     Set your API key\n  /url     Set the API base URL\n  /model   Show or set the current model\n  /clear   Clear chat history\n  /help    Show this help",
   "unavailable.msg": "This portal doesn't support this yet.",
-  "schedule.empty": "No lessons this week. Swipe to another week.",
   "aria.appName": "Portals Improved",
   "aria.skipToMain": "Skip to main content"
 }
