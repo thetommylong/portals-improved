@@ -35,10 +35,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build site
-        run: |
-          pnpm site:build
-          mv dist-site/site/index.html dist-site/index.html
-          sed -i 's#\.\./assets/#assets/#g' dist-site/index.html
+        run: pnpm site:build:static
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
