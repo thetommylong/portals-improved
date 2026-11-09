@@ -41,8 +41,11 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Direct-upload project (create once in the Cloudflare dashboard).
+          # Direct-upload project created via API as `portals-improved`.
           command: pages deploy dist-site --project-name=portals-improved --branch=pr-${{ github.event.pull_request.number }}
+          # Avoid `pnpm add wrangler` (this repo blocks dependency build scripts).
+          packageManager: npm
+          wranglerVersion: "4"
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment preview URL

@@ -8,6 +8,7 @@
 
 import { readFileSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import process from "node:process";
 
 const root = "dist-site";
 const nested = join(root, "site", "index.html");
