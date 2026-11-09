@@ -421,11 +421,10 @@
   }
 
   .chat-icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
+    display: inline-grid;
+    place-items: center;
+    width: var(--hit-icon);
+    height: var(--hit-icon);
     border: none;
     border-radius: 8px;
     background: transparent;
@@ -434,6 +433,11 @@
     transition:
       background 0.15s ease,
       color 0.15s ease;
+  }
+
+  .chat-icon-btn > :global(.fsp-icon) {
+    display: block;
+    translate: 0 -0.5px;
   }
 
   .chat-icon-btn:hover {

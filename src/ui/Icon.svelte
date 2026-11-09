@@ -34,6 +34,7 @@
   .fsp-icon {
     display: block;
     flex-shrink: 0;
+    overflow: visible;
     fill: currentColor;
     transition: fill-opacity 0.12s ease;
   }

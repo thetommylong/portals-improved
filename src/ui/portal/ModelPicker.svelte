@@ -153,15 +153,20 @@
   }
 
   .picker-close {
-    display: grid;
+    display: inline-grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: var(--hit-close);
+    height: var(--hit-close);
     border: none;
     border-radius: var(--radius-control);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
+  }
+
+  .picker-close > :global(.fsp-icon) {
+    display: block;
+    translate: 0 -0.5px;
   }
 
   .picker-close:hover {

@@ -29,8 +29,35 @@ export default defineConfig({
   define: {
     __BUILD__: JSON.stringify(build),
   },
-  plugins: [svelte()],
+  plugins: [
+    svelte(),
+    {
+      // Entry lives at site/index.html; Vite's printed Local URL is still `/`.
+      // Rewrite common URLs so `/`, `/index.html`, and `/site` (no slash) work.
+      name: 'serve-site-entry',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          const raw = req.url ?? '';
+          const qIndex = raw.indexOf('?');
+          const pathname = qIndex === -1 ? raw : raw.slice(0, qIndex);
+          const qs = qIndex === -1 ? '' : raw.slice(qIndex);
+          if (
+            pathname === '/' ||
+            pathname === '/index.html' ||
+            pathname === '/site' ||
+            pathname === '/site/'
+          ) {
+            req.url = `/site/index.html${qs}`;
+          }
+          next();
+        });
+      },
+    },
+  ],
   base: './',
+  server: {
+    open: '/',
+  },
   build: {
     outDir: 'dist-site',
     rollupOptions: { input: 'site/index.html' },

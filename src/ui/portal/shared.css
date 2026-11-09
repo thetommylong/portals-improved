@@ -17,6 +17,34 @@
   background: var(--surface-base);
   color: var(--text);
   font-family: "Google Sans Flex", system-ui, sans-serif;
+  /* Hit targets: fine (mouse/pen) defaults; coarse overridden below. */
+  --hit-icon: 32px;
+  --hit-nav: 36px;
+  --hit-close: 28px;
+  --hit-step: 30px;
+  --hit-dot: 24px;
+  --hit-dot-pad: 0px;
+}
+
+/* Before JS sets data-pointer-mode, honor the primary-pointer media query. */
+@media (pointer: coarse) {
+  #fsp-qol-root:not([data-pointer-mode]) {
+    --hit-icon: 44px;
+    --hit-nav: 44px;
+    --hit-close: 44px;
+    --hit-step: 44px;
+    --hit-dot: 44px;
+    --hit-dot-pad: 10px;
+  }
+}
+
+#fsp-qol-root[data-pointer-mode="coarse"] {
+  --hit-icon: 44px;
+  --hit-nav: 44px;
+  --hit-close: 44px;
+  --hit-step: 44px;
+  --hit-dot: 44px;
+  --hit-dot-pad: 10px;
 }
 
 /* Zero-specificity reset: nukes bare host-page element styles (ul, p, a, …)
