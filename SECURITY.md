@@ -8,13 +8,17 @@ Security fixes are applied to the latest `main` branch of [portals-improved](htt
 
 **Do not open a public GitHub issue for security reports.**
 
-Email **hi@thetommylong.is-a.dev** with:
+Use [GitHub private vulnerability reporting](https://github.com/thetommylong/portals-improved/security/advisories/new) so the report stays private until a fix is ready.
+
+Include:
 
 - A short description of the issue and impact
 - Steps to reproduce (or a proof of concept)
 - Affected commit / release tag if known
 
 You should get an acknowledgement within a few days. Please give a reasonable window before any public disclosure.
+
+If you cannot use GitHub advisories, email **hi@thetommylong.is-a.dev** with the same details.
 
 ## Scope notes
 
