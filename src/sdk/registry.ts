@@ -382,7 +382,7 @@ const TOOLS: ToolMeta[] = [
         description: "student ID",
       },
     ],
-    returnType: "void",
+    returnType: "unknown",
   },
   {
     name: "getGradesByCampus",

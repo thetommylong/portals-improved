@@ -135,34 +135,6 @@ function gmFetch<T>(
   });
 }
 
-function gmFetchRaw(
-  url: string,
-  method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
-): Promise<{ status: number; response: unknown }> {
-  return new Promise((resolve, reject) => {
-    GM_xmlhttpRequest({
-      method,
-      url,
-      headers: {
-        Accept: "application/json, text/plain, */*",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
-      },
-      responseType: "json",
-      onload(res) {
-        resolve({ status: res.status, response: res.response });
-      },
-      onerror(err) {
-        reject(new Error(`Network error: ${err.statusText || "unknown"}`));
-      },
-      timeout: 15_000,
-      ontimeout() {
-        reject(new Error("Request timed out"));
-      },
-    });
-  });
-}
-
 /** Soft preference: when both exist, favor compact data URLs over huge ones. */
 const PREFERRED_DATA_URL_CHARS = 32_768;
 
@@ -428,10 +400,10 @@ export class FspLiveAdapter implements PortalAdapter {
     academicYear: string,
     termOrder: number,
     studentId: string,
-  ): Promise<void> {
-    return gmFetchRaw(
+  ): Promise<unknown> {
+    return gmFetch<unknown>(
       `${BASE}/education-management/attitude-quality-students/${academicYear}/${termOrder}/${studentId}/get-nlpc-by-student`,
-    ).then(() => {});
+    );
   }
 
   getGradesByCampus(campusId: string): Promise<Grade[]> {

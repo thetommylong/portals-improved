@@ -114,7 +114,7 @@ export interface PortalAdapter {
     academicYear: string,
     termOrder: number,
     studentId: string,
-  ): Promise<void>;
+  ): Promise<unknown>;
   getGradesByCampus(campusId: string): Promise<Grade[]>;
   getMainClassesByStudent(
     studentId: string,
