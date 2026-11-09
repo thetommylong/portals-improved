@@ -43,17 +43,22 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          JSON=$(npx --yes wrangler@4 pages deploy dist-site \
+          LOG=$(mktemp)
+          npx --yes wrangler@4 pages deploy dist-site \
             --project-name=portals-improved \
             --branch="pr-${{ github.event.pull_request.number }}" \
             --commit-hash="${{ github.event.pull_request.head.sha }}" \
             --commit-dirty=true \
-            --json)
-          echo "$JSON"
-          URL=$(echo "$JSON" | jq -r '.url // empty')
-          ALIAS=$(echo "$JSON" | jq -r '(.alias // .aliases[0] // empty)')
+            | tee "$LOG"
+          # Wrangler prints deployment + alias URLs; prefer the alias for PR sticky links.
+          URLS=$(grep -oE 'https://[a-zA-Z0-9._-]+\.pages\.dev' "$LOG" | sort -u)
+          URL=$(printf '%s\n' "$URLS" | grep -v '^https://pr-' | head -n1 || true)
+          ALIAS=$(printf '%s\n' "$URLS" | grep '^https://pr-' | head -n1 || true)
+          if [ -z "$URL" ]; then URL=$(printf '%s\n' "$URLS" | head -n1 || true); fi
+          if [ -z "$ALIAS" ]; then ALIAS="$URL"; fi
           echo "deployment-url=$URL" >> "$GITHUB_OUTPUT"
           echo "pages-deployment-alias-url=$ALIAS" >> "$GITHUB_OUTPUT"
+          echo "Parsed URL=$URL ALIAS=$ALIAS"
           test -n "$URL"
 
       - name: Comment preview URL
