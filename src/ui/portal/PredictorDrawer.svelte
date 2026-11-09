@@ -647,12 +647,11 @@
   }
 
   .drawer-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 2px;
+    display: inline-grid;
+    place-items: center;
+    width: var(--hit-close);
+    height: var(--hit-close);
+    padding: 0;
     border: none;
     border-radius: 8px;
     background: transparent;
@@ -660,6 +659,12 @@
     font-family: inherit;
     font-size: 13px;
     cursor: pointer;
+  }
+
+  .drawer-close > :global(.fsp-icon),
+  .drawer-close > :global(.drawer-close-icon) {
+    display: block;
+    translate: 0 -0.5px;
   }
 
   .drawer-close:hover {

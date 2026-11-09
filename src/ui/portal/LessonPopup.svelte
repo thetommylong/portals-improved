@@ -248,12 +248,11 @@
   }
 
   .popup-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 2px;
+    display: inline-grid;
+    place-items: center;
+    width: var(--hit-close);
+    height: var(--hit-close);
+    padding: 0;
     border-radius: 8px;
     background: transparent;
     border: none;
@@ -263,6 +262,11 @@
     transition:
       opacity 0.15s ease,
       background 0.15s ease;
+  }
+
+  .popup-close > :global(.fsp-icon) {
+    display: block;
+    translate: 0 -0.5px;
   }
 
   .popup-close:hover {

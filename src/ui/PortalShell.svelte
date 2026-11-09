@@ -15,6 +15,7 @@
     applyTheme,
     theme,
   } from "../theme.svelte";
+  import { pointer } from "../pointer.svelte";
   import Icon from "./Icon.svelte";
   import type { IconName } from "./icons";
   import {
@@ -245,6 +246,8 @@
   let settingsOpen = $state(false);
   let settingsBtn: HTMLButtonElement | undefined = $state();
   let settingsPop: HTMLDivElement | undefined = $state();
+
+  pointer.start();
 
   $effect(() => {
     void theme.flavor;
@@ -835,13 +838,13 @@
   }
 
   .icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 44px;
-    min-height: 44px;
-    width: 44px;
-    height: 44px;
+    display: inline-grid;
+    place-items: center;
+    /* Sized via --hit-* from pointer mode (media + last pointerType). */
+    min-width: var(--hit-icon);
+    min-height: var(--hit-icon);
+    width: var(--hit-icon);
+    height: var(--hit-icon);
     border: none;
     border-radius: 8px;
     background: transparent;
@@ -853,6 +856,8 @@
 
   .icon-btn > :global(.fsp-icon) {
     display: block;
+    /* Material-derived paths sit slightly low in the 24 box; nudge optically. */
+    translate: 0 -0.5px;
   }
 
   .icon-btn:focus-visible {
@@ -999,7 +1004,8 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    height: 36px;
+    height: var(--hit-nav);
+    min-height: var(--hit-nav);
     flex-shrink: 0;
     padding: 4px 12px;
     border: none;
@@ -1034,11 +1040,12 @@
   }
 
   .nav-item :global(.nav-icon) {
-    box-sizing: border-box;
-    width: 28px;
-    height: 28px;
-    padding: 3px;
+    box-sizing: content-box;
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
+    /* Match header icon optical centering (path weight sits low in the viewBox). */
+    translate: 0 -0.5px;
   }
 
   .sidebar .nav-item {
@@ -1141,10 +1148,10 @@
   }
 
   .toolbar-nav {
-    min-width: 44px;
-    min-height: 44px;
-    width: 44px;
-    height: 44px;
+    min-width: var(--hit-step);
+    min-height: var(--hit-step);
+    width: var(--hit-step);
+    height: var(--hit-step);
     padding: 0;
     font-size: 16px;
     line-height: 1;
@@ -1232,15 +1239,15 @@
 
   .settings-accents {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(auto-fill, minmax(var(--hit-dot), 1fr));
+    gap: 6px;
     margin-bottom: 14px;
   }
 
   .accent-dot {
-    width: 44px;
-    height: 44px;
-    padding: 10px;
+    width: var(--hit-dot);
+    height: var(--hit-dot);
+    padding: var(--hit-dot-pad);
     box-sizing: border-box;
     border-radius: 50%;
     border: 2px solid transparent;
@@ -1380,13 +1387,6 @@
       height: 26px;
       padding: 0 10px;
       font-size: 12px;
-    }
-
-    .toolbar-nav {
-      min-width: 44px;
-      min-height: 44px;
-      width: 44px;
-      height: 44px;
     }
 
     .schedule-date {
