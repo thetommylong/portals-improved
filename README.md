@@ -8,7 +8,7 @@ A userscript that replaces FSP’s student portal UI (`fsp.fpt.edu.vn`) with a p
 ## Install
 
 1. Install **Violentmonkey** or **Tampermonkey** (desktop or Firefox Android).
-2. Prefer a **tag-pinned** install URL (immutable asset for that release), e.g. `https://github.com/thetommylong/portals-improved/releases/download/v1.1.1/script.user.js`. The convenience link **[latest/download/script.user.js](https://github.com/thetommylong/portals-improved/releases/latest/download/script.user.js)** tracks the mutable GitHub “latest” release and can change under you.
+2. Click **[Portals Improved.user.js](https://github.com/thetommylong/portals-improved/releases/latest/download/script.user.js)**.
 3. Open FSP and log in. After the session resolves, the userscript replaces the official UI.
 
 The userscript declares `match: *://*/*` so it survives host moves, but it self-gates on hostname and does nothing anywhere else.
@@ -41,7 +41,7 @@ Keys live in userscript storage, never in `.env`, never sent to us.
 
 On a live portal host, append `?adapter=mock`. Off-portal, set userscript storage `portal:adapter` to `mock` (URL `?adapter=mock` is ignored on unknown hosts).
 
-The demo site (`pnpm site:dev` / `pnpm site:build:static`) is a **developer preview** of the mock shell, not a marketing site. Production demo deploys to [Cloudflare Pages](https://portals-improved.pages.dev/) on `main`; open PRs get a preview alias commented on the PR. Demo chat API keys are held in memory only (not `localStorage`); see [SECURITY.md](SECURITY.md#demo-site-storage).
+The demo site (`pnpm site:dev` / `pnpm site:build`) is a **developer preview** of the mock shell, not a marketing site.
 
 ## Configuration
 
@@ -56,7 +56,6 @@ The demo site (`pnpm site:dev` / `pnpm site:build:static`) is a **developer prev
 2. Declare hosts on the adapter’s `hosts` field.
 3. Set `features` for what the portal supports; the shell hides the rest.
 4. Add the class to `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts`.
-5. Add the same host fragment to `LIVE_HOST_FRAGMENTS` in `src/adapters/hosts.ts` (idle gate).
 
 Copy `src/adapters/mock.ts` for a fake-data twin.
 
