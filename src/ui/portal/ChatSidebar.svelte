@@ -25,6 +25,7 @@
   import Icon from "../Icon.svelte";
   import { t } from "../../i18n.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
+  import { echoUserMessage, isClearCommand } from "./chatEcho";
 
   let {
     agentContext,
@@ -204,8 +205,21 @@
     if (confirmRequest) return;
 
     input = "";
+
+    // Typed /clear must wipe the light-DOM transcript as well as LLM history.
+    if (isClearCommand(text)) {
+      agent.clear();
+      messages = [];
+      clearConfirm = false;
+      return;
+    }
+
     sending = true;
-    messages = [...messages, { type: "message", content: text, role: "user" }];
+    // Never put /key secrets into light-DOM chat messages.
+    messages = [
+      ...messages,
+      { type: "message", content: echoUserMessage(text), role: "user" },
+    ];
 
     await agent.send(
       text,
