@@ -10,6 +10,31 @@ import { readFileSync } from "node:fs";
 /** Keep in sync with `PENDING_CSS_KEY` in `src/css-inject.ts`. */
 const PENDING_CSS_KEY = "__portalsImprovedPendingCss";
 
+/**
+ * `JSON.stringify` alone is not enough when the result is spliced into
+ * constructed JS (CodeQL `js/bad-code-sanitization` / CWE-94): escape
+ * characters that can break out of an HTML `<script>` / userscript context.
+ */
+function jsCodeStringLiteral(value: string): string {
+  const charMap: Record<string, string> = {
+    "<": "\\u003C",
+    ">": "\\u003E",
+    "/": "\\u002F",
+    "\b": "\\b",
+    "\f": "\\f",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+    "\0": "\\0",
+    "\u2028": "\\u2028",
+    "\u2029": "\\u2029",
+  };
+  return JSON.stringify(value).replace(
+    /[<>/\b\f\n\r\t\0\u2028\u2029]/g,
+    (ch) => charMap[ch]!,
+  );
+}
+
 const pkg = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
 ) as {
@@ -52,7 +77,7 @@ export default defineConfig({
         // when shouldBoot() (see src/css-inject.ts / ADR 003).
         // Must be a self-contained expression: monkey stringifies this into the
         // userscript and cannot close over Vite-config imports.
-        cssSideEffects: `(css)=>{const k=${JSON.stringify(PENDING_CSS_KEY)};(globalThis[k]??=[]).push(css);}`,
+        cssSideEffects: `(css)=>{const k=${jsCodeStringLiteral(PENDING_CSS_KEY)};(globalThis[k]??=[]).push(css);}`,
       },
       userscript: {
         namespace: "npm/vite-plugin-monkey",
