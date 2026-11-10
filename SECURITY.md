@@ -23,3 +23,7 @@ If you cannot use GitHub advisories, email **hi@thetommylong.is-a.dev** with the
 ## Scope notes
 
 This project is a userscript / demo site that talks to third-party portal APIs. Reports about the upstream FSP portal itself belong with FPT; reports about dependency CVEs in build-only tooling are welcome but may be deferred until an upstream patch exists.
+
+## Demo site storage
+
+The Cloudflare Pages / `pnpm site:*` preview has no userscript manager. `src/site/gm-shim.ts` backs most GM prefs with `localStorage`, but **API keys (`fsp:sdk:api_key`) stay in memory only** so a page script cannot read them from web storage. Refreshing the demo drops the key; Tampermonkey/Violentmonkey installs still use real GM storage.

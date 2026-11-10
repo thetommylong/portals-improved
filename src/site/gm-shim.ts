@@ -2,12 +2,36 @@
 // Copyright (C) 2026 thetommylong
 
 // Standalone-preview shim: the demo site is a plain web page (no userscript
-// manager), so it installs localStorage-backed stand-ins for the small GM
-// surface the UI touches (persistence + the optional chat request path).
+// manager), so it installs stand-ins for the small GM surface the UI touches
+// (persistence + the optional chat request path).
 // Must be the FIRST import of the site entry so module-scope readers (i18n,
 // theme, runtime) see it before they evaluate.
+//
+// Storage choice: non-secret prefs stay in localStorage. API keys
+// (`fsp:sdk:api_key`) are memory-only — never written to page-readable
+// localStorage/sessionStorage on the demo. Refresh loses the demo key; that
+// is intentional. Real installs use Tampermonkey/Violentmonkey GM storage.
+
+const memoryStore = new Map<string, string>();
+
+/** Demo must not park API keys in page-readable web storage. */
+function isMemoryOnlyKey(key: string): boolean {
+  return key === "fsp:sdk:api_key";
+}
+
+// Drop any pre-fix leftovers so a page script cannot read an old key.
+localStorage.removeItem("fsp:sdk:api_key");
 
 window.GM_getValue = ((key, defaultValue) => {
+  if (isMemoryOnlyKey(key)) {
+    const raw = memoryStore.get(key);
+    if (raw === undefined) return defaultValue;
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      return raw as unknown;
+    }
+  }
   const raw = localStorage.getItem(key);
   if (raw === null) return defaultValue;
   try {
@@ -18,10 +42,19 @@ window.GM_getValue = ((key, defaultValue) => {
 }) as typeof GM_getValue;
 
 window.GM_setValue = ((key, value) => {
-  localStorage.setItem(key, JSON.stringify(value));
+  const encoded = JSON.stringify(value);
+  if (isMemoryOnlyKey(key)) {
+    memoryStore.set(key, encoded);
+    return;
+  }
+  localStorage.setItem(key, encoded);
 }) as typeof GM_setValue;
 
 window.GM_deleteValue = ((key) => {
+  if (isMemoryOnlyKey(key)) {
+    memoryStore.delete(key);
+    return;
+  }
   localStorage.removeItem(key);
 }) as typeof GM_deleteValue;
 
