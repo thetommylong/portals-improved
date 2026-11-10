@@ -8,7 +8,7 @@ A userscript that replaces FSP’s student portal UI (`fsp.fpt.edu.vn`) with a p
 ## Install
 
 1. Install **Violentmonkey** or **Tampermonkey** (desktop or Firefox Android).
-2. Click **[Portals Improved.user.js](https://github.com/thetommylong/portals-improved/releases/latest/download/script.user.js)**.
+2. Prefer a **tag-pinned** install URL (immutable asset for that release), e.g. `https://github.com/thetommylong/portals-improved/releases/download/v1.1.0/script.user.js`. The convenience link **[latest/download/script.user.js](https://github.com/thetommylong/portals-improved/releases/latest/download/script.user.js)** tracks the mutable GitHub “latest” release and can change under you.
 3. Open FSP and log in. After the session resolves, the userscript replaces the official UI.
 
 The userscript declares `match: *://*/*` so it survives host moves, but it self-gates on hostname and does nothing anywhere else.

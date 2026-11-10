@@ -42,7 +42,7 @@ jobs:
       - name: Build site
         run: pnpm site:build:static
 
-      # Same direct-upload path as PR preview (npx wrangler; see preview.yml).
+      # Lockfile-pinned wrangler (devDependency); same path as preview.yml.
       - name: Deploy to Cloudflare Pages
         id: deploy
         env:
@@ -51,7 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           LOG=$(mktemp)
-          npx --yes wrangler@4 pages deploy dist-site \
+          pnpm exec wrangler pages deploy dist-site \
             --project-name=portals-improved \
             --branch=main \
             --commit-hash="${{ github.sha }}" \

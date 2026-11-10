@@ -45,8 +45,7 @@ jobs:
       - name: Build demo site
         run: pnpm site:build:static
 
-      # Use npx (not wrangler-action): this repo's pnpm setup ignores dependency
-      # build scripts, and npm i into the workspace also fails peer resolution.
+      # Lockfile-pinned wrangler (devDependency); never floating wrangler@4 dist-tag.
       - name: Deploy to Cloudflare Pages
         id: deploy
         env:
@@ -55,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           LOG=$(mktemp)
-          npx --yes wrangler@4 pages deploy dist-site \
+          pnpm exec wrangler pages deploy dist-site \
             --project-name=portals-improved \
             --branch="pr-${{ github.event.pull_request.number }}" \
             --commit-hash="${{ github.event.pull_request.head.sha }}" \
