@@ -19,7 +19,7 @@ export async function boot(): Promise<void> {
   // Side-effect: resolve runtime adapter (live or mock).
   await import("./adapters/runtime.svelte");
 
-  const modules = import.meta.glob("./scripts/*.ts");
+  const modules = import.meta.glob(["./scripts/*.ts", "!./scripts/*.test.ts"]);
 
   const tasks = Object.entries(modules).map(async ([path, loader]) => {
     const mod = (await loader()) as Record<string, unknown>;

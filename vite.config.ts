@@ -60,6 +60,14 @@ export default defineConfig({
   define: {
     __BUILD__: JSON.stringify(build),
   },
+  build: {
+    // Explicit: production userscript should stay compacted (managers store raw).
+    minify: "esbuild",
+  },
+  esbuild: {
+    // Drop bundled dependency license banners from the .user.js; SPDX stays in source.
+    legalComments: "none",
+  },
   plugins: [
     svelte(),
     monkey({
