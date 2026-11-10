@@ -47,6 +47,25 @@ describe("validateOutboundUrl", () => {
     expect(() => validateOutboundUrl("data:text/plain,hi")).toThrow(
       OutboundUrlError,
     );
+    expect(() => validateOutboundUrl("file:///etc/passwd")).toThrow(
+      OutboundUrlError,
+    );
+  });
+
+  it("allows https EduNext-style LMS URLs used by LessonPopup", () => {
+    expect(validateOutboundUrl("https://fu.edunext.vn/course/123")).toBe(
+      "https://fu.edunext.vn/course/123",
+    );
+  });
+
+  it("rejects scheme-less and relative LMS-style inputs", () => {
+    expect(() => validateOutboundUrl("fu.edunext.vn/course/123")).toThrow(
+      OutboundUrlError,
+    );
+    expect(() => validateOutboundUrl("//fu.edunext.vn/course")).toThrow(
+      OutboundUrlError,
+    );
+    expect(() => validateOutboundUrl("/course/123")).toThrow(OutboundUrlError);
   });
 
   it("rejects unparseable input", () => {
