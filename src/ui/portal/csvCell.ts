@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-/** Spreadsheet formula / DDE prefixes, optionally preceded by tab or CR. */
-const CSV_FORMULA_PREFIX = /^[\t\r]*[=+\-@]/;
+/**
+ * Spreadsheet formula / DDE prefixes, optionally preceded by tab, CR, LF,
+ * space, or NBSP (common OWASP CSV-injection variants).
+ */
+const CSV_FORMULA_PREFIX = /^[\t\r\n \u00a0]*[=+\-@]/;
 
 /**
  * Neutralize CSV formula injection by prefixing dangerous cells with `'`.
- * Covers `=`, `+`, `-`, `@`, and tab/CR-prefixed variants (OWASP CSV injection).
+ * Covers `=`, `+`, `-`, `@`, and whitespace-prefixed variants (OWASP CSV injection).
  */
 export function neutralizeCsvFormula(value: string): string {
   if (CSV_FORMULA_PREFIX.test(value)) {

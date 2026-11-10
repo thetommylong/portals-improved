@@ -43,6 +43,19 @@ describe("pathSegment", () => {
     );
   });
 
+  it("rejects bare . and .. (WHATWG still collapses %2E / %2E%2E)", () => {
+    expect(() => pathSegment(".")).toThrow(/Invalid path segment/);
+    expect(() => pathSegment("..")).toThrow(/Invalid path segment/);
+
+    // Document why reject > encode: percent-dots still climb after URL parse.
+    expect(
+      resolvePath(`${BASE}/education-management/terms/get/default/%2E%2E`),
+    ).toBe("/fsp/api/education-management/terms/get/");
+    expect(
+      resolvePath(`${BASE}/education-management/terms/get/default/..`),
+    ).toBe("/fsp/api/education-management/terms/get/");
+  });
+
   it("preserves ordinary IDs and numeric segments", () => {
     expect(pathSegment("abc-123")).toBe("abc-123");
     expect(pathSegment(2026)).toBe("2026");
