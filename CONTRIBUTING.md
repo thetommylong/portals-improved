@@ -38,6 +38,10 @@ HMR is off (`hmr: false` in `vite.config.ts`) — install the served script once
 3. Ensure `pnpm lint`, `pnpm check`, `pnpm test`, and `pnpm build` all pass.
 4. Open the PR against `main`.
 
+## Userscript install pins
+
+When linking the userscript in docs or downstream installs, prefer a **tag URL** (`/releases/download/vX.Y.Z/script.user.js`) over `/releases/latest/download/...`. Releases still set `make_latest: true` for convenience; `latest` is intentionally mutable.
+
 ## Issue tracker
 
 Issues and specs live as GitHub Issues. See [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md) for the conventions the CLI-driven skills use.

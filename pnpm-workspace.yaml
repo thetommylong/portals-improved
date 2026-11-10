@@ -1,6 +1,14 @@
 packages:
   - "."
 
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+minimumReleaseAgeExclude:
+  - miniflare@5.20261109.0-beta
+  - wrangler@4.159.0
+
 overrides:
   source-map-js: 1.2.2
   "minimatch@>=7": 11.0.1
