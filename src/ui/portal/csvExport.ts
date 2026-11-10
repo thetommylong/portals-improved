@@ -2,15 +2,11 @@
 // Copyright (C) 2026 thetommylong
 
 import type { MarkCommon } from "../../types/portal";
-import { getGKValue, getCKValue } from "./marksHelpers";
 import { t } from "../../i18n.svelte";
+import { escapeCsvCell } from "./csvCell";
+import { getCKValue, getGKValue } from "./marksHelpers";
 
-function rfc4180Escape(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
+export { escapeCsvCell, neutralizeCsvFormula } from "./csvCell";
 
 function hasNumericScore(m: MarkCommon): boolean {
   const txtRe = /-?\d+\.?\d*/;
@@ -56,7 +52,7 @@ export function exportGradesToCSV(
     t("csv.semesterAvg"),
     t("csv.yearlyAvg"),
   ]
-    .map(rfc4180Escape)
+    .map(escapeCsvCell)
     .join(",");
   rows.push(header);
 
@@ -88,13 +84,13 @@ export function exportGradesToCSV(
         : "";
 
     const row = [
-      rfc4180Escape(m.subjectName),
-      type,
-      rfc4180Escape(txStr),
-      rfc4180Escape(gk !== null ? String(gk) : ""),
-      rfc4180Escape(ck !== null ? String(ck) : ""),
-      rfc4180Escape(tb),
-      rfc4180Escape(cn),
+      escapeCsvCell(m.subjectName),
+      escapeCsvCell(type),
+      escapeCsvCell(txStr),
+      escapeCsvCell(gk !== null ? String(gk) : ""),
+      escapeCsvCell(ck !== null ? String(ck) : ""),
+      escapeCsvCell(tb),
+      escapeCsvCell(cn),
     ].join(",");
 
     rows.push(row);
