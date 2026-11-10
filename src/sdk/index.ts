@@ -180,7 +180,10 @@ export function createAgent(
         return;
       }
 
-      for (const tc of toolCalls) {
+      // Cap parallel fan-out so one model response cannot exceed MAX_TOOL_TURNS.
+      const remaining = MAX_TOOL_TURNS - toolTurns;
+      const cappedCalls = toolCalls.slice(0, remaining);
+      for (const tc of cappedCalls) {
         toolTurns++;
         const result = await processToolCall(tc, onEvent, requestConfirmation);
         history.push({
@@ -188,6 +191,10 @@ export function createAgent(
           tool_call_id: tc.id,
           content: result,
         });
+      }
+      if (toolCalls.length > cappedCalls.length) {
+        onEvent({ type: "done" });
+        return;
       }
     }
 
