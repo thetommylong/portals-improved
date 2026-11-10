@@ -6,6 +6,7 @@
   import type { ScheduleEntry } from "../../types/portal";
   import { runtime } from "../../adapters/runtime.svelte";
   import { i18n, t } from "../../i18n.svelte";
+  import { validateOutboundUrl } from "../../sdk/outbound-url";
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
 
@@ -18,6 +19,16 @@
     checking: boolean;
     onclose: () => void;
   } = $props();
+
+  /** https / loopback-http only; hide LMS link for javascript:/data:/etc. */
+  const safeLmsHref = $derived.by(() => {
+    if (!entry.eduNextUrl) return null;
+    try {
+      return validateOutboundUrl(entry.eduNextUrl);
+    } catch {
+      return null;
+    }
+  });
 
   const dateLabel = $derived.by(() => {
     const d = Temporal.PlainDateTime.from(entry.startDateTime);
@@ -66,14 +77,23 @@
     }
   }
 
+  function openIfAllowed(raw: string): void {
+    try {
+      const safe = validateOutboundUrl(raw);
+      window.open(safe, "_blank", "noopener,noreferrer");
+    } catch {
+      // Reject javascript:/data:/non-allowlisted schemes — do not open.
+    }
+  }
+
   async function onSsoClick(e: MouseEvent) {
-    if (!entry.eduNextUrl) return;
+    if (!safeLmsHref) return;
     e.preventDefault();
     try {
-      const url = await runtime.adapter.buildSsoUrl(entry.eduNextUrl);
-      window.open(url, "_blank", "noopener,noreferrer");
+      const url = await runtime.adapter.buildSsoUrl(safeLmsHref);
+      openIfAllowed(url);
     } catch {
-      window.open(entry.eduNextUrl, "_blank", "noopener,noreferrer");
+      openIfAllowed(safeLmsHref);
     }
   }
 </script>
@@ -166,10 +186,10 @@
             >
           {/if}
         </span>
-        {#if entry.eduNextUrl}
+        {#if safeLmsHref}
           <a
             class="popup-link"
-            href={entry.eduNextUrl}
+            href={safeLmsHref}
             target="_blank"
             rel="noopener noreferrer"
             onclick={onSsoClick}
