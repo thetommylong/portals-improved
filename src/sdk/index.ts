@@ -60,7 +60,6 @@ export function createAgent(
 ): AgentInstance {
   setRegistryAdapter(adapter);
   let history: OpenAIMessage[] = [];
-  const systemPrompt = buildSystemPrompt(context);
 
   function clear() {
     history = [];
@@ -90,6 +89,8 @@ export function createAgent(
     history.push({ role: "user", content: message });
 
     let toolTurns = 0;
+    // Rebuild each send so "Current time" stays fresh for long chats.
+    const systemPrompt = buildSystemPrompt(context);
 
     while (toolTurns < MAX_TOOL_TURNS) {
       const shouldStream = !!onDelta && toolTurns === MAX_TOOL_TURNS - 1;
