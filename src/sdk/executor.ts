@@ -11,11 +11,23 @@ import {
 } from "./registry";
 
 export const MAX_TOOL_TURNS = 8;
+export const MAX_ARRAY_ITEMS = 256;
+export const MAX_NUMBER_ABS = Number.MAX_SAFE_INTEGER;
 const MAX_RESULT_CHARS = 4096;
 
 export interface ExecutionResult {
   content: string;
   error: boolean;
+}
+
+function validateNumberBound(key: string, value: number): string | null {
+  if (!Number.isFinite(value)) {
+    return `Invalid value for ${key}: expected a finite number`;
+  }
+  if (Math.abs(value) > MAX_NUMBER_ABS) {
+    return `Invalid value for ${key}: number exceeds safe bounds`;
+  }
+  return null;
 }
 
 export function validateArgs(
@@ -44,14 +56,24 @@ export function validateArgs(
     }
     const expected = prop.type;
     if (!expected) continue;
-    if (expected === "array" && !Array.isArray(value)) {
-      return `Invalid type for ${key}: expected array`;
+    if (expected === "array") {
+      if (!Array.isArray(value)) {
+        return `Invalid type for ${key}: expected array`;
+      }
+      if (value.length > MAX_ARRAY_ITEMS) {
+        return `Invalid value for ${key}: array exceeds max length of ${MAX_ARRAY_ITEMS}`;
+      }
+      continue;
     }
     if (expected === "string" && typeof value !== "string") {
       return `Invalid type for ${key}: expected string`;
     }
-    if (expected === "number" && typeof value !== "number") {
-      return `Invalid type for ${key}: expected number`;
+    if (expected === "number") {
+      if (typeof value !== "number") {
+        return `Invalid type for ${key}: expected number`;
+      }
+      const boundError = validateNumberBound(key, value);
+      if (boundError) return boundError;
     }
     if (expected === "boolean" && typeof value !== "boolean") {
       return `Invalid type for ${key}: expected boolean`;
@@ -60,6 +82,8 @@ export function validateArgs(
       if (typeof value !== "number" || !Number.isInteger(value)) {
         return `Invalid type for ${key}: expected integer`;
       }
+      const boundError = validateNumberBound(key, value);
+      if (boundError) return boundError;
     }
   }
 

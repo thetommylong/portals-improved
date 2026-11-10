@@ -5,6 +5,12 @@ import { mount } from "svelte";
 import { runtime } from "../adapters/runtime.svelte";
 import PortalShell from "../ui/PortalShell.svelte";
 import sharedCss from "../ui/portal/shared.css?inline";
+import {
+  captureOwnViteCss,
+  reinjectCssText,
+  stripHostStylesheets,
+  whenDocumentBodyReady,
+} from "./portal-dom";
 
 export default function () {
   void runtime.adapter.waitForValidSession(60_000).then((userId) => {
@@ -14,7 +20,7 @@ export default function () {
 }
 
 function boot(userId: string) {
-  const start = () => {
+  whenDocumentBodyReady(() => {
     const host = document.createElement("div");
     host.id = "fsp-qol-root";
 
@@ -27,19 +33,17 @@ function boot(userId: string) {
     // would otherwise inherit into the shell. Our own CSS survives: component
     // css is injected as a <style> chunk tagged with vite's `/*$vite$:*/`
     // marker — capture it before the strip and re-add it after (the bundle
-    // only injects that chunk once per load).
-    const ownCss = [...document.head.querySelectorAll("style")]
-      .map((el) => el.textContent ?? "")
-      .filter((css) => css.includes("/*$vite$:"));
-    document.head
-      .querySelectorAll('link[rel="stylesheet"], style')
-      .forEach((el) => el.remove());
-    for (const css of ownCss) {
-      const style = document.createElement("style");
-      style.textContent = css;
-      document.head.appendChild(style);
-    }
+    // only injects that chunk once per load). Orphan `@import` sheets with
+    // null ownerNode are disabled inside stripHostStylesheets.
+    const ownCss = captureOwnViteCss();
+    stripHostStylesheets();
+    reinjectCssText(ownCss);
 
+    // Cut remaining host document loads (parser / late assets). New requests
+    // started afterward still run: PortalShell injects its font <link>s and
+    // `document.fonts.load` below after this call, so shell fonts/CSS do not
+    // depend on in-flight host loads that stop() aborts. Keep stop() — ADR 001
+    // replace is meant to abandon the portal page, not race it.
     window.stop();
 
     const style = document.createElement("style");
@@ -48,16 +52,11 @@ function boot(userId: string) {
 
     mount(PortalShell, { target: host, props: { userId } });
 
+    // FontFaceSet.load rejects if a face fails; allSettled so one miss is fine.
     void Promise.allSettled([
       document.fonts.load('400 16px "Google Sans Flex"'),
       document.fonts.load('600 16px "Google Sans Flex"'),
       document.fonts.load('700 16px "Google Sans Flex"'),
     ]);
-  };
-
-  if (document.body) {
-    start();
-  } else {
-    document.addEventListener("DOMContentLoaded", start);
-  }
+  });
 }
