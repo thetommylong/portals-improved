@@ -12,41 +12,89 @@ on:
 permissions:
   contents: read
 
+# Parallel jobs share the same setup. A final `ci` job aggregates them so the
+# required status check name stays `ci` (branch protection).
+
 jobs:
-  ci:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
 
-      - name: Lint
-        run: pnpm lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
 
-      - name: Typecheck
-        run: pnpm check
-
-      - name: Test
-        run: pnpm test
-
-      # Prod audit is blocking; full-tree stays non-blocking for tooling-only vulns (e.g. eslint/monkey).
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Prod audit is blocking; full-tree stays non-blocking for tooling-only vulns.
       - name: Audit (prod)
         run: pnpm audit --prod --audit-level=high
-
       - name: Audit (full tree, non-blocking)
         run: pnpm audit || true
         continue-on-error: true
 
-      - name: Build
-        run: pnpm build
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm site:build
 
-      - name: Build demo site
-        run: pnpm site:build
+  # Required check name for branch protection — fails if any parallel job fails.
+  ci:
+    needs: [lint, check, test, audit, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Require all jobs
+        run: |
+          set -euo pipefail
+          for r in "${{ needs.lint.result }}" \
+                    "${{ needs.check.result }}" \
+                    "${{ needs.test.result }}" \
+                    "${{ needs.audit.result }}" \
+                    "${{ needs.build.result }}"; do
+            test "$r" = success
+          done
