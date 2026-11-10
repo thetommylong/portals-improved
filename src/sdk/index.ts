@@ -156,10 +156,36 @@ export function createAgent(
       }
 
       const assistantMsg = choice.message;
+      const toolCalls = assistantMsg.tool_calls;
+      if (
+        !toolCalls ||
+        toolCalls.length === 0 ||
+        choice.finish_reason === "stop"
+      ) {
+        history.push({
+          role: "assistant",
+          content: assistantMsg.content,
+        });
+        if (assistantMsg.content) {
+          onEvent({
+            type: "message",
+            content: assistantMsg.content,
+            role: "assistant",
+          });
+        }
+        onEvent({ type: "done" });
+        return;
+      }
+
+      // Cap parallel fan-out so one model response cannot exceed MAX_TOOL_TURNS.
+      // History must only record the capped tool_calls — orphan IDs break the
+      // OpenAI tool protocol on the next send().
+      const remaining = MAX_TOOL_TURNS - toolTurns;
+      const cappedCalls = toolCalls.slice(0, remaining);
       history.push({
         role: "assistant",
         content: assistantMsg.content,
-        tool_calls: assistantMsg.tool_calls,
+        tool_calls: cappedCalls,
       });
 
       if (assistantMsg.content) {
@@ -170,19 +196,6 @@ export function createAgent(
         });
       }
 
-      const toolCalls = assistantMsg.tool_calls;
-      if (
-        !toolCalls ||
-        toolCalls.length === 0 ||
-        choice.finish_reason === "stop"
-      ) {
-        onEvent({ type: "done" });
-        return;
-      }
-
-      // Cap parallel fan-out so one model response cannot exceed MAX_TOOL_TURNS.
-      const remaining = MAX_TOOL_TURNS - toolTurns;
-      const cappedCalls = toolCalls.slice(0, remaining);
       for (const tc of cappedCalls) {
         toolTurns++;
         const result = await processToolCall(tc, onEvent, requestConfirmation);
@@ -193,6 +206,10 @@ export function createAgent(
         });
       }
       if (toolCalls.length > cappedCalls.length) {
+        onEvent({
+          type: "error",
+          content: `Tool-call batch truncated to ${cappedCalls.length} (max ${MAX_TOOL_TURNS} per turn)`,
+        });
         onEvent({ type: "done" });
         return;
       }

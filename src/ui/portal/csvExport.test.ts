@@ -20,6 +20,12 @@ describe("neutralizeCsvFormula", () => {
     expect(neutralizeCsvFormula("\t\r@SUM(A1)")).toBe("'\t\r@SUM(A1)");
   });
 
+  it("neutralizes LF-, space-, and NBSP-prefixed formula variants", () => {
+    expect(neutralizeCsvFormula("\n=1+1")).toBe("'\n=1+1");
+    expect(neutralizeCsvFormula(" =cmd")).toBe("' =cmd");
+    expect(neutralizeCsvFormula("\u00a0@SUM(A1)")).toBe("'\u00a0@SUM(A1)");
+  });
+
   it("leaves normal values unchanged", () => {
     expect(neutralizeCsvFormula("")).toBe("");
     expect(neutralizeCsvFormula("Math")).toBe("Math");

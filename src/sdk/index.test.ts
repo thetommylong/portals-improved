@@ -130,13 +130,65 @@ describe("createAgent MAX_TOOL_TURNS batch cap", () => {
     );
 
     const events: string[] = [];
+    let truncated = false;
     await agent.send("fan out", (event) => {
       if (event.type === "tool_call") events.push(event.toolName ?? "");
+      if (
+        event.type === "error" &&
+        event.content?.includes("Tool-call batch truncated")
+      ) {
+        truncated = true;
+      }
     });
 
     expect(events).toHaveLength(MAX_TOOL_TURNS);
     expect(callApiFunction).toHaveBeenCalledTimes(MAX_TOOL_TURNS);
     expect(gmOpenAI).toHaveBeenCalledTimes(1);
+    expect(truncated).toBe(true);
+  });
+
+  it("keeps assistant tool_calls in history aligned with executed results", async () => {
+    const fanOut = Array.from({ length: MAX_TOOL_TURNS + 5 }, (_, i) =>
+      toolCall(`tc-${i}`),
+    );
+    gmOpenAI
+      .mockResolvedValueOnce(toolResponse(fanOut))
+      .mockResolvedValueOnce(finalResponse());
+
+    const agent = createAgent(
+      {
+        studentId: "s1",
+        userId: "u1",
+        campusId: "c1",
+        campusCode: "HN",
+        termId: "t1",
+        termName: "Fall",
+        termOrder: 1,
+        academicYear: "2026",
+      },
+      new MockAdapter(),
+    );
+
+    await agent.send("fan out", () => {});
+    await agent.send("follow up", () => {});
+
+    expect(gmOpenAI).toHaveBeenCalledTimes(2);
+    const secondMessages = gmOpenAI.mock.calls[1][0].messages as Array<
+      Record<string, unknown>
+    >;
+    const assistantWithTools = [...secondMessages]
+      .reverse()
+      .find((m) => m.role === "assistant" && Array.isArray(m.tool_calls));
+    expect(assistantWithTools).toBeDefined();
+    const recorded = assistantWithTools!.tool_calls as Array<{ id: string }>;
+    expect(recorded).toHaveLength(MAX_TOOL_TURNS);
+
+    const toolResults = secondMessages.filter((m) => m.role === "tool");
+    expect(toolResults).toHaveLength(MAX_TOOL_TURNS);
+    const resultIds = new Set(toolResults.map((m) => m.tool_call_id as string));
+    for (const tc of recorded) {
+      expect(resultIds.has(tc.id)).toBe(true);
+    }
   });
 
   it("still allows a normal multi-turn tool loop under the cap", async () => {
