@@ -2,13 +2,17 @@
 // Copyright (C) 2026 thetommylong
 
 import { createLogger } from "./log";
-import { hasLiveAdapter, isMockForced } from "./adapters/gate";
+import { shouldBoot } from "./adapters/gate";
+import { discardPendingCss, flushPendingCss } from "./css-inject";
 
 const log = createLogger("index");
 
-if (!hasLiveAdapter() && !isMockForced()) {
+if (!shouldBoot()) {
+  // Monkey queues CSS at entry; never inject it on idle hosts.
+  discardPendingCss();
   log.log("no supported portal here — staying idle");
 } else {
+  flushPendingCss();
   void import("./boot")
     .then((m) => m.boot())
     .catch((err) => {

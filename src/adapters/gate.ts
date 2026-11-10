@@ -25,4 +25,9 @@ export function isMockForced(): boolean {
   return hasLiveAdapter();
 }
 
+/** Whether the shell (and deferred userscript CSS) should load on this page. */
+export function shouldBoot(): boolean {
+  return hasLiveAdapter() || isMockForced();
+}
+
 export { ADAPTER_KEY };
