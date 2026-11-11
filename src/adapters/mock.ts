@@ -40,6 +40,7 @@ import type {
   SurveyLink,
 } from "../types/portal";
 import type { AdapterFeatures, PortalAdapter } from "../sdk/adapter";
+import { compactFspToolResult } from "./fsp-tool-compact";
 
 const FEATURES: AdapterFeatures = {
   schedule: true,
@@ -777,5 +778,9 @@ export class MockAdapter implements PortalAdapter {
       cursor.setDate(cursor.getDate() + 1);
     }
     return Promise.resolve(entries);
+  }
+
+  compactToolResult(toolName: string, result: unknown): unknown {
+    return compactFspToolResult(toolName, result);
   }
 }

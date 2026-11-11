@@ -4,6 +4,7 @@
 import type { ConfirmRequest } from "./types";
 import {
   callApiFunction,
+  compactApiResult,
   getFullSchema,
   getToolMeta,
   isReadOnly,
@@ -125,12 +126,14 @@ export async function executeFunction(
 
   try {
     const result = await callApiFunction(name, args);
+    // Adapter-owned compaction (portal DTOs) before the universal size cap.
+    const forModel = compactApiResult(name, result);
     const text =
-      result === undefined || result === null
+      forModel === undefined || forModel === null
         ? "Done (no return value)"
-        : typeof result === "string"
-          ? result
-          : JSON.stringify(result, null, 2);
+        : typeof forModel === "string"
+          ? forModel
+          : JSON.stringify(forModel, null, 2);
 
     if (text.length > MAX_RESULT_CHARS) {
       return {

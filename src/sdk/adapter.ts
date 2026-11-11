@@ -178,6 +178,13 @@ export interface PortalAdapter {
     startDate: string,
     endDate: string,
   ): Promise<ScheduleEntry[]>;
+
+  /**
+   * Shrink a tool return value for the LLM tool transcript only.
+   * Must not mutate `result`. UI paths keep calling the typed methods above.
+   * Portal-specific: each adapter knows which DTOs are noisy for its API.
+   */
+  compactToolResult(toolName: string, result: unknown): unknown;
 }
 
 /** Does `hostname` belong to any of the given host fragments as a DNS label
