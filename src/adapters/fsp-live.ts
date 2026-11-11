@@ -39,6 +39,7 @@ import type {
   SurveyLink,
 } from "../types/portal";
 import type { AdapterFeatures, PortalAdapter } from "../sdk/adapter";
+import { compactFspToolResult } from "./fsp-tool-compact";
 import { pathSegment } from "./path-segment";
 
 const BASE = "https://api.fpt.edu.vn/fsp/api";
@@ -672,5 +673,9 @@ export class FspLiveAdapter implements PortalAdapter {
       "POST",
       { studentId, startDate, endDate },
     );
+  }
+
+  compactToolResult(toolName: string, result: unknown): unknown {
+    return compactFspToolResult(toolName, result);
   }
 }

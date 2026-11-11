@@ -16,6 +16,11 @@ function activeAdapter(): PortalAdapter {
   return injectedAdapter ?? runtime.adapter;
 }
 
+/** Delegate LLM-transcript compaction to the active portal adapter. */
+export function compactApiResult(toolName: string, result: unknown): unknown {
+  return activeAdapter().compactToolResult(toolName, result);
+}
+
 const CATEGORY_CAPABILITY: Record<string, FeatureFlag> = {
   session: "session",
   terms: "schedule",
