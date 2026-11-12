@@ -16,6 +16,7 @@
     applyTheme,
     theme,
   } from "../theme.svelte";
+  import { CHROME_OPTIONS, shellChrome } from "../shellChrome.svelte";
   import { pointer } from "../pointer.svelte";
   import Icon from "./Icon.svelte";
   import type { IconName } from "./icons";
@@ -502,7 +503,7 @@
   }
 </script>
 
-<div class="shell">
+<div class="shell" class:chrome-floating={shellChrome.chrome === "floating"}>
   <a class="skip-link" href="#fsp-main">{t("aria.skipToMain")}</a>
   <h1 class="shell-title">{t("aria.appName")}</h1>
 
@@ -680,6 +681,38 @@
                 <option value="vi">Tiếng Việt</option>
                 <option value="en">English</option>
               </select>
+              <p class="settings-title">{t("settings.layout")}</p>
+              <div
+                class="settings-flavors"
+                role="radiogroup"
+                tabindex="0"
+                aria-label={t("settings.layoutGroup")}
+                onkeydown={(e) =>
+                  onRadioGroupKeydown(
+                    e,
+                    CHROME_OPTIONS,
+                    shellChrome.chrome,
+                    (v) =>
+                      shellChrome.setChrome(
+                        v as (typeof CHROME_OPTIONS)[number],
+                      ),
+                  )}
+              >
+                {#each CHROME_OPTIONS as option (option)}
+                  <button
+                    class="settings-flavor"
+                    class:selected={shellChrome.chrome === option}
+                    role="radio"
+                    aria-checked={shellChrome.chrome === option}
+                    tabindex={shellChrome.chrome === option ? 0 : -1}
+                    onclick={() => shellChrome.setChrome(option)}
+                  >
+                    {option === "flush"
+                      ? t("settings.layoutFlush")
+                      : t("settings.layoutFloating")}
+                  </button>
+                {/each}
+              </div>
               <hr class="settings-sep" />
               <p class="settings-title">{t("settings.about")}</p>
               <div class="about">
@@ -1537,25 +1570,89 @@
     text-decoration: underline;
   }
 
+  /*
+   * Classic floating chrome — inset padded shell with rounded raised panels.
+   * Toggled via settings (shellChrome); flush tiled layout is the default.
+   */
+  .shell.chrome-floating {
+    gap: 12px;
+    padding: 16px 20px;
+  }
+
+  .shell.chrome-floating .header {
+    background: var(--mantle);
+    border-bottom: none;
+    border-radius: var(--radius-surface);
+    padding: 10px 36px;
+  }
+
+  .shell.chrome-floating .content {
+    gap: 10px;
+    background: transparent;
+  }
+
+  .shell.chrome-floating .content:has(.sidebar-rail.collapsed) {
+    gap: 0;
+  }
+
+  .shell.chrome-floating .sidebar {
+    background: var(--base);
+    border-right: none;
+    border-radius: var(--radius-surface);
+  }
+
+  .shell.chrome-floating .main {
+    background: var(--mantle);
+    border-radius: var(--radius-surface);
+  }
+
+  .shell.chrome-floating .chat-panel {
+    background: var(--base);
+    border-left: none;
+    border-radius: var(--radius-surface);
+  }
+
   @media (max-width: 768px) {
-    .shell {
+    .shell,
+    .shell.chrome-floating {
       gap: 0;
       padding: 0;
     }
 
     .header,
     .main,
-    .sidebar {
+    .sidebar,
+    .shell.chrome-floating .header,
+    .shell.chrome-floating .main,
+    .shell.chrome-floating .sidebar {
       border-radius: 0;
     }
 
-    .content {
+    .content,
+    .shell.chrome-floating .content {
       gap: 0;
       padding: 0;
     }
 
-    .header {
+    .shell.chrome-floating .content:has(.sidebar-rail.collapsed) {
+      gap: 0;
+    }
+
+    .header,
+    .shell.chrome-floating .header {
       padding: 10px 16px;
+    }
+
+    .shell.chrome-floating .header {
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .shell.chrome-floating .sidebar {
+      border-right: none;
+    }
+
+    .shell.chrome-floating .main {
+      background: var(--surface-base);
     }
 
     .scrim {
