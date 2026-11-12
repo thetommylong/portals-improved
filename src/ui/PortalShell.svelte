@@ -1515,7 +1515,7 @@
     flex: 1;
     min-width: 0;
     min-height: 0;
-    background: var(--surface-base);
+    background: var(--surface-sunken);
     border-radius: 0;
     overflow: hidden;
   }
