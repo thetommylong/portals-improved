@@ -685,7 +685,10 @@
             : t("aria.notificationsNone")}
           onclick={onNotifications}
         >
-          <Icon name="notifications" size={22} />
+          <Icon
+            name={unreadCount > 0 ? "notifications_active" : "notifications"}
+            size={22}
+          />
           {#if unreadCount > 0}
             <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
           {/if}

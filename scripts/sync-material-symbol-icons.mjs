@@ -23,6 +23,7 @@ const ICON_NAMES = [
   "close",
   "refresh",
   "notifications",
+  "notifications_active",
   "assignment",
   "done_all",
   "group",
