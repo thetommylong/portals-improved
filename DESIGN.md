@@ -77,7 +77,7 @@ Radius scale: tight 6 / control 8 / card 12 / surface 16. Status pills and badge
 ## Components
 
 - **Shell**: skip link → header → sidebar → `main#fsp-main`; notifications panel mounts only when open; avatar prefers https, else data URL, else initials fallback.
-- **Icons:** inline SVG via `Icon.svelte` / `icons.ts` path map (Material Symbols not loaded).
+- **Icons:** inline SVG via `Icon.svelte` / `icons.ts` — Material Symbols Rounded paths (wght 400, FILL 0/1), not a webfont. Regenerate with `node scripts/sync-material-symbol-icons.mjs`.
 - **List cards**: raised surface, 18px titles, control-radius badges.
 - **Overlays**: dialogs with focus trap where wired; toast Escape ignored only while `[role="dialog"][aria-modal="true"]` is open.
 - **Predictor**: drawer with large result typography for TB/CN/need-on-final.
@@ -92,7 +92,7 @@ Radius scale: tight 6 / control 8 / card 12 / surface 16. Status pills and badge
 - Prefer teal/sapphire/peach accents over a mauve-default “AI purple” look.
 - Use cards for interactive list units, not hero decoration.
 - Scope styles under `#fsp-qol-root`.
-- Keep icon names in `ICON_PATHS` when adding UI icons.
+- Keep icon names in `ICON_PATHS` / `ICON_PATHS_FILL` when adding UI icons (sync from `@material-symbols/svg-400`).
 
 **Don't**
 

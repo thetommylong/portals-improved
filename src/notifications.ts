@@ -83,6 +83,7 @@ export function notify(message: string, type: ToastKind = "info") {
   });
 
   const icon = createIconSvg(ICONS[type], {
+    filled: true,
     className: "fsp-icon",
     size: 20,
   });
