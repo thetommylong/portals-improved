@@ -2,7 +2,13 @@
 // Copyright (C) 2026 thetommylong
 
 import { describe, expect, it } from "vitest";
-import { ICON_NAMES, ICON_PATHS, isIconName } from "./icons";
+import {
+  ICON_NAMES,
+  ICON_PATHS,
+  ICON_PATHS_FILL,
+  ICON_VIEWBOX,
+  isIconName,
+} from "./icons";
 
 const sources = import.meta.glob(["../**/*.{ts,svelte}", "!./**/*.test.ts"], {
   query: "?raw",
@@ -44,10 +50,15 @@ function collectRuntimeIconNames(source: string): string[] {
 }
 
 describe("ICON_PATHS registry", () => {
-  it("has a non-empty path for every ICON_NAMES entry", () => {
+  it("uses Material Symbols viewBox", () => {
+    expect(ICON_VIEWBOX).toBe("0 -960 960 960");
+  });
+
+  it("has non-empty FILL 0 and FILL 1 paths for every ICON_NAMES entry", () => {
     for (const name of ICON_NAMES) {
       expect(isIconName(name)).toBe(true);
       expect(ICON_PATHS[name]?.length).toBeGreaterThan(0);
+      expect(ICON_PATHS_FILL[name]?.length).toBeGreaterThan(0);
     }
   });
 
