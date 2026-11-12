@@ -109,6 +109,8 @@
   let scheduleDate = $state("");
   let lastTrigger = $state<HTMLElement>();
   let chatOpen = $state(false);
+  /** Stays true during the close animation so the chat rail can slide out. */
+  let chatPresent = $state(false);
   let agentContext = $state<AgentContext | null>(null);
   let ChatSidebarComp = $state<
     typeof import("./portal/ChatSidebar.svelte").default | null
@@ -139,7 +141,7 @@
   let chatWidth = $state(340);
 
   $effect(() => {
-    if (!chatOpen || ChatSidebarComp) return;
+    if ((!chatOpen && !chatPresent) || ChatSidebarComp) return;
     void import("./portal/ChatSidebar.svelte").then((m) => {
       ChatSidebarComp = m.default;
     });
@@ -415,7 +417,6 @@
   function closeChat() {
     if (!chatOpen) return;
     chatOpen = false;
-    restoreFocus();
   }
 
   function toggleChat() {
@@ -423,8 +424,20 @@
       closeChat();
     } else {
       lastTrigger = document.activeElement as HTMLElement;
-      chatOpen = true;
+      chatPresent = true;
+      requestAnimationFrame(() => {
+        chatOpen = true;
+      });
     }
+  }
+
+  function onChatRailTransitionEnd(e: TransitionEvent) {
+    if (e.target !== e.currentTarget) return;
+    // Desktop animates width; mobile animates transform.
+    if (e.propertyName !== "width" && e.propertyName !== "transform") return;
+    if (chatOpen) return;
+    chatPresent = false;
+    restoreFocus();
   }
 
   function onChatResizeKeydown(e: KeyboardEvent) {
@@ -659,46 +672,43 @@
       }}
     ></div>
 
-    <aside
-      class="sidebar"
-      class:collapsed={!sidebarOpen}
-      aria-hidden={!sidebarOpen}
-      inert={!sidebarOpen}
-    >
-      <div class="profile">
-        {#if avatar}
-          <img
-            class="avatar"
-            src={avatar}
-            alt={t("aria.avatar", { name: name || "" })}
-          />
-        {:else}
-          <div
-            class="avatar avatar-fallback"
-            aria-label={t("aria.avatar", { name: name || "" })}
-            role="img"
-          >
-            {avatarInitials}
-          </div>
-        {/if}
-        <p class="profile-name">{name || "..."}</p>
-        <p class="profile-roll">{rollNumber}</p>
-      </div>
+    <div class="sidebar-rail" class:collapsed={!sidebarOpen}>
+      <aside class="sidebar" aria-hidden={!sidebarOpen} inert={!sidebarOpen}>
+        <div class="profile">
+          {#if avatar}
+            <img
+              class="avatar"
+              src={avatar}
+              alt={t("aria.avatar", { name: name || "" })}
+            />
+          {:else}
+            <div
+              class="avatar avatar-fallback"
+              aria-label={t("aria.avatar", { name: name || "" })}
+              role="img"
+            >
+              {avatarInitials}
+            </div>
+          {/if}
+          <p class="profile-name">{name || "..."}</p>
+          <p class="profile-roll">{rollNumber}</p>
+        </div>
 
-      <nav class="nav" aria-label={t("header.aria.mainNav")}>
-        {#each navItems as item (item.id)}
-          <button
-            class="nav-item"
-            class:active={activeNav === item.id}
-            aria-current={activeNav === item.id ? "page" : undefined}
-            onclick={() => onNav(item)}
-          >
-            <Icon class="nav-icon" name={item.icon} size={22} />
-            <span>{t(item.label)}</span>
-          </button>
-        {/each}
-      </nav>
-    </aside>
+        <nav class="nav" aria-label={t("header.aria.mainNav")}>
+          {#each navItems as item (item.id)}
+            <button
+              class="nav-item"
+              class:active={activeNav === item.id}
+              aria-current={activeNav === item.id ? "page" : undefined}
+              onclick={() => onNav(item)}
+            >
+              <Icon class="nav-icon" name={item.icon} size={22} />
+              <span>{t(item.label)}</span>
+            </button>
+          {/each}
+        </nav>
+      </aside>
+    </div>
 
     <main id="fsp-main" class="main" tabindex="-1">
       {#if activeNav === "homeworks"}
@@ -778,33 +788,42 @@
       {/if}
     </main>
 
-    {#if chatOpen && runtime.adapter.features.session}
-      <aside
-        class="chat-panel"
-        style={`width: ${chatWidth}px;`}
-        aria-label={t("aria.assistant")}
+    {#if chatPresent && runtime.adapter.features.session}
+      <div
+        class="chat-rail"
+        class:open={chatOpen}
+        style={`--chat-w: ${chatWidth}px`}
+        ontransitionend={onChatRailTransitionEnd}
       >
-        <!-- splitter: APG uses role=separator + tabindex; svelte a11y disagrees with that combo -->
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <div
-          class="chat-resize-handle"
-          role="separator"
-          tabindex="0"
-          aria-orientation="vertical"
-          aria-valuenow={chatWidth}
-          aria-valuemin={CHAT_WIDTH_MIN}
-          aria-valuemax={CHAT_WIDTH_MAX}
-          aria-label={t("aria.resizeAssistant")}
-          onpointerdown={onChatResizeStart}
-          onkeydown={onChatResizeKeydown}
-        ></div>
-        {#if agentContext && ChatSidebarComp}
-          <ChatSidebarComp {agentContext} onclose={closeChat} />
-        {:else}
-          <div class="chat-loading">{t("chat.loadingContext")}</div>
-        {/if}
-      </aside>
+        <aside
+          class="chat-panel"
+          style={`width: ${chatWidth}px;`}
+          aria-label={t("aria.assistant")}
+          aria-hidden={!chatOpen}
+          inert={!chatOpen}
+        >
+          <!-- splitter: APG uses role=separator + tabindex; svelte a11y disagrees with that combo -->
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <div
+            class="chat-resize-handle"
+            role="separator"
+            tabindex="0"
+            aria-orientation="vertical"
+            aria-valuenow={chatWidth}
+            aria-valuemin={CHAT_WIDTH_MIN}
+            aria-valuemax={CHAT_WIDTH_MAX}
+            aria-label={t("aria.resizeAssistant")}
+            onpointerdown={onChatResizeStart}
+            onkeydown={onChatResizeKeydown}
+          ></div>
+          {#if agentContext && ChatSidebarComp}
+            <ChatSidebarComp {agentContext} onclose={closeChat} />
+          {:else}
+            <div class="chat-loading">{t("chat.loadingContext")}</div>
+          {/if}
+        </aside>
+      </div>
     {/if}
   </div>
 
@@ -949,11 +968,9 @@
     min-height: 0;
   }
 
-  /* When the sidebar is collapsed to zero width, drop the inter-item gap too,
-     otherwise the main panel sits 10px (plus the 1px collapsing sidebar) off
-     the shell's left edge. :has() keeps the width transition (unlike
-     display:none) while removing the phantom spacing. */
-  .content:has(.sidebar.collapsed) {
+  /* When the sidebar rail is collapsed, drop the inter-item gap too,
+     otherwise the main panel sits 10px off the shell's left edge. */
+  .content:has(.sidebar-rail.collapsed) {
     gap: 0;
   }
 
@@ -961,12 +978,28 @@
     display: none;
   }
 
+  /*
+   * Rail clips; inner sidebar keeps a fixed 260px width so the profile/nav
+   * slide away instead of squashing as width animates to 0.
+   */
+  .sidebar-rail {
+    flex-shrink: 0;
+    width: 260px;
+    overflow: hidden;
+    transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sidebar-rail.collapsed {
+    width: 0;
+  }
+
   .sidebar {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    box-sizing: border-box;
     width: 260px;
-    flex-shrink: 0;
+    min-width: 260px;
     background: var(--base);
     border-radius: 16px;
     padding: 22px 24px;
@@ -981,14 +1014,11 @@
     box-shadow: none;
     transition:
       opacity 0.22s ease,
-      transform 0.22s ease,
-      width 0.22s ease,
-      padding 0.22s ease;
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .sidebar.collapsed {
-    width: 0;
-    padding: 0;
+  .sidebar-rail.collapsed .sidebar {
+    transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
   }
@@ -1113,9 +1143,21 @@
     overflow: hidden;
   }
 
-  .chat-panel {
-    width: 340px;
+  .chat-rail {
     flex-shrink: 0;
+    width: 0;
+    overflow: hidden;
+    transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .chat-rail.open {
+    width: var(--chat-w, 340px);
+  }
+
+  .chat-panel {
+    box-sizing: border-box;
+    width: 340px;
+    min-width: var(--chat-w, 340px);
     background: var(--base);
     border-radius: 16px;
     overflow: hidden;
@@ -1123,6 +1165,16 @@
     flex-direction: column;
     min-height: 0;
     position: relative;
+    opacity: 0;
+    transform: translateX(16px);
+    transition:
+      opacity 0.22s ease,
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .chat-rail.open .chat-panel {
+    opacity: 1;
+    transform: translateX(0);
   }
 
   .chat-resize-handle {
@@ -1411,28 +1463,40 @@
       visibility: visible;
     }
 
-    .sidebar {
+    .sidebar-rail {
       position: fixed;
       top: 0;
       bottom: 0;
       left: 0;
       z-index: 20;
-      display: flex;
       width: min(300px, 84vw);
-      border-radius: 0 16px 16px 0;
-      overflow-y: auto;
+      overflow: visible;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
       transform: translateX(0);
-      transition: transform 0.22s ease;
-      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
     }
 
-    .sidebar.collapsed {
-      display: flex;
+    .sidebar-rail.collapsed {
       width: min(300px, 84vw);
-      padding: 22px 24px;
-      opacity: 1;
-      pointer-events: auto;
       transform: translateX(-105%);
+    }
+
+    .sidebar {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      height: 100%;
+      border-radius: 0 16px 16px 0;
+      overflow-y: auto;
+      transform: none;
+      opacity: 1;
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
+      transition: none;
+    }
+
+    .sidebar-rail.collapsed .sidebar {
+      transform: none;
+      opacity: 1;
+      pointer-events: none;
       box-shadow: none;
     }
 
@@ -1451,15 +1515,32 @@
       margin-left: 2px;
     }
 
-    .chat-panel {
+    .chat-rail {
       position: fixed;
       top: 0;
       bottom: 0;
       right: 0;
       z-index: 20;
       width: min(340px, 84vw);
+      overflow: visible;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      transform: translateX(105%);
+    }
+
+    .chat-rail.open {
+      width: min(340px, 84vw);
+      transform: translateX(0);
+    }
+
+    .chat-panel {
+      width: 100% !important;
+      min-width: 0;
+      height: 100%;
       border-radius: 16px 0 0 16px;
       box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
+      opacity: 1;
+      transform: none;
+      transition: none;
     }
   }
 </style>
