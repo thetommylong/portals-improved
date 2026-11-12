@@ -267,6 +267,9 @@
   let settingsOpen = $state(false);
   let settingsBtn: HTMLButtonElement | undefined = $state();
   let settingsPop: HTMLDivElement | undefined = $state();
+  let overflowOpen = $state(false);
+  let overflowBtn: HTMLButtonElement | undefined = $state();
+  let overflowPop: HTMLDivElement | undefined = $state();
 
   pointer.start();
 
@@ -279,6 +282,32 @@
   function closeSettings() {
     if (!settingsOpen) return;
     settingsOpen = false;
+  }
+
+  function openSettings() {
+    if (settingsOpen) return;
+    lastTrigger =
+      (narrow ? overflowBtn : settingsBtn) ??
+      (document.activeElement as HTMLElement);
+    if (narrow) sidebarOpen = false;
+    overflowOpen = false;
+    settingsOpen = true;
+  }
+
+  function closeOverflow() {
+    if (!overflowOpen) return;
+    overflowOpen = false;
+  }
+
+  function toggleOverflow() {
+    if (overflowOpen) {
+      closeOverflow();
+      return;
+    }
+    lastTrigger = document.activeElement as HTMLElement;
+    if (narrow) sidebarOpen = false;
+    closeSettings();
+    overflowOpen = true;
   }
 
   /** Arrow/Home/End navigation for settings role=radiogroup clusters. */
@@ -332,6 +361,29 @@
       document.removeEventListener("pointerdown", onPointerdown);
       handle.release();
     };
+  });
+
+  $effect(() => {
+    if (!overflowOpen || !overflowPop) return;
+    const handle: OverlayFocusHandle = attachOverlayFocus(
+      overflowPop,
+      closeOverflow,
+    );
+    function onPointerdown(e: Event) {
+      if (!(e.target instanceof Node)) return;
+      if (overflowPop?.contains(e.target)) return;
+      if (overflowBtn?.contains(e.target)) return;
+      closeOverflow();
+    }
+    document.addEventListener("pointerdown", onPointerdown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerdown);
+      handle.release();
+    };
+  });
+
+  $effect(() => {
+    if (!narrow) closeOverflow();
   });
 
   $effect(() => {
@@ -589,7 +641,7 @@
     <div class="header-right">
       {#if runtime.adapter.features.session}
         <button
-          class="icon-btn"
+          class="icon-btn header-action"
           class:active={chatOpen}
           aria-label={t("aria.toggleAssistant")}
           aria-expanded={chatOpen}
@@ -600,19 +652,14 @@
       {/if}
       <div class="settings-wrap">
         <button
-          class="icon-btn"
+          class="icon-btn header-action"
           class:active={settingsOpen}
           bind:this={settingsBtn}
           aria-label={t("aria.appearance")}
           aria-expanded={settingsOpen}
           onclick={() => {
-            if (settingsOpen) {
-              closeSettings();
-            } else {
-              lastTrigger = document.activeElement as HTMLElement;
-              if (narrow) sidebarOpen = false;
-              settingsOpen = true;
-            }
+            if (settingsOpen) closeSettings();
+            else openSettings();
           }}
         >
           <Icon name="settings" size={22} />
@@ -781,7 +828,7 @@
         {/if}
       </div>
       <button
-        class="icon-btn"
+        class="icon-btn header-action"
         class:spinning={contentRefreshing}
         aria-label={t("aria.refresh")}
         aria-busy={contentRefreshing}
@@ -791,7 +838,7 @@
       </button>
       {#if runtime.adapter.features.notifications}
         <button
-          class="icon-btn"
+          class="icon-btn header-action"
           class:has-badge={unreadCount > 0}
           aria-label={unreadCount > 0
             ? t("aria.notificationsUnread", { n: unreadCount })
@@ -807,6 +854,96 @@
           {/if}
         </button>
       {/if}
+
+      <div class="overflow-wrap">
+        <button
+          class="icon-btn"
+          class:active={overflowOpen || chatOpen || settingsOpen}
+          class:has-badge={unreadCount > 0}
+          class:spinning={contentRefreshing}
+          bind:this={overflowBtn}
+          aria-label={t("aria.moreActions")}
+          aria-expanded={overflowOpen}
+          aria-haspopup="menu"
+          onclick={toggleOverflow}
+        >
+          <Icon name="more_vert" size={22} />
+          {#if unreadCount > 0}
+            <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+          {/if}
+        </button>
+        {#if overflowOpen}
+          <div
+            class="overflow-pop"
+            bind:this={overflowPop}
+            role="menu"
+            aria-label={t("aria.moreActions")}
+            tabindex="-1"
+            transition:scale={popScale()}
+          >
+            {#if runtime.adapter.features.session}
+              <button
+                class="overflow-item"
+                class:active={chatOpen}
+                role="menuitem"
+                onclick={() => {
+                  closeOverflow();
+                  toggleChat();
+                }}
+              >
+                <Icon name="chat" size={20} />
+                <span>{t("header.actionAssistant")}</span>
+              </button>
+            {/if}
+            <button
+              class="overflow-item"
+              class:active={settingsOpen}
+              role="menuitem"
+              onclick={openSettings}
+            >
+              <Icon name="settings" size={20} />
+              <span>{t("header.actionAppearance")}</span>
+            </button>
+            <button
+              class="overflow-item"
+              class:spinning={contentRefreshing}
+              role="menuitem"
+              aria-busy={contentRefreshing}
+              onclick={() => {
+                closeOverflow();
+                refresh();
+              }}
+            >
+              <Icon name="refresh" size={20} />
+              <span>{t("header.actionRefresh")}</span>
+            </button>
+            {#if runtime.adapter.features.notifications}
+              <button
+                class="overflow-item"
+                class:has-badge={unreadCount > 0}
+                role="menuitem"
+                onclick={() => {
+                  closeOverflow();
+                  onNotifications();
+                }}
+              >
+                <Icon
+                  name={unreadCount > 0
+                    ? "notifications_active"
+                    : "notifications"}
+                  size={20}
+                />
+                <span>{t("header.actionNotifications")}</span>
+                {#if unreadCount > 0}
+                  <span class="overflow-count"
+                    >{unreadCount > 99 ? "99+" : unreadCount}</span
+                  >
+                {/if}
+              </button>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
   </header>
 
@@ -1470,10 +1607,11 @@
     min-width: 0;
   }
 
-  .toolbar-btn {
+  /* Tag+class beats shared.css `button[class] { background: transparent }`. */
+  button.toolbar-btn {
     height: var(--hit-step);
     min-height: var(--hit-step);
-    padding: 0 14px;
+    padding: 0 16px;
     border: none;
     border-radius: 8px;
     background: var(--surface-base);
@@ -1484,16 +1622,16 @@
     transition: background 0.15s ease;
   }
 
-  .toolbar-btn:hover {
-    background: var(--base);
+  button.toolbar-btn:hover {
+    background: var(--surface1);
   }
 
-  .toolbar-btn:focus-visible {
+  button.toolbar-btn:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
-  .toolbar-nav {
+  button.toolbar-btn.toolbar-nav {
     min-width: var(--hit-step);
     min-height: var(--hit-step);
     width: var(--hit-step);
@@ -1517,6 +1655,74 @@
 
   .settings-wrap {
     position: relative;
+  }
+
+  .overflow-wrap {
+    display: none;
+    position: relative;
+  }
+
+  .overflow-pop {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    min-width: 200px;
+    padding: 6px;
+    background: var(--base);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    transform-origin: top right;
+  }
+
+  .overflow-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 0;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .overflow-item:hover,
+  .overflow-item:focus-visible {
+    background: var(--surface-hover);
+  }
+
+  .overflow-item:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+  }
+
+  .overflow-item.active {
+    color: var(--accent-strong);
+  }
+
+  .overflow-item.spinning > :global(.fsp-icon) {
+    animation: refresh-spin 0.75s linear infinite;
+  }
+
+  .overflow-count {
+    margin-left: auto;
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-control);
+    background: var(--red);
+    color: var(--mantle);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
   }
 
   .settings-layer {
@@ -1754,6 +1960,14 @@
       padding: 10px 16px;
     }
 
+    .header-action {
+      display: none;
+    }
+
+    .overflow-wrap {
+      display: block;
+    }
+
     .shell.chrome-floating .header {
       border-bottom: 1px solid var(--border-subtle);
     }
@@ -1826,9 +2040,13 @@
       gap: 6px;
     }
 
-    .toolbar-btn {
-      padding: 0 10px;
+    button.toolbar-btn {
+      padding: 0 12px;
       font-size: 12px;
+    }
+
+    button.toolbar-btn.toolbar-nav {
+      padding: 0;
     }
 
     .schedule-date {

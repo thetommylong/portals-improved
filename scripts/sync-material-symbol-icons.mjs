@@ -39,6 +39,7 @@ const ICON_NAMES = [
   "error",
   "check_circle",
   "info",
+  "more_vert",
 ];
 
 function extractPath(name, filled) {
