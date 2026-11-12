@@ -417,9 +417,7 @@
     }
   });
 
-  const contentRefreshing = $derived(
-    pageLoading.active || viewChunkPending,
-  );
+  const contentRefreshing = $derived(pageLoading.active || viewChunkPending);
 
   function onNotifications() {
     if (notifOpen) {
@@ -507,6 +505,7 @@
 <div class="shell">
   <a class="skip-link" href="#fsp-main">{t("aria.skipToMain")}</a>
   <h1 class="shell-title">{t("aria.appName")}</h1>
+
   <header class="header">
     <div class="header-left">
       <button
@@ -589,110 +588,114 @@
               tabindex="-1"
               transition:scale={narrow ? modalScale() : popScale()}
             >
-            <p class="settings-title">{t("settings.theme")}</p>
-            <div
-              class="settings-flavors"
-              role="radiogroup"
-              tabindex="0"
-              aria-label={t("settings.flavor")}
-              onkeydown={(e) =>
-                onRadioGroupKeydown(e, FLAVOR_OPTIONS, theme.flavor, (v) =>
-                  theme.setFlavor(v as (typeof FLAVOR_OPTIONS)[number]),
-                )}
-            >
-              {#each FLAVOR_OPTIONS as option (option)}
-                <button
-                  class="settings-flavor"
-                  class:selected={theme.flavor === option}
-                  role="radio"
-                  aria-checked={theme.flavor === option}
-                  tabindex={theme.flavor === option ? 0 : -1}
-                  onclick={() => theme.setFlavor(option)}
-                >
-                  {option[0].toUpperCase() + option.slice(1)}
-                </button>
-              {/each}
-            </div>
-            {#if theme.flavor === "system"}
-              <p class="settings-title">{t("settings.darkGroup")}</p>
+              <p class="settings-title">{t("settings.theme")}</p>
               <div
-                class="settings-flavors trio"
+                class="settings-flavors"
                 role="radiogroup"
                 tabindex="0"
-                aria-label={t("settings.darkFlavor")}
+                aria-label={t("settings.flavor")}
                 onkeydown={(e) =>
-                  onRadioGroupKeydown(e, DARK_FLAVORS, theme.systemDark, (v) =>
-                    theme.setSystemDark(v as (typeof DARK_FLAVORS)[number]),
+                  onRadioGroupKeydown(e, FLAVOR_OPTIONS, theme.flavor, (v) =>
+                    theme.setFlavor(v as (typeof FLAVOR_OPTIONS)[number]),
                   )}
               >
-                {#each DARK_FLAVORS as dark (dark)}
+                {#each FLAVOR_OPTIONS as option (option)}
                   <button
                     class="settings-flavor"
-                    class:selected={theme.systemDark === dark}
+                    class:selected={theme.flavor === option}
                     role="radio"
-                    aria-checked={theme.systemDark === dark}
-                    tabindex={theme.systemDark === dark ? 0 : -1}
-                    onclick={() => theme.setSystemDark(dark)}
+                    aria-checked={theme.flavor === option}
+                    tabindex={theme.flavor === option ? 0 : -1}
+                    onclick={() => theme.setFlavor(option)}
                   >
-                    {dark[0].toUpperCase() + dark.slice(1)}
+                    {option[0].toUpperCase() + option.slice(1)}
                   </button>
                 {/each}
               </div>
-            {/if}
-            <p class="settings-title">{t("settings.accent")}</p>
-            <div
-              class="settings-accents"
-              role="radiogroup"
-              tabindex="0"
-              aria-label={t("settings.accentColor")}
-              onkeydown={(e) =>
-                onRadioGroupKeydown(e, ACCENTS, theme.accent, (v) =>
-                  theme.setAccent(v as (typeof ACCENTS)[number]),
-                )}
-            >
-              {#each ACCENTS as accent (accent)}
-                <button
-                  class="accent-dot"
-                  class:selected={theme.accent === accent}
-                  style={`background: var(--${accent});`}
-                  role="radio"
-                  aria-checked={theme.accent === accent}
-                  tabindex={theme.accent === accent ? 0 : -1}
-                  aria-label={accent}
-                  title={accent}
-                  onclick={() => theme.setAccent(accent)}
-                ></button>
-              {/each}
-            </div>
-            <p class="settings-title">{t("settings.language")}</p>
-            <select
-              class="settings-select"
-              aria-label={t("settings.languageGroup")}
-              value={i18n.locale}
-              onchange={(e) => {
-                const next = (e.currentTarget as HTMLSelectElement).value;
-                if (next === "vi" || next === "en") i18n.setLocale(next);
-              }}
-            >
-              <option value="vi">Tiếng Việt</option>
-              <option value="en">English</option>
-            </select>
-            <hr class="settings-sep" />
-            <p class="settings-title">{t("settings.about")}</p>
-            <div class="about">
-              <span class="about-name">portals-improved</span>
-              <span class="about-detail">
-                v{__BUILD__.version} · {__BUILD__.commit}
-              </span>
-              <a
-                class="about-link"
-                href="https://github.com/thetommylong/portals-improved/blob/main/LICENSE"
-                target="_blank"
-                rel="noreferrer"
+              {#if theme.flavor === "system"}
+                <p class="settings-title">{t("settings.darkGroup")}</p>
+                <div
+                  class="settings-flavors trio"
+                  role="radiogroup"
+                  tabindex="0"
+                  aria-label={t("settings.darkFlavor")}
+                  onkeydown={(e) =>
+                    onRadioGroupKeydown(
+                      e,
+                      DARK_FLAVORS,
+                      theme.systemDark,
+                      (v) =>
+                        theme.setSystemDark(v as (typeof DARK_FLAVORS)[number]),
+                    )}
+                >
+                  {#each DARK_FLAVORS as dark (dark)}
+                    <button
+                      class="settings-flavor"
+                      class:selected={theme.systemDark === dark}
+                      role="radio"
+                      aria-checked={theme.systemDark === dark}
+                      tabindex={theme.systemDark === dark ? 0 : -1}
+                      onclick={() => theme.setSystemDark(dark)}
+                    >
+                      {dark[0].toUpperCase() + dark.slice(1)}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+              <p class="settings-title">{t("settings.accent")}</p>
+              <div
+                class="settings-accents"
+                role="radiogroup"
+                tabindex="0"
+                aria-label={t("settings.accentColor")}
+                onkeydown={(e) =>
+                  onRadioGroupKeydown(e, ACCENTS, theme.accent, (v) =>
+                    theme.setAccent(v as (typeof ACCENTS)[number]),
+                  )}
               >
-                AGPL-3.0-only
-              </a>
-            </div>
+                {#each ACCENTS as accent (accent)}
+                  <button
+                    class="accent-dot"
+                    class:selected={theme.accent === accent}
+                    style={`background: var(--${accent});`}
+                    role="radio"
+                    aria-checked={theme.accent === accent}
+                    tabindex={theme.accent === accent ? 0 : -1}
+                    aria-label={accent}
+                    title={accent}
+                    onclick={() => theme.setAccent(accent)}
+                  ></button>
+                {/each}
+              </div>
+              <p class="settings-title">{t("settings.language")}</p>
+              <select
+                class="settings-select"
+                aria-label={t("settings.languageGroup")}
+                value={i18n.locale}
+                onchange={(e) => {
+                  const next = (e.currentTarget as HTMLSelectElement).value;
+                  if (next === "vi" || next === "en") i18n.setLocale(next);
+                }}
+              >
+                <option value="vi">Tiếng Việt</option>
+                <option value="en">English</option>
+              </select>
+              <hr class="settings-sep" />
+              <p class="settings-title">{t("settings.about")}</p>
+              <div class="about">
+                <span class="about-name">portals-improved</span>
+                <span class="about-detail">
+                  v{__BUILD__.version} · {__BUILD__.commit}
+                </span>
+                <a
+                  class="about-link"
+                  href="https://github.com/thetommylong/portals-improved/blob/main/LICENSE"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  AGPL-3.0-only
+                </a>
+              </div>
             </div>
           </div>
         {/if}
@@ -785,7 +788,9 @@
           {#if HomeworksViewComp}
             <HomeworksViewComp studentId={userId} bind:this={pages.homeworks} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -795,7 +800,9 @@
           {#if FeedbackViewComp}
             <FeedbackViewComp studentId={userId} bind:this={pages.feedback} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -805,7 +812,9 @@
           {#if MarksViewComp}
             <MarksViewComp studentId={userId} bind:this={pages.marks} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -815,7 +824,9 @@
           {#if EventsViewComp}
             <EventsViewComp studentId={userId} bind:this={pages.events} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -825,7 +836,9 @@
           {#if StandingViewComp}
             <StandingViewComp studentId={userId} bind:this={pages.standing} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -835,7 +848,9 @@
           {#if ClubsViewComp}
             <ClubsViewComp studentId={userId} bind:this={pages.clubs} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -849,7 +864,9 @@
               bind:this={pages.home}
             />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -944,18 +961,20 @@
   .shell {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0;
     height: 100%;
-    padding: 16px 20px;
+    padding: 0;
   }
 
   .header {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--mantle);
-    border-radius: 16px;
-    padding: 10px 36px;
+    background: var(--surface-raised);
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    padding: 10px 20px;
     flex-shrink: 0;
     height: auto;
     line-height: normal;
@@ -1042,15 +1061,11 @@
   .content {
     display: flex;
     align-items: stretch;
-    gap: 10px;
+    gap: 0;
     flex: 1;
     min-height: 0;
-  }
-
-  /* When the sidebar rail is collapsed, drop the inter-item gap too,
-     otherwise the main panel sits 10px off the shell's left edge. */
-  .content:has(.sidebar-rail.collapsed) {
-    gap: 0;
+    padding: 0;
+    background: var(--surface-base);
   }
 
   .scrim {
@@ -1063,6 +1078,7 @@
    */
   .sidebar-rail {
     flex-shrink: 0;
+    align-self: stretch;
     width: 260px;
     overflow: hidden;
     transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1079,17 +1095,18 @@
     box-sizing: border-box;
     width: 260px;
     min-width: 260px;
-    background: var(--base);
-    border-radius: 16px;
+    height: 100%;
+    background: var(--surface-raised);
+    border: none;
+    border-right: 1px solid var(--border-subtle);
+    border-radius: 0;
     padding: 22px 24px;
     overflow: hidden;
     opacity: 1;
     transform: translateX(0);
     position: static;
-    height: auto;
     top: auto;
     left: auto;
-    border: none;
     box-shadow: none;
     transition:
       opacity 0.22s ease,
@@ -1217,8 +1234,8 @@
     flex: 1;
     min-width: 0;
     min-height: 0;
-    background: var(--mantle);
-    border-radius: 16px;
+    background: var(--surface-base);
+    border-radius: 0;
     overflow: hidden;
   }
 
@@ -1237,8 +1254,11 @@
     box-sizing: border-box;
     width: 340px;
     min-width: var(--chat-w, 340px);
-    background: var(--base);
-    border-radius: 16px;
+    height: 100%;
+    background: var(--surface-raised);
+    border: none;
+    border-left: 1px solid var(--border-subtle);
+    border-radius: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1335,7 +1355,8 @@
     width: var(--hit-step);
     height: var(--hit-step);
     padding: 0;
-    font-size: 16px;
+    /* Track button hit size (30→16 fine, 44→~23 coarse). */
+    font-size: calc(var(--hit-step) * 16 / 30);
     line-height: 1;
   }
 
@@ -1530,6 +1551,11 @@
 
     .content {
       gap: 0;
+      padding: 0;
+    }
+
+    .header {
+      padding: 10px 16px;
     }
 
     .scrim {
@@ -1643,6 +1669,7 @@
       z-index: 20;
       width: 100%;
       height: 80vh;
+      margin-bottom: 0;
       overflow: visible;
       transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
       transform: translateY(105%);
