@@ -16,7 +16,12 @@
     applyTheme,
     theme,
   } from "../theme.svelte";
-  import { CHROME_OPTIONS, shellChrome } from "../shellChrome.svelte";
+  import {
+    CHROME_OPTIONS,
+    SIDEBAR_WIDTH_MAX,
+    SIDEBAR_WIDTH_MIN,
+    shellChrome,
+  } from "../shellChrome.svelte";
   import { pointer } from "../pointer.svelte";
   import Icon from "./Icon.svelte";
   import type { IconName } from "./icons";
@@ -152,6 +157,7 @@
   const CHAT_WIDTH_MIN = 280;
   const CHAT_WIDTH_MAX = 640;
   let chatWidth = $state(340);
+  let sidebarResizing = $state(false);
 
   $effect(() => {
     if ((!chatOpen && !chatPresent) || ChatSidebarComp) return;
@@ -501,6 +507,47 @@
       chatWidth = CHAT_WIDTH_MAX;
     }
   }
+
+  function onSidebarResizeStart(e: PointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = shellChrome.sidebarWidth;
+    sidebarResizing = true;
+    const onMove = (ev: PointerEvent) => {
+      const delta = ev.clientX - startX;
+      shellChrome.setSidebarWidth(startWidth + delta, false);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      sidebarResizing = false;
+      shellChrome.setSidebarWidth(shellChrome.sidebarWidth);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  function onSidebarResizeKeydown(e: KeyboardEvent) {
+    const step = e.shiftKey ? 32 : 16;
+    const width = shellChrome.sidebarWidth;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(width + step);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(width - step);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(SIDEBAR_WIDTH_MIN);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(SIDEBAR_WIDTH_MAX);
+    }
+  }
 </script>
 
 <div class="shell" class:chrome-floating={shellChrome.chrome === "floating"}>
@@ -777,8 +824,18 @@
       }}
     ></div>
 
-    <div class="sidebar-rail" class:collapsed={!sidebarOpen}>
-      <aside class="sidebar" aria-hidden={!sidebarOpen} inert={!sidebarOpen}>
+    <div
+      class="sidebar-rail"
+      class:collapsed={!sidebarOpen}
+      class:resizing={sidebarResizing}
+      style={!narrow ? `--sidebar-w: ${shellChrome.sidebarWidth}px` : undefined}
+    >
+      <aside
+        class="sidebar"
+        style={!narrow ? `width: ${shellChrome.sidebarWidth}px` : undefined}
+        aria-hidden={!sidebarOpen}
+        inert={!sidebarOpen}
+      >
         <div class="profile">
           {#if avatar}
             <img
@@ -812,6 +869,23 @@
             </button>
           {/each}
         </nav>
+
+        {#if !narrow}
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <div
+            class="sidebar-resize-handle"
+            role="separator"
+            tabindex="0"
+            aria-orientation="vertical"
+            aria-valuenow={shellChrome.sidebarWidth}
+            aria-valuemin={SIDEBAR_WIDTH_MIN}
+            aria-valuemax={SIDEBAR_WIDTH_MAX}
+            aria-label={t("aria.resizeSidebar")}
+            onpointerdown={onSidebarResizeStart}
+            onkeydown={onSidebarResizeKeydown}
+          ></div>
+        {/if}
       </aside>
     </div>
 
@@ -1112,7 +1186,7 @@
   .sidebar-rail {
     flex-shrink: 0;
     align-self: stretch;
-    width: 260px;
+    width: var(--sidebar-w, 260px);
     overflow: hidden;
     transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -1121,13 +1195,17 @@
     width: 0;
   }
 
+  .sidebar-rail.resizing {
+    transition: none;
+  }
+
   .sidebar {
     display: flex;
     flex-direction: column;
     gap: 10px;
     box-sizing: border-box;
-    width: 260px;
-    min-width: 260px;
+    width: var(--sidebar-w, 260px);
+    min-width: var(--sidebar-w, 260px);
     height: 100%;
     background: var(--surface-raised);
     border: none;
@@ -1137,7 +1215,7 @@
     overflow: hidden;
     opacity: 1;
     transform: translateX(0);
-    position: static;
+    position: relative;
     top: auto;
     left: auto;
     box-shadow: none;
@@ -1150,6 +1228,39 @@
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
+  }
+
+  .sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 6px;
+    cursor: col-resize;
+    touch-action: none;
+    z-index: 5;
+  }
+
+  .sidebar-resize-handle:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+  }
+
+  .sidebar-resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 2px;
+    width: 2px;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+
+  .sidebar-resize-handle:hover::after,
+  .sidebar-resize-handle:focus-visible::after,
+  .sidebar-rail.resizing .sidebar-resize-handle::after {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
   .profile {

@@ -19,6 +19,7 @@
   "aria.notificationsUnread": "Notifications ({n} unread)",
   "aria.assistant": "AI Assistant",
   "aria.resizeAssistant": "Resize AI assistant",
+  "aria.resizeSidebar": "Resize sidebar",
   "aria.close": "Close",
   "aria.avatar": "{name} avatar",
   "settings.theme": "Theme",

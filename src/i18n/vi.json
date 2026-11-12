@@ -19,6 +19,7 @@
   "aria.notificationsUnread": "Thông báo ({n} chưa đọc)",
   "aria.assistant": "Trợ lý AI",
   "aria.resizeAssistant": "Kéo thay đổi kích thước trợ lý AI",
+  "aria.resizeSidebar": "Kéo thay đổi kích thước thanh bên",
   "aria.close": "Đóng",
   "aria.avatar": "Ảnh đại diện của {name}",
   "settings.theme": "Chủ đề",
