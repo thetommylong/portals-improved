@@ -258,7 +258,7 @@
 
   /* Keep title on the header midline when unread sits under it. */
   .notif-heading.has-unread {
-    translate: 0 -0.35em;
+    translate: 0 0.35em;
   }
 
   .notif-title {
