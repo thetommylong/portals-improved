@@ -29,6 +29,7 @@
   let typeCodes = $state<Map<string, string>>(new Map());
 
   let loadedOnce = false;
+  const unreadCount = $derived(result?.numberOfUnreadNotifications ?? 0);
 
   async function load() {
     if (loading) return;
@@ -132,15 +133,15 @@
     onclick={(e) => e.stopPropagation()}
     transition:scale|global={popScale()}
   >
-    <div class="notif-header">
-      <span class="notif-title">{t("notif.title")}</span>
-      {#if result}
-        <span class="notif-unread"
-          >{t("notif.unread", {
-            n: result.numberOfUnreadNotifications,
-          })}</span
-        >
-      {/if}
+    <div class="notif-header" class:has-unread={unreadCount > 0}>
+      <div class="notif-heading" class:has-unread={unreadCount > 0}>
+        <span class="notif-title">{t("notif.title")}</span>
+        {#if unreadCount > 0}
+          <span class="notif-unread"
+            >{t("notif.unread", { n: unreadCount })}</span
+          >
+        {/if}
+      </div>
       <button
         type="button"
         class="notif-close"
@@ -243,6 +244,20 @@
     border-bottom: 1px solid var(--border-subtle);
   }
 
+  .notif-heading {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  /* Keep title on the header midline when unread sits under it. */
+  .notif-heading.has-unread {
+    translate: 0 -0.35em;
+  }
+
   .notif-title {
     font-size: 14px;
     font-weight: 600;
@@ -250,8 +265,8 @@
   }
 
   .notif-unread {
-    flex: 1;
     font-size: 11px;
+    line-height: 1.2;
     color: var(--accent);
   }
 
