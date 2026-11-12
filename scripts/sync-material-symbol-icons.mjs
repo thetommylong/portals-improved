@@ -23,6 +23,7 @@ const ICON_NAMES = [
   "close",
   "refresh",
   "notifications",
+  "notifications_active",
   "assignment",
   "done_all",
   "group",
@@ -38,6 +39,7 @@ const ICON_NAMES = [
   "error",
   "check_circle",
   "info",
+  "more_vert",
 ];
 
 function extractPath(name, filled) {

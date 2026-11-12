@@ -2,11 +2,13 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { fade, scale } from "svelte/transition";
   import { fetchModels, getModel, setModel } from "../../sdk/openai";
   import type { ModelInfo } from "../../sdk/types";
   import { t } from "../../i18n.svelte";
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
+  import { backdropFade, modalScale } from "./popTransition";
 
   let { open = false, onclose }: { open?: boolean; onclose: () => void } =
     $props();
@@ -59,7 +61,12 @@
 />
 
 {#if open}
-  <div class="picker-overlay" role="presentation" onclick={onclose}>
+  <div
+    class="picker-overlay"
+    role="presentation"
+    onclick={onclose}
+    transition:fade={backdropFade()}
+  >
     <!-- click stop only: Escape handled on window; focus trap owns Tab -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
@@ -70,6 +77,7 @@
       tabindex="-1"
       bind:this={panelEl}
       onclick={(e) => e.stopPropagation()}
+      transition:scale={modalScale()}
     >
       <div class="picker-header">
         <span class="picker-title">{t("modelPicker.title")}</span>

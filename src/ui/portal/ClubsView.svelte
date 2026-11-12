@@ -7,6 +7,7 @@
   import { notify } from "../../notifications";
   import { readTerms, writeTerms } from "../../marksCache";
   import { i18n, t } from "../../i18n.svelte";
+  import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -14,6 +15,13 @@
   let selectedTermId = $state("");
   let clubs = $state<Club[]>([]);
   let loading = $state(false);
+
+  $effect(() => {
+    pageLoading.active = loading;
+    return () => {
+      pageLoading.active = false;
+    };
+  });
   let gridWidth = $state(0);
 
   let termPicked = false;

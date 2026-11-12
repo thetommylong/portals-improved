@@ -2,6 +2,7 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { fade, scale } from "svelte/transition";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Term, MarkCommon } from "../../types/portal";
   import {
@@ -17,6 +18,7 @@
   import { notify } from "../../notifications";
   import { t } from "../../i18n.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
+  import { backdropFade, modalScale } from "./popTransition";
 
   let {
     marks,
@@ -240,7 +242,12 @@
   });
 </script>
 
-<div class="drawer-backdrop" role="presentation" onclick={onclose}>
+<div
+  class="drawer-backdrop"
+  role="presentation"
+  onclick={onclose}
+  transition:fade|global={backdropFade()}
+>
   <!-- click stop only: Escape + Tab owned by attachOverlayFocus -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
@@ -251,6 +258,7 @@
     tabindex="-1"
     bind:this={drawerEl}
     onclick={(e) => e.stopPropagation()}
+    transition:scale|global={modalScale()}
   >
     <div class="drawer-header">
       <h2 class="drawer-title">{t("predictor.title")}</h2>
@@ -612,7 +620,6 @@
     align-items: stretch;
     justify-content: flex-end;
     background: color-mix(in srgb, var(--mantle) 70%, transparent);
-    animation: backdrop-in 0.18s ease-out both;
   }
 
   .drawer {
@@ -624,7 +631,7 @@
     background: var(--base);
     border-left: 1px solid var(--border-subtle);
     font-family: "Google Sans Flex", system-ui, sans-serif;
-    animation: drawer-in 0.18s ease-out;
+    transform-origin: center right;
   }
 
   .drawer:focus-visible {
@@ -1102,12 +1109,6 @@
 
   .detail-need {
     color: var(--warning-ink);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .drawer {
-      animation: none;
-    }
   }
 
   @media (max-width: 768px) {

@@ -2,6 +2,7 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { fade, scale } from "svelte/transition";
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
   import { notify } from "../notifications";
@@ -15,6 +16,12 @@
     applyTheme,
     theme,
   } from "../theme.svelte";
+  import {
+    CHROME_OPTIONS,
+    SIDEBAR_WIDTH_MAX,
+    SIDEBAR_WIDTH_MIN,
+    shellChrome,
+  } from "../shellChrome.svelte";
   import { pointer } from "../pointer.svelte";
   import Icon from "./Icon.svelte";
   import type { IconName } from "./icons";
@@ -22,6 +29,8 @@
     attachOverlayFocus,
     type OverlayFocusHandle,
   } from "./portal/overlayFocus";
+  import { pageLoading } from "./portal/pageLoading.svelte";
+  import { backdropFade, modalScale, popScale } from "./portal/popTransition";
   // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
   // of the initial System.register entry execute path.
@@ -90,6 +99,15 @@
   }
 
   const isMobile = window.matchMedia("(max-width: 768px)");
+  let narrow = $state(isMobile.matches);
+
+  $effect(() => {
+    const sync = () => {
+      narrow = isMobile.matches;
+    };
+    isMobile.addEventListener("change", sync);
+    return () => isMobile.removeEventListener("change", sync);
+  });
 
   let sidebarOpen = $state(!isMobile.matches);
   let activeNav = $state<PageId>("home");
@@ -109,6 +127,8 @@
   let scheduleDate = $state("");
   let lastTrigger = $state<HTMLElement>();
   let chatOpen = $state(false);
+  /** Stays true during the close animation so the chat rail can slide out. */
+  let chatPresent = $state(false);
   let agentContext = $state<AgentContext | null>(null);
   let ChatSidebarComp = $state<
     typeof import("./portal/ChatSidebar.svelte").default | null
@@ -137,9 +157,10 @@
   const CHAT_WIDTH_MIN = 280;
   const CHAT_WIDTH_MAX = 640;
   let chatWidth = $state(340);
+  let sidebarResizing = $state(false);
 
   $effect(() => {
-    if (!chatOpen || ChatSidebarComp) return;
+    if ((!chatOpen && !chatPresent) || ChatSidebarComp) return;
     void import("./portal/ChatSidebar.svelte").then((m) => {
       ChatSidebarComp = m.default;
     });
@@ -246,6 +267,9 @@
   let settingsOpen = $state(false);
   let settingsBtn: HTMLButtonElement | undefined = $state();
   let settingsPop: HTMLDivElement | undefined = $state();
+  let overflowOpen = $state(false);
+  let overflowBtn: HTMLButtonElement | undefined = $state();
+  let overflowPop: HTMLDivElement | undefined = $state();
 
   pointer.start();
 
@@ -258,6 +282,32 @@
   function closeSettings() {
     if (!settingsOpen) return;
     settingsOpen = false;
+  }
+
+  function openSettings() {
+    if (settingsOpen) return;
+    lastTrigger =
+      (narrow ? overflowBtn : settingsBtn) ??
+      (document.activeElement as HTMLElement);
+    if (narrow) sidebarOpen = false;
+    overflowOpen = false;
+    settingsOpen = true;
+  }
+
+  function closeOverflow() {
+    if (!overflowOpen) return;
+    overflowOpen = false;
+  }
+
+  function toggleOverflow() {
+    if (overflowOpen) {
+      closeOverflow();
+      return;
+    }
+    lastTrigger = document.activeElement as HTMLElement;
+    if (narrow) sidebarOpen = false;
+    closeSettings();
+    overflowOpen = true;
   }
 
   /** Arrow/Home/End navigation for settings role=radiogroup clusters. */
@@ -311,6 +361,29 @@
       document.removeEventListener("pointerdown", onPointerdown);
       handle.release();
     };
+  });
+
+  $effect(() => {
+    if (!overflowOpen || !overflowPop) return;
+    const handle: OverlayFocusHandle = attachOverlayFocus(
+      overflowPop,
+      closeOverflow,
+    );
+    function onPointerdown(e: Event) {
+      if (!(e.target instanceof Node)) return;
+      if (overflowPop?.contains(e.target)) return;
+      if (overflowBtn?.contains(e.target)) return;
+      closeOverflow();
+    }
+    document.addEventListener("pointerdown", onPointerdown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerdown);
+      handle.release();
+    };
+  });
+
+  $effect(() => {
+    if (!narrow) closeOverflow();
   });
 
   $effect(() => {
@@ -383,11 +456,34 @@
     pages[activeNav]?.refresh();
   }
 
+  const viewChunkPending = $derived.by(() => {
+    const f = runtime.adapter.features;
+    switch (activeNav) {
+      case "home":
+        return f.schedule && !ScheduleViewComp;
+      case "marks":
+        return f.marks && !MarksViewComp;
+      case "feedback":
+        return f.feedback && !FeedbackViewComp;
+      case "homeworks":
+        return f.homeworks && !HomeworksViewComp;
+      case "events":
+        return f.events && !EventsViewComp;
+      case "standing":
+        return f.standing && !StandingViewComp;
+      case "clubs":
+        return f.clubs && !ClubsViewComp;
+    }
+  });
+
+  const contentRefreshing = $derived(pageLoading.active || viewChunkPending);
+
   function onNotifications() {
     if (notifOpen) {
       restoreFocus();
     } else {
       lastTrigger = document.activeElement as HTMLElement;
+      if (narrow) sidebarOpen = false;
     }
     notifOpen = !notifOpen;
   }
@@ -415,7 +511,6 @@
   function closeChat() {
     if (!chatOpen) return;
     chatOpen = false;
-    restoreFocus();
   }
 
   function toggleChat() {
@@ -423,8 +518,29 @@
       closeChat();
     } else {
       lastTrigger = document.activeElement as HTMLElement;
-      chatOpen = true;
+      if (narrow) sidebarOpen = false;
+      chatPresent = true;
+      requestAnimationFrame(() => {
+        chatOpen = true;
+      });
     }
+  }
+
+  function onContentScrim() {
+    if (sidebarOpen) {
+      toggleSidebar();
+      return;
+    }
+    if (narrow && chatOpen) closeChat();
+  }
+
+  function onChatRailTransitionEnd(e: TransitionEvent) {
+    if (e.target !== e.currentTarget) return;
+    // Desktop animates width; mobile animates transform.
+    if (e.propertyName !== "width" && e.propertyName !== "transform") return;
+    if (chatOpen) return;
+    chatPresent = false;
+    restoreFocus();
   }
 
   function onChatResizeKeydown(e: KeyboardEvent) {
@@ -443,11 +559,53 @@
       chatWidth = CHAT_WIDTH_MAX;
     }
   }
+
+  function onSidebarResizeStart(e: PointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = shellChrome.sidebarWidth;
+    sidebarResizing = true;
+    const onMove = (ev: PointerEvent) => {
+      const delta = ev.clientX - startX;
+      shellChrome.setSidebarWidth(startWidth + delta, false);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      sidebarResizing = false;
+      shellChrome.setSidebarWidth(shellChrome.sidebarWidth);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  function onSidebarResizeKeydown(e: KeyboardEvent) {
+    const step = e.shiftKey ? 32 : 16;
+    const width = shellChrome.sidebarWidth;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(width + step);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(width - step);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(SIDEBAR_WIDTH_MIN);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      shellChrome.setSidebarWidth(SIDEBAR_WIDTH_MAX);
+    }
+  }
 </script>
 
-<div class="shell">
+<div class="shell" class:chrome-floating={shellChrome.chrome === "floating"}>
   <a class="skip-link" href="#fsp-main">{t("aria.skipToMain")}</a>
   <h1 class="shell-title">{t("aria.appName")}</h1>
+
   <header class="header">
     <div class="header-left">
       <button
@@ -483,7 +641,7 @@
     <div class="header-right">
       {#if runtime.adapter.features.session}
         <button
-          class="icon-btn"
+          class="icon-btn header-action"
           class:active={chatOpen}
           aria-label={t("aria.toggleAssistant")}
           aria-expanded={chatOpen}
@@ -494,211 +652,379 @@
       {/if}
       <div class="settings-wrap">
         <button
-          class="icon-btn"
+          class="icon-btn header-action"
           class:active={settingsOpen}
           bind:this={settingsBtn}
           aria-label={t("aria.appearance")}
           aria-expanded={settingsOpen}
           onclick={() => {
-            if (settingsOpen) {
-              closeSettings();
-            } else {
-              lastTrigger = document.activeElement as HTMLElement;
-              settingsOpen = true;
-            }
+            if (settingsOpen) closeSettings();
+            else openSettings();
           }}
         >
           <Icon name="settings" size={22} />
         </button>
         {#if settingsOpen}
-          <div
-            class="settings-pop"
-            bind:this={settingsPop}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("aria.appearance")}
-            tabindex="-1"
-          >
-            <p class="settings-title">{t("settings.theme")}</p>
-            <div
-              class="settings-flavors"
-              role="radiogroup"
-              tabindex="0"
-              aria-label={t("settings.flavor")}
-              onkeydown={(e) =>
-                onRadioGroupKeydown(e, FLAVOR_OPTIONS, theme.flavor, (v) =>
-                  theme.setFlavor(v as (typeof FLAVOR_OPTIONS)[number]),
-                )}
-            >
-              {#each FLAVOR_OPTIONS as option (option)}
-                <button
-                  class="settings-flavor"
-                  class:selected={theme.flavor === option}
-                  role="radio"
-                  aria-checked={theme.flavor === option}
-                  tabindex={theme.flavor === option ? 0 : -1}
-                  onclick={() => theme.setFlavor(option)}
-                >
-                  {option[0].toUpperCase() + option.slice(1)}
-                </button>
-              {/each}
-            </div>
-            {#if theme.flavor === "system"}
-              <p class="settings-title">{t("settings.darkGroup")}</p>
+          <div class="settings-layer" class:as-modal={narrow}>
+            {#if narrow}
               <div
-                class="settings-flavors trio"
+                class="settings-scrim"
+                role="presentation"
+                onclick={closeSettings}
+                transition:fade={backdropFade()}
+              ></div>
+            {/if}
+            <div
+              class="settings-pop"
+              bind:this={settingsPop}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("aria.appearance")}
+              tabindex="-1"
+              transition:scale={narrow ? modalScale() : popScale()}
+            >
+              <p class="settings-title">{t("settings.theme")}</p>
+              <div
+                class="settings-flavors"
                 role="radiogroup"
                 tabindex="0"
-                aria-label={t("settings.darkFlavor")}
+                aria-label={t("settings.flavor")}
                 onkeydown={(e) =>
-                  onRadioGroupKeydown(e, DARK_FLAVORS, theme.systemDark, (v) =>
-                    theme.setSystemDark(v as (typeof DARK_FLAVORS)[number]),
+                  onRadioGroupKeydown(e, FLAVOR_OPTIONS, theme.flavor, (v) =>
+                    theme.setFlavor(v as (typeof FLAVOR_OPTIONS)[number]),
                   )}
               >
-                {#each DARK_FLAVORS as dark (dark)}
+                {#each FLAVOR_OPTIONS as option (option)}
                   <button
                     class="settings-flavor"
-                    class:selected={theme.systemDark === dark}
+                    class:selected={theme.flavor === option}
                     role="radio"
-                    aria-checked={theme.systemDark === dark}
-                    tabindex={theme.systemDark === dark ? 0 : -1}
-                    onclick={() => theme.setSystemDark(dark)}
+                    aria-checked={theme.flavor === option}
+                    tabindex={theme.flavor === option ? 0 : -1}
+                    onclick={() => theme.setFlavor(option)}
                   >
-                    {dark[0].toUpperCase() + dark.slice(1)}
+                    {option[0].toUpperCase() + option.slice(1)}
                   </button>
                 {/each}
               </div>
-            {/if}
-            <p class="settings-title">{t("settings.accent")}</p>
-            <div
-              class="settings-accents"
-              role="radiogroup"
-              tabindex="0"
-              aria-label={t("settings.accentColor")}
-              onkeydown={(e) =>
-                onRadioGroupKeydown(e, ACCENTS, theme.accent, (v) =>
-                  theme.setAccent(v as (typeof ACCENTS)[number]),
-                )}
-            >
-              {#each ACCENTS as accent (accent)}
-                <button
-                  class="accent-dot"
-                  class:selected={theme.accent === accent}
-                  style={`background: var(--${accent});`}
-                  role="radio"
-                  aria-checked={theme.accent === accent}
-                  tabindex={theme.accent === accent ? 0 : -1}
-                  aria-label={accent}
-                  title={accent}
-                  onclick={() => theme.setAccent(accent)}
-                ></button>
-              {/each}
-            </div>
-            <p class="settings-title">{t("settings.language")}</p>
-            <select
-              class="settings-select"
-              aria-label={t("settings.languageGroup")}
-              value={i18n.locale}
-              onchange={(e) => {
-                const next = (e.currentTarget as HTMLSelectElement).value;
-                if (next === "vi" || next === "en") i18n.setLocale(next);
-              }}
-            >
-              <option value="vi">Tiếng Việt</option>
-              <option value="en">English</option>
-            </select>
-            <hr class="settings-sep" />
-            <p class="settings-title">{t("settings.about")}</p>
-            <div class="about">
-              <span class="about-name">portals-improved</span>
-              <span class="about-detail">
-                v{__BUILD__.version} · {__BUILD__.commit}
-              </span>
-              <a
-                class="about-link"
-                href="https://github.com/thetommylong/portals-improved/blob/main/LICENSE"
-                target="_blank"
-                rel="noreferrer"
+              {#if theme.flavor === "system"}
+                <p class="settings-title">{t("settings.darkGroup")}</p>
+                <div
+                  class="settings-flavors trio"
+                  role="radiogroup"
+                  tabindex="0"
+                  aria-label={t("settings.darkFlavor")}
+                  onkeydown={(e) =>
+                    onRadioGroupKeydown(
+                      e,
+                      DARK_FLAVORS,
+                      theme.systemDark,
+                      (v) =>
+                        theme.setSystemDark(v as (typeof DARK_FLAVORS)[number]),
+                    )}
+                >
+                  {#each DARK_FLAVORS as dark (dark)}
+                    <button
+                      class="settings-flavor"
+                      class:selected={theme.systemDark === dark}
+                      role="radio"
+                      aria-checked={theme.systemDark === dark}
+                      tabindex={theme.systemDark === dark ? 0 : -1}
+                      onclick={() => theme.setSystemDark(dark)}
+                    >
+                      {dark[0].toUpperCase() + dark.slice(1)}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+              <p class="settings-title">{t("settings.accent")}</p>
+              <div
+                class="settings-accents"
+                role="radiogroup"
+                tabindex="0"
+                aria-label={t("settings.accentColor")}
+                onkeydown={(e) =>
+                  onRadioGroupKeydown(e, ACCENTS, theme.accent, (v) =>
+                    theme.setAccent(v as (typeof ACCENTS)[number]),
+                  )}
               >
-                AGPL-3.0-only
-              </a>
+                {#each ACCENTS as accent (accent)}
+                  <button
+                    class="accent-dot"
+                    class:selected={theme.accent === accent}
+                    style={`background: var(--${accent});`}
+                    role="radio"
+                    aria-checked={theme.accent === accent}
+                    tabindex={theme.accent === accent ? 0 : -1}
+                    aria-label={accent}
+                    title={accent}
+                    onclick={() => theme.setAccent(accent)}
+                  ></button>
+                {/each}
+              </div>
+              <p class="settings-title">{t("settings.language")}</p>
+              <select
+                class="settings-select"
+                aria-label={t("settings.languageGroup")}
+                value={i18n.locale}
+                onchange={(e) => {
+                  const next = (e.currentTarget as HTMLSelectElement).value;
+                  if (next === "vi" || next === "en") i18n.setLocale(next);
+                }}
+              >
+                <option value="vi">Tiếng Việt</option>
+                <option value="en">English</option>
+              </select>
+              <p class="settings-title">{t("settings.layout")}</p>
+              <div
+                class="settings-flavors"
+                role="radiogroup"
+                tabindex="0"
+                aria-label={t("settings.layoutGroup")}
+                onkeydown={(e) =>
+                  onRadioGroupKeydown(
+                    e,
+                    CHROME_OPTIONS,
+                    shellChrome.chrome,
+                    (v) =>
+                      shellChrome.setChrome(
+                        v as (typeof CHROME_OPTIONS)[number],
+                      ),
+                  )}
+              >
+                {#each CHROME_OPTIONS as option (option)}
+                  <button
+                    class="settings-flavor"
+                    class:selected={shellChrome.chrome === option}
+                    role="radio"
+                    aria-checked={shellChrome.chrome === option}
+                    tabindex={shellChrome.chrome === option ? 0 : -1}
+                    onclick={() => shellChrome.setChrome(option)}
+                  >
+                    {option === "flush"
+                      ? t("settings.layoutFlush")
+                      : t("settings.layoutFloating")}
+                  </button>
+                {/each}
+              </div>
+              <hr class="settings-sep" />
+              <p class="settings-title">{t("settings.about")}</p>
+              <div class="about">
+                <span class="about-name">portals-improved</span>
+                <span class="about-detail">
+                  v{__BUILD__.version} · {__BUILD__.commit}
+                </span>
+                <a
+                  class="about-link"
+                  href="https://github.com/thetommylong/portals-improved/blob/main/LICENSE"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  AGPL-3.0-only
+                </a>
+              </div>
             </div>
           </div>
         {/if}
       </div>
-      <button class="icon-btn" aria-label={t("aria.refresh")} onclick={refresh}>
+      <button
+        class="icon-btn header-action"
+        class:spinning={contentRefreshing}
+        aria-label={t("aria.refresh")}
+        aria-busy={contentRefreshing}
+        onclick={refresh}
+      >
         <Icon name="refresh" size={22} />
       </button>
       {#if runtime.adapter.features.notifications}
         <button
-          class="icon-btn"
+          class="icon-btn header-action"
           class:has-badge={unreadCount > 0}
           aria-label={unreadCount > 0
             ? t("aria.notificationsUnread", { n: unreadCount })
             : t("aria.notificationsNone")}
           onclick={onNotifications}
         >
-          <Icon name="notifications" size={22} />
+          <Icon
+            name={unreadCount > 0 ? "notifications_active" : "notifications"}
+            size={22}
+          />
           {#if unreadCount > 0}
             <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
           {/if}
         </button>
       {/if}
+
+      <div class="overflow-wrap">
+        <button
+          class="icon-btn"
+          class:active={overflowOpen || chatOpen || settingsOpen}
+          class:has-badge={unreadCount > 0}
+          class:spinning={contentRefreshing}
+          bind:this={overflowBtn}
+          aria-label={t("aria.moreActions")}
+          aria-expanded={overflowOpen}
+          aria-haspopup="menu"
+          onclick={toggleOverflow}
+        >
+          <Icon name="more_vert" size={22} />
+          {#if unreadCount > 0}
+            <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+          {/if}
+        </button>
+        {#if overflowOpen}
+          <div
+            class="overflow-pop"
+            bind:this={overflowPop}
+            role="menu"
+            aria-label={t("aria.moreActions")}
+            tabindex="-1"
+            transition:scale={popScale()}
+          >
+            {#if runtime.adapter.features.session}
+              <button
+                class="overflow-item"
+                class:active={chatOpen}
+                role="menuitem"
+                onclick={() => {
+                  closeOverflow();
+                  toggleChat();
+                }}
+              >
+                <Icon name="chat" size={20} />
+                <span>{t("header.actionAssistant")}</span>
+              </button>
+            {/if}
+            <button
+              class="overflow-item"
+              class:active={settingsOpen}
+              role="menuitem"
+              onclick={openSettings}
+            >
+              <Icon name="settings" size={20} />
+              <span>{t("header.actionAppearance")}</span>
+            </button>
+            <button
+              class="overflow-item"
+              class:spinning={contentRefreshing}
+              role="menuitem"
+              aria-busy={contentRefreshing}
+              onclick={() => {
+                closeOverflow();
+                refresh();
+              }}
+            >
+              <Icon name="refresh" size={20} />
+              <span>{t("header.actionRefresh")}</span>
+            </button>
+            {#if runtime.adapter.features.notifications}
+              <button
+                class="overflow-item"
+                class:has-badge={unreadCount > 0}
+                role="menuitem"
+                onclick={() => {
+                  closeOverflow();
+                  onNotifications();
+                }}
+              >
+                <Icon
+                  name={unreadCount > 0
+                    ? "notifications_active"
+                    : "notifications"}
+                  size={20}
+                />
+                <span>{t("header.actionNotifications")}</span>
+                {#if unreadCount > 0}
+                  <span class="overflow-count"
+                    >{unreadCount > 99 ? "99+" : unreadCount}</span
+                  >
+                {/if}
+              </button>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
   </header>
 
   <div class="content">
     <div
       class="scrim"
-      class:visible={sidebarOpen}
+      class:visible={sidebarOpen || (narrow && chatOpen)}
       role="presentation"
-      aria-hidden={!sidebarOpen}
-      onclick={toggleSidebar}
+      aria-hidden={!(sidebarOpen || (narrow && chatOpen))}
+      onclick={onContentScrim}
       onkeydown={(e) => {
-        if (e.key === "Escape" && sidebarOpen) toggleSidebar();
+        if (e.key !== "Escape") return;
+        if (sidebarOpen) toggleSidebar();
+        else if (narrow && chatOpen) closeChat();
       }}
     ></div>
 
-    <aside
-      class="sidebar"
+    <div
+      class="sidebar-rail"
       class:collapsed={!sidebarOpen}
-      aria-hidden={!sidebarOpen}
-      inert={!sidebarOpen}
+      class:resizing={sidebarResizing}
+      style={!narrow ? `--sidebar-w: ${shellChrome.sidebarWidth}px` : undefined}
     >
-      <div class="profile">
-        {#if avatar}
-          <img
-            class="avatar"
-            src={avatar}
-            alt={t("aria.avatar", { name: name || "" })}
-          />
-        {:else}
-          <div
-            class="avatar avatar-fallback"
-            aria-label={t("aria.avatar", { name: name || "" })}
-            role="img"
-          >
-            {avatarInitials}
-          </div>
-        {/if}
-        <p class="profile-name">{name || "..."}</p>
-        <p class="profile-roll">{rollNumber}</p>
-      </div>
+      <aside
+        class="sidebar"
+        style={!narrow ? `width: ${shellChrome.sidebarWidth}px` : undefined}
+        aria-hidden={!sidebarOpen}
+        inert={!sidebarOpen}
+      >
+        <div class="profile">
+          {#if avatar}
+            <img
+              class="avatar"
+              src={avatar}
+              alt={t("aria.avatar", { name: name || "" })}
+            />
+          {:else}
+            <div
+              class="avatar avatar-fallback"
+              aria-label={t("aria.avatar", { name: name || "" })}
+              role="img"
+            >
+              {avatarInitials}
+            </div>
+          {/if}
+          <p class="profile-name">{name || "..."}</p>
+          <p class="profile-roll">{rollNumber}</p>
+        </div>
 
-      <nav class="nav" aria-label={t("header.aria.mainNav")}>
-        {#each navItems as item (item.id)}
-          <button
-            class="nav-item"
-            class:active={activeNav === item.id}
-            aria-current={activeNav === item.id ? "page" : undefined}
-            onclick={() => onNav(item)}
-          >
-            <Icon class="nav-icon" name={item.icon} size={22} />
-            <span>{t(item.label)}</span>
-          </button>
-        {/each}
-      </nav>
-    </aside>
+        <nav class="nav" aria-label={t("header.aria.mainNav")}>
+          {#each navItems as item (item.id)}
+            <button
+              class="nav-item"
+              class:active={activeNav === item.id}
+              aria-current={activeNav === item.id ? "page" : undefined}
+              onclick={() => onNav(item)}
+            >
+              <Icon class="nav-icon" name={item.icon} size={22} />
+              <span>{t(item.label)}</span>
+            </button>
+          {/each}
+        </nav>
+
+        {#if !narrow}
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <div
+            class="sidebar-resize-handle"
+            role="separator"
+            tabindex="0"
+            aria-orientation="vertical"
+            aria-valuenow={shellChrome.sidebarWidth}
+            aria-valuemin={SIDEBAR_WIDTH_MIN}
+            aria-valuemax={SIDEBAR_WIDTH_MAX}
+            aria-label={t("aria.resizeSidebar")}
+            onpointerdown={onSidebarResizeStart}
+            onkeydown={onSidebarResizeKeydown}
+          ></div>
+        {/if}
+      </aside>
+    </div>
 
     <main id="fsp-main" class="main" tabindex="-1">
       {#if activeNav === "homeworks"}
@@ -706,7 +1032,9 @@
           {#if HomeworksViewComp}
             <HomeworksViewComp studentId={userId} bind:this={pages.homeworks} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -716,7 +1044,9 @@
           {#if FeedbackViewComp}
             <FeedbackViewComp studentId={userId} bind:this={pages.feedback} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -726,7 +1056,9 @@
           {#if MarksViewComp}
             <MarksViewComp studentId={userId} bind:this={pages.marks} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -736,7 +1068,9 @@
           {#if EventsViewComp}
             <EventsViewComp studentId={userId} bind:this={pages.events} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -746,7 +1080,9 @@
           {#if StandingViewComp}
             <StandingViewComp studentId={userId} bind:this={pages.standing} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -756,7 +1092,9 @@
           {#if ClubsViewComp}
             <ClubsViewComp studentId={userId} bind:this={pages.clubs} />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -770,7 +1108,9 @@
               bind:this={pages.home}
             />
           {:else}
-            <div class="view-loading" role="status">{t("nav.loadingView")}</div>
+            <div class="view-loading" role="status">
+              {t("nav.loadingView")}
+            </div>
           {/if}
         {:else}
           <UnavailableState />
@@ -778,33 +1118,42 @@
       {/if}
     </main>
 
-    {#if chatOpen && runtime.adapter.features.session}
-      <aside
-        class="chat-panel"
-        style={`width: ${chatWidth}px;`}
-        aria-label={t("aria.assistant")}
+    {#if chatPresent && runtime.adapter.features.session}
+      <div
+        class="chat-rail"
+        class:open={chatOpen}
+        style={`--chat-w: ${chatWidth}px`}
+        ontransitionend={onChatRailTransitionEnd}
       >
-        <!-- splitter: APG uses role=separator + tabindex; svelte a11y disagrees with that combo -->
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <div
-          class="chat-resize-handle"
-          role="separator"
-          tabindex="0"
-          aria-orientation="vertical"
-          aria-valuenow={chatWidth}
-          aria-valuemin={CHAT_WIDTH_MIN}
-          aria-valuemax={CHAT_WIDTH_MAX}
-          aria-label={t("aria.resizeAssistant")}
-          onpointerdown={onChatResizeStart}
-          onkeydown={onChatResizeKeydown}
-        ></div>
-        {#if agentContext && ChatSidebarComp}
-          <ChatSidebarComp {agentContext} onclose={closeChat} />
-        {:else}
-          <div class="chat-loading">{t("chat.loadingContext")}</div>
-        {/if}
-      </aside>
+        <aside
+          class="chat-panel"
+          style={`width: ${chatWidth}px;`}
+          aria-label={t("aria.assistant")}
+          aria-hidden={!chatOpen}
+          inert={!chatOpen}
+        >
+          <!-- splitter: APG uses role=separator + tabindex; svelte a11y disagrees with that combo -->
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <div
+            class="chat-resize-handle"
+            role="separator"
+            tabindex="0"
+            aria-orientation="vertical"
+            aria-valuenow={chatWidth}
+            aria-valuemin={CHAT_WIDTH_MIN}
+            aria-valuemax={CHAT_WIDTH_MAX}
+            aria-label={t("aria.resizeAssistant")}
+            onpointerdown={onChatResizeStart}
+            onkeydown={onChatResizeKeydown}
+          ></div>
+          {#if agentContext && ChatSidebarComp}
+            <ChatSidebarComp {agentContext} onclose={closeChat} />
+          {:else}
+            <div class="chat-loading">{t("chat.loadingContext")}</div>
+          {/if}
+        </aside>
+      </div>
     {/if}
   </div>
 
@@ -856,18 +1205,20 @@
   .shell {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0;
     height: 100%;
-    padding: 16px 20px;
+    padding: 0;
   }
 
   .header {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--mantle);
-    border-radius: 16px;
-    padding: 10px 36px;
+    background: var(--surface-raised);
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    padding: 10px 20px;
     flex-shrink: 0;
     height: auto;
     line-height: normal;
@@ -910,6 +1261,16 @@
     translate: 0 -0.5px;
   }
 
+  .icon-btn.spinning > :global(.fsp-icon) {
+    animation: refresh-spin 0.75s linear infinite;
+  }
+
+  @keyframes refresh-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
   .icon-btn:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
@@ -944,53 +1305,99 @@
   .content {
     display: flex;
     align-items: stretch;
-    gap: 10px;
+    gap: 0;
     flex: 1;
     min-height: 0;
-  }
-
-  /* When the sidebar is collapsed to zero width, drop the inter-item gap too,
-     otherwise the main panel sits 10px (plus the 1px collapsing sidebar) off
-     the shell's left edge. :has() keeps the width transition (unlike
-     display:none) while removing the phantom spacing. */
-  .content:has(.sidebar.collapsed) {
-    gap: 0;
+    padding: 0;
+    background: var(--surface-base);
   }
 
   .scrim {
     display: none;
   }
 
+  /*
+   * Rail clips; inner sidebar keeps a fixed 260px width so the profile/nav
+   * slide away instead of squashing as width animates to 0.
+   */
+  .sidebar-rail {
+    flex-shrink: 0;
+    align-self: stretch;
+    width: var(--sidebar-w, 260px);
+    overflow: hidden;
+    transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sidebar-rail.collapsed {
+    width: 0;
+  }
+
+  .sidebar-rail.resizing {
+    transition: none;
+  }
+
   .sidebar {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 260px;
-    flex-shrink: 0;
-    background: var(--base);
-    border-radius: 16px;
+    box-sizing: border-box;
+    width: var(--sidebar-w, 260px);
+    min-width: var(--sidebar-w, 260px);
+    height: 100%;
+    background: var(--surface-raised);
+    border: none;
+    border-right: 1px solid var(--border-subtle);
+    border-radius: 0;
     padding: 22px 24px;
     overflow: hidden;
     opacity: 1;
     transform: translateX(0);
-    position: static;
-    height: auto;
+    position: relative;
     top: auto;
     left: auto;
-    border: none;
     box-shadow: none;
     transition:
       opacity 0.22s ease,
-      transform 0.22s ease,
-      width 0.22s ease,
-      padding 0.22s ease;
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .sidebar.collapsed {
-    width: 0;
-    padding: 0;
+  .sidebar-rail.collapsed .sidebar {
+    transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
+  }
+
+  .sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 6px;
+    cursor: col-resize;
+    touch-action: none;
+    z-index: 5;
+  }
+
+  .sidebar-resize-handle:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+  }
+
+  .sidebar-resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 2px;
+    width: 2px;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+
+  .sidebar-resize-handle:hover::after,
+  .sidebar-resize-handle:focus-visible::after,
+  .sidebar-rail.resizing .sidebar-resize-handle::after {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
   .profile {
@@ -1108,21 +1515,46 @@
     flex: 1;
     min-width: 0;
     min-height: 0;
-    background: var(--mantle);
-    border-radius: 16px;
+    background: var(--surface-base);
+    border-radius: 0;
     overflow: hidden;
   }
 
-  .chat-panel {
-    width: 340px;
+  .chat-rail {
     flex-shrink: 0;
-    background: var(--base);
-    border-radius: 16px;
+    width: 0;
+    overflow: hidden;
+    transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .chat-rail.open {
+    width: var(--chat-w, 340px);
+  }
+
+  .chat-panel {
+    box-sizing: border-box;
+    width: 340px;
+    min-width: var(--chat-w, 340px);
+    height: 100%;
+    background: var(--surface-raised);
+    border: none;
+    border-left: 1px solid var(--border-subtle);
+    border-radius: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     min-height: 0;
     position: relative;
+    opacity: 0;
+    transform: translateX(16px);
+    transition:
+      opacity 0.22s ease,
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .chat-rail.open .chat-panel {
+    opacity: 1;
+    transform: translateX(0);
   }
 
   .chat-resize-handle {
@@ -1175,10 +1607,11 @@
     min-width: 0;
   }
 
-  .toolbar-btn {
+  /* Tag+class beats shared.css `button[class] { background: transparent }`. */
+  button.toolbar-btn {
     height: var(--hit-step);
     min-height: var(--hit-step);
-    padding: 0 14px;
+    padding: 0 16px;
     border: none;
     border-radius: 8px;
     background: var(--surface-base);
@@ -1189,22 +1622,23 @@
     transition: background 0.15s ease;
   }
 
-  .toolbar-btn:hover {
-    background: var(--base);
+  button.toolbar-btn:hover {
+    background: var(--surface1);
   }
 
-  .toolbar-btn:focus-visible {
+  button.toolbar-btn:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
   }
 
-  .toolbar-nav {
+  button.toolbar-btn.toolbar-nav {
     min-width: var(--hit-step);
     min-height: var(--hit-step);
     width: var(--hit-step);
     height: var(--hit-step);
     padding: 0;
-    font-size: 16px;
+    /* Track button hit size (30→16 fine, 44→~23 coarse). */
+    font-size: calc(var(--hit-step) * 16 / 30);
     line-height: 1;
   }
 
@@ -1223,6 +1657,82 @@
     position: relative;
   }
 
+  .overflow-wrap {
+    display: none;
+    position: relative;
+  }
+
+  .overflow-pop {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    min-width: 200px;
+    padding: 6px;
+    background: var(--base);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    transform-origin: top right;
+  }
+
+  .overflow-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 0;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .overflow-item:hover,
+  .overflow-item:focus-visible {
+    background: var(--surface-hover);
+  }
+
+  .overflow-item:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+  }
+
+  .overflow-item.active {
+    color: var(--accent-strong);
+  }
+
+  .overflow-item.spinning > :global(.fsp-icon) {
+    animation: refresh-spin 0.75s linear infinite;
+  }
+
+  .overflow-count {
+    margin-left: auto;
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-control);
+    background: var(--red);
+    color: var(--mantle);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  .settings-layer {
+    display: contents;
+  }
+
+  .settings-scrim {
+    display: none;
+  }
+
   .settings-pop {
     position: absolute;
     top: calc(100% + 8px);
@@ -1234,7 +1744,7 @@
     border-radius: 12px;
     padding: 14px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-    animation: pop-in 0.15s ease-out both;
+    transform-origin: top right;
   }
 
   .settings-title {
@@ -1377,20 +1887,97 @@
     text-decoration: underline;
   }
 
+  /*
+   * Classic floating chrome — inset padded shell with rounded raised panels.
+   * Toggled via settings (shellChrome); flush tiled layout is the default.
+   */
+  .shell.chrome-floating {
+    gap: 12px;
+    padding: 16px 20px;
+  }
+
+  .shell.chrome-floating .header {
+    background: var(--mantle);
+    border-bottom: none;
+    border-radius: var(--radius-surface);
+    padding: 10px 36px;
+  }
+
+  .shell.chrome-floating .content {
+    gap: 10px;
+    background: transparent;
+  }
+
+  .shell.chrome-floating .content:has(.sidebar-rail.collapsed) {
+    gap: 0;
+  }
+
+  .shell.chrome-floating .sidebar {
+    background: var(--base);
+    border-right: none;
+    border-radius: var(--radius-surface);
+  }
+
+  .shell.chrome-floating .main {
+    background: var(--mantle);
+    border-radius: var(--radius-surface);
+  }
+
+  .shell.chrome-floating .chat-panel {
+    background: var(--base);
+    border-left: none;
+    border-radius: var(--radius-surface);
+  }
+
   @media (max-width: 768px) {
-    .shell {
+    .shell,
+    .shell.chrome-floating {
       gap: 0;
       padding: 0;
     }
 
     .header,
     .main,
-    .sidebar {
+    .sidebar,
+    .shell.chrome-floating .header,
+    .shell.chrome-floating .main,
+    .shell.chrome-floating .sidebar {
       border-radius: 0;
     }
 
-    .content {
+    .content,
+    .shell.chrome-floating .content {
       gap: 0;
+      padding: 0;
+    }
+
+    .shell.chrome-floating .content:has(.sidebar-rail.collapsed) {
+      gap: 0;
+    }
+
+    .header,
+    .shell.chrome-floating .header {
+      padding: 10px 16px;
+    }
+
+    .header-action {
+      display: none;
+    }
+
+    .overflow-wrap {
+      display: block;
+    }
+
+    .shell.chrome-floating .header {
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .shell.chrome-floating .sidebar {
+      border-right: none;
+    }
+
+    .shell.chrome-floating .main {
+      background: var(--surface-base);
     }
 
     .scrim {
@@ -1411,28 +1998,40 @@
       visibility: visible;
     }
 
-    .sidebar {
+    .sidebar-rail {
       position: fixed;
       top: 0;
       bottom: 0;
       left: 0;
       z-index: 20;
-      display: flex;
       width: min(300px, 84vw);
-      border-radius: 0 16px 16px 0;
-      overflow-y: auto;
+      overflow: visible;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
       transform: translateX(0);
-      transition: transform 0.22s ease;
-      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
     }
 
-    .sidebar.collapsed {
-      display: flex;
+    .sidebar-rail.collapsed {
       width: min(300px, 84vw);
-      padding: 22px 24px;
-      opacity: 1;
-      pointer-events: auto;
       transform: translateX(-105%);
+    }
+
+    .sidebar {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      height: 100%;
+      border-radius: 0 16px 16px 0;
+      overflow-y: auto;
+      transform: none;
+      opacity: 1;
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
+      transition: none;
+    }
+
+    .sidebar-rail.collapsed .sidebar {
+      transform: none;
+      opacity: 1;
+      pointer-events: none;
       box-shadow: none;
     }
 
@@ -1441,9 +2040,13 @@
       gap: 6px;
     }
 
-    .toolbar-btn {
-      padding: 0 10px;
+    button.toolbar-btn {
+      padding: 0 12px;
       font-size: 12px;
+    }
+
+    button.toolbar-btn.toolbar-nav {
+      padding: 0;
     }
 
     .schedule-date {
@@ -1451,15 +2054,72 @@
       margin-left: 2px;
     }
 
-    .chat-panel {
+    .settings-layer.as-modal {
+      display: grid;
+      place-items: center;
       position: fixed;
-      top: 0;
-      bottom: 0;
+      inset: 0;
+      z-index: 25;
+      padding: 16px;
+    }
+
+    .settings-layer.as-modal .settings-scrim {
+      display: block;
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      border: none;
+      padding: 0;
+      background: color-mix(in srgb, var(--mantle) 55%, transparent);
+      cursor: pointer;
+    }
+
+    .settings-layer.as-modal .settings-pop {
+      position: relative;
+      top: auto;
+      right: auto;
+      z-index: 1;
+      width: min(320px, 100%);
+      max-height: 80vh;
+      overflow-y: auto;
+      transform-origin: center center;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .chat-rail {
+      position: fixed;
+      left: 0;
       right: 0;
+      bottom: 0;
+      top: auto;
       z-index: 20;
-      width: min(340px, 84vw);
-      border-radius: 16px 0 0 16px;
-      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
+      width: 100%;
+      height: 80vh;
+      margin-bottom: 0;
+      overflow: visible;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      transform: translateY(105%);
+    }
+
+    .chat-rail.open {
+      width: 100%;
+      height: 80vh;
+      transform: translateY(0);
+    }
+
+    .chat-panel {
+      width: 100% !important;
+      min-width: 0;
+      height: 100%;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .chat-resize-handle {
+      display: none;
     }
   }
 </style>

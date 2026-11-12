@@ -11,6 +11,7 @@
   import { getWeek } from "./dateHelper";
   import LessonCard from "./LessonCard.svelte";
   import LessonPopup from "./LessonPopup.svelte";
+  import { pageLoading } from "./pageLoading.svelte";
 
   let {
     studentId,
@@ -28,6 +29,13 @@
   let selectedDate = $state(Temporal.Now.plainDateISO());
   let entries = $state<ScheduleEntry[]>([]);
   let loading = $state(false);
+
+  $effect(() => {
+    pageLoading.active = loading;
+    return () => {
+      pageLoading.active = false;
+    };
+  });
   let nowMinutes = $state(minutesNow());
   let scroller: HTMLDivElement | undefined = $state();
   let lastAutoScrollKey = "";
