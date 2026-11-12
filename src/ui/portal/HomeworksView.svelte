@@ -6,11 +6,19 @@
   import type { StudentHomeWork } from "../../types/portal";
   import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
+  import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
   let items = $state<StudentHomeWork[]>([]);
   let loading = $state(false);
+
+  $effect(() => {
+    pageLoading.active = loading;
+    return () => {
+      pageLoading.active = false;
+    };
+  });
 
   const byDue = (a: StudentHomeWork, b: StudentHomeWork) =>
     a.expiredDateTime.localeCompare(b.expiredDateTime) ||
@@ -61,6 +69,8 @@
   export function refresh(): void {
     void load();
   }
+
+  void load();
 </script>
 
 <div class="homeworks">

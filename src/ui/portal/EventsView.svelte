@@ -6,11 +6,19 @@
   import type { EventStudent } from "../../types/portal";
   import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
+  import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
   let items = $state<EventStudent[]>([]);
   let loading = $state(false);
+
+  $effect(() => {
+    pageLoading.active = loading;
+    return () => {
+      pageLoading.active = false;
+    };
+  });
   let togglingId = $state<string | null>(null);
   let gridWidth = $state(0);
 

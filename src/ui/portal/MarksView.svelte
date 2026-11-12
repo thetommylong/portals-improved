@@ -14,6 +14,7 @@
   } from "../../marksCache";
   import { exportGradesToCSV } from "./csvExport";
   import PredictorDrawer from "./PredictorDrawer.svelte";
+  import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -28,6 +29,13 @@
   let selectedTermId = $state("");
   let marks = $state<MarkCommon[]>([]);
   let loading = $state(false);
+
+  $effect(() => {
+    pageLoading.active = loading;
+    return () => {
+      pageLoading.active = false;
+    };
+  });
   let gridWidth = $state(0);
   let predictorOpen = $state(false);
   let lastTrigger = $state<HTMLElement>();

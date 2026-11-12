@@ -9,6 +9,7 @@
   } from "../../types/portal";
   import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
+  import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -24,6 +25,13 @@
 
   let items = $state<StandingItem[]>([]);
   let loading = $state(false);
+
+  $effect(() => {
+    pageLoading.active = loading;
+    return () => {
+      pageLoading.active = false;
+    };
+  });
   let expandedId = $state<string | null>(null);
   let yearFilter = $state("all");
   let gridWidth = $state(0);

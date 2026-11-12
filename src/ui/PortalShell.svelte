@@ -23,6 +23,7 @@
     attachOverlayFocus,
     type OverlayFocusHandle,
   } from "./portal/overlayFocus";
+  import { pageLoading } from "./portal/pageLoading.svelte";
   import { popScale } from "./portal/popTransition";
   // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
@@ -387,6 +388,30 @@
     pages[activeNav]?.refresh();
   }
 
+  const viewChunkPending = $derived.by(() => {
+    const f = runtime.adapter.features;
+    switch (activeNav) {
+      case "home":
+        return f.schedule && !ScheduleViewComp;
+      case "marks":
+        return f.marks && !MarksViewComp;
+      case "feedback":
+        return f.feedback && !FeedbackViewComp;
+      case "homeworks":
+        return f.homeworks && !HomeworksViewComp;
+      case "events":
+        return f.events && !EventsViewComp;
+      case "standing":
+        return f.standing && !StandingViewComp;
+      case "clubs":
+        return f.clubs && !ClubsViewComp;
+    }
+  });
+
+  const contentRefreshing = $derived(
+    pageLoading.active || viewChunkPending,
+  );
+
   function onNotifications() {
     if (notifOpen) {
       restoreFocus();
@@ -642,7 +667,13 @@
           </div>
         {/if}
       </div>
-      <button class="icon-btn" aria-label={t("aria.refresh")} onclick={refresh}>
+      <button
+        class="icon-btn"
+        class:spinning={contentRefreshing}
+        aria-label={t("aria.refresh")}
+        aria-busy={contentRefreshing}
+        onclick={refresh}
+      >
         <Icon name="refresh" size={22} />
       </button>
       {#if runtime.adapter.features.notifications}
@@ -930,6 +961,16 @@
     display: block;
     /* Material-derived paths sit slightly low in the 24 box; nudge optically. */
     translate: 0 -0.5px;
+  }
+
+  .icon-btn.spinning > :global(.fsp-icon) {
+    animation: refresh-spin 0.75s linear infinite;
+  }
+
+  @keyframes refresh-spin {
+    to {
+      rotate: 360deg;
+    }
   }
 
   .icon-btn:focus-visible {

@@ -10,6 +10,7 @@
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { backdropFade, modalScale } from "./popTransition";
+  import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -17,6 +18,13 @@
   let pending = $state<StudentFeedbackLecturerResult[]>([]);
   let submitted = $state<StudentFeedbackLecturerResult[]>([]);
   let loading = $state(false);
+
+  $effect(() => {
+    pageLoading.active = loading;
+    return () => {
+      pageLoading.active = false;
+    };
+  });
 
   // Form state
   let active: StudentFeedbackLecturerResult | null = $state(null);
