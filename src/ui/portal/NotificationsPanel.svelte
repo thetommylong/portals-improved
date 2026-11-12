@@ -3,13 +3,12 @@
   // Copyright (C) 2026 thetommylong
 
   import { untrack } from "svelte";
-  import { scale } from "svelte/transition";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Notification, NotificationsResult } from "../../types/portal";
   import { t } from "../../i18n.svelte";
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
-  import { popScale } from "./popTransition";
+  import { notifPanel } from "./popTransition";
 
   let {
     userId,
@@ -131,9 +130,9 @@
     tabindex="-1"
     bind:this={panelEl}
     onclick={(e) => e.stopPropagation()}
-    transition:scale|global={popScale()}
+    transition:notifPanel|global
   >
-    <div class="notif-header" class:has-unread={unreadCount > 0}>
+    <div class="notif-header">
       <div class="notif-heading" class:has-unread={unreadCount > 0}>
         <span class="notif-title">{t("notif.title")}</span>
         {#if unreadCount > 0}
@@ -233,6 +232,10 @@
       border-top: none;
       transform-origin: top center;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .notif-close {
+      display: none;
     }
   }
 
