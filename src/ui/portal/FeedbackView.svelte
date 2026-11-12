@@ -364,7 +364,10 @@
           {:else}
             <span class="fb-disabled">{t("feedback.disabled")}</span>
           {/if}
-          <button class="btn-secondary" onclick={closeForm} disabled={submitting}
+          <button
+            class="btn-secondary"
+            onclick={closeForm}
+            disabled={submitting}
             >{submitting ? t("feedback.closing") : t("feedback.cancel")}</button
           >
         </footer>
