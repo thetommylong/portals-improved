@@ -536,19 +536,7 @@
   }
 }
 
-@keyframes notif-in {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
 
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
 
 @keyframes dialog-in {
   from {

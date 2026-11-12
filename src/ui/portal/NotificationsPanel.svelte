@@ -3,11 +3,13 @@
   // Copyright (C) 2026 thetommylong
 
   import { untrack } from "svelte";
+  import { scale } from "svelte/transition";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Notification, NotificationsResult } from "../../types/portal";
   import { t } from "../../i18n.svelte";
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
+  import { popScale } from "./popTransition";
 
   let {
     userId,
@@ -116,76 +118,76 @@
   });
 </script>
 
-{#if open}
-  <div class="notif-backdrop" role="presentation" onclick={onclose}>
-    <!-- click stop only: Escape + Tab owned by attachOverlayFocus -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div
-      class="notif-panel"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("notif.title")}
-      tabindex="-1"
-      bind:this={panelEl}
-      onclick={(e) => e.stopPropagation()}
-    >
-      <div class="notif-header">
-        <span class="notif-title">{t("notif.title")}</span>
-        {#if result}
-          <span class="notif-unread"
-            >{t("notif.unread", {
-              n: result.numberOfUnreadNotifications,
-            })}</span
-          >
-        {/if}
-        <button
-          type="button"
-          class="notif-close"
-          aria-label={t("aria.close")}
-          onclick={onclose}
+<!-- Mounted only while open (PortalShell {#if}); transition plays on mount/unmount. -->
+<div class="notif-backdrop" role="presentation" onclick={onclose}>
+  <!-- click stop only: Escape + Tab owned by attachOverlayFocus -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div
+    class="notif-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-label={t("notif.title")}
+    tabindex="-1"
+    bind:this={panelEl}
+    onclick={(e) => e.stopPropagation()}
+    transition:scale|global={popScale()}
+  >
+    <div class="notif-header">
+      <span class="notif-title">{t("notif.title")}</span>
+      {#if result}
+        <span class="notif-unread"
+          >{t("notif.unread", {
+            n: result.numberOfUnreadNotifications,
+          })}</span
         >
-          <Icon name="close" size={22} />
-        </button>
-      </div>
+      {/if}
+      <button
+        type="button"
+        class="notif-close"
+        aria-label={t("aria.close")}
+        onclick={onclose}
+      >
+        <Icon name="close" size={22} />
+      </button>
+    </div>
 
-      <div class="notif-list">
-        {#if loading && !result}
-          <p class="notif-status" role="status">{t("status.loading")}</p>
-        {:else if error}
-          <p class="notif-status" role="status">{t("notif.failed")}</p>
-        {:else if result && result.notifications.length === 0}
-          <p class="notif-status" role="status">{t("notif.empty")}</p>
-        {:else if result}
-          {#each result.notifications as n (n.notificationId)}
-            <button
-              type="button"
-              class="notif-item"
-              class:unread={!n.isRead}
-              class:clickable={!n.isRead}
-              disabled={n.isRead}
-              aria-label={n.isRead
-                ? n.title
-                : `${t("notif.markRead")}: ${n.title}`}
-              onclick={() => markRead(n)}
-            >
-              <div class="notif-item-top">
-                {#if typeCode(n)}
-                  <span class="notif-type">{typeCode(n)}</span>
-                {/if}
-                <span class="notif-time">{relTime(n.createdDate)}</span>
-                {#if !n.isRead}
-                  <span class="notif-dot" aria-hidden="true"></span>
-                {/if}
-              </div>
-              <p class="notif-item-title">{n.title}</p>
-              <p class="notif-item-content">{n.content}</p>
-            </button>
-          {/each}
-        {/if}
-      </div>
+    <div class="notif-list">
+      {#if loading && !result}
+        <p class="notif-status" role="status">{t("status.loading")}</p>
+      {:else if error}
+        <p class="notif-status" role="status">{t("notif.failed")}</p>
+      {:else if result && result.notifications.length === 0}
+        <p class="notif-status" role="status">{t("notif.empty")}</p>
+      {:else if result}
+        {#each result.notifications as n (n.notificationId)}
+          <button
+            type="button"
+            class="notif-item"
+            class:unread={!n.isRead}
+            class:clickable={!n.isRead}
+            disabled={n.isRead}
+            aria-label={n.isRead
+              ? n.title
+              : `${t("notif.markRead")}: ${n.title}`}
+            onclick={() => markRead(n)}
+          >
+            <div class="notif-item-top">
+              {#if typeCode(n)}
+                <span class="notif-type">{typeCode(n)}</span>
+              {/if}
+              <span class="notif-time">{relTime(n.createdDate)}</span>
+              {#if !n.isRead}
+                <span class="notif-dot" aria-hidden="true"></span>
+              {/if}
+            </div>
+            <p class="notif-item-title">{n.title}</p>
+            <p class="notif-item-content">{n.content}</p>
+          </button>
+        {/each}
+      {/if}
     </div>
   </div>
-{/if}
+</div>
 
 <style>
   .notif-backdrop {
@@ -210,7 +212,7 @@
     overflow: hidden;
     font-family: "Google Sans Flex", system-ui, sans-serif;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    animation: notif-in 0.2s ease-out both;
+    transform-origin: top right;
   }
 
   .notif-header {

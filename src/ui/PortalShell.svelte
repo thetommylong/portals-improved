@@ -2,6 +2,7 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { scale } from "svelte/transition";
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
   import { notify } from "../notifications";
@@ -22,6 +23,7 @@
     attachOverlayFocus,
     type OverlayFocusHandle,
   } from "./portal/overlayFocus";
+  import { popScale } from "./portal/popTransition";
   // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
   // of the initial System.register entry execute path.
@@ -531,6 +533,7 @@
             aria-modal="true"
             aria-label={t("aria.appearance")}
             tabindex="-1"
+            transition:scale={popScale()}
           >
             <p class="settings-title">{t("settings.theme")}</p>
             <div
@@ -1286,7 +1289,7 @@
     border-radius: 12px;
     padding: 14px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-    animation: pop-in 0.15s ease-out both;
+    transform-origin: top right;
   }
 
   .settings-title {
