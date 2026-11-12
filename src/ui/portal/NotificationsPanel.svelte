@@ -233,10 +233,6 @@
       transform-origin: top center;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
     }
-
-    .notif-close {
-      display: none;
-    }
   }
 
   .notif-header {
@@ -303,6 +299,12 @@
   .notif-close:hover {
     opacity: 1;
     background: var(--border-strong);
+  }
+
+  @media (max-width: 768px) {
+    .notif-close {
+      display: none;
+    }
   }
 
   .notif-list {
