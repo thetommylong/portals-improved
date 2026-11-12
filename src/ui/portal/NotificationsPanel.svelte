@@ -215,6 +215,26 @@
     transform-origin: top right;
   }
 
+  @media (max-width: 768px) {
+    .notif-backdrop {
+      background: color-mix(in srgb, var(--mantle) 55%, transparent);
+    }
+
+    .notif-panel {
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      max-width: none;
+      height: 80vh;
+      max-height: 80vh;
+      border-radius: 0 0 16px 16px;
+      border-top: none;
+      transform-origin: top center;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+  }
+
   .notif-header {
     display: flex;
     align-items: center;

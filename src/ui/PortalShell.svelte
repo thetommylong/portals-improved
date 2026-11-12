@@ -2,7 +2,7 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
-  import { scale } from "svelte/transition";
+  import { fade, scale } from "svelte/transition";
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
   import { notify } from "../notifications";
@@ -24,7 +24,7 @@
     type OverlayFocusHandle,
   } from "./portal/overlayFocus";
   import { pageLoading } from "./portal/pageLoading.svelte";
-  import { popScale } from "./portal/popTransition";
+  import { backdropFade, modalScale, popScale } from "./portal/popTransition";
   // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
   // of the initial System.register entry execute path.
@@ -93,6 +93,15 @@
   }
 
   const isMobile = window.matchMedia("(max-width: 768px)");
+  let narrow = $state(isMobile.matches);
+
+  $effect(() => {
+    const sync = () => {
+      narrow = isMobile.matches;
+    };
+    isMobile.addEventListener("change", sync);
+    return () => isMobile.removeEventListener("change", sync);
+  });
 
   let sidebarOpen = $state(!isMobile.matches);
   let activeNav = $state<PageId>("home");
@@ -417,6 +426,7 @@
       restoreFocus();
     } else {
       lastTrigger = document.activeElement as HTMLElement;
+      if (narrow) sidebarOpen = false;
     }
     notifOpen = !notifOpen;
   }
@@ -451,11 +461,20 @@
       closeChat();
     } else {
       lastTrigger = document.activeElement as HTMLElement;
+      if (narrow) sidebarOpen = false;
       chatPresent = true;
       requestAnimationFrame(() => {
         chatOpen = true;
       });
     }
+  }
+
+  function onContentScrim() {
+    if (sidebarOpen) {
+      toggleSidebar();
+      return;
+    }
+    if (narrow && chatOpen) closeChat();
   }
 
   function onChatRailTransitionEnd(e: TransitionEvent) {
@@ -544,6 +563,7 @@
               closeSettings();
             } else {
               lastTrigger = document.activeElement as HTMLElement;
+              if (narrow) sidebarOpen = false;
               settingsOpen = true;
             }
           }}
@@ -551,15 +571,24 @@
           <Icon name="settings" size={22} />
         </button>
         {#if settingsOpen}
-          <div
-            class="settings-pop"
-            bind:this={settingsPop}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("aria.appearance")}
-            tabindex="-1"
-            transition:scale={popScale()}
-          >
+          <div class="settings-layer" class:as-modal={narrow}>
+            {#if narrow}
+              <div
+                class="settings-scrim"
+                role="presentation"
+                onclick={closeSettings}
+                transition:fade={backdropFade()}
+              ></div>
+            {/if}
+            <div
+              class="settings-pop"
+              bind:this={settingsPop}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("aria.appearance")}
+              tabindex="-1"
+              transition:scale={narrow ? modalScale() : popScale()}
+            >
             <p class="settings-title">{t("settings.theme")}</p>
             <div
               class="settings-flavors"
@@ -664,6 +693,7 @@
                 AGPL-3.0-only
               </a>
             </div>
+            </div>
           </div>
         {/if}
       </div>
@@ -700,12 +730,14 @@
   <div class="content">
     <div
       class="scrim"
-      class:visible={sidebarOpen}
+      class:visible={sidebarOpen || (narrow && chatOpen)}
       role="presentation"
-      aria-hidden={!sidebarOpen}
-      onclick={toggleSidebar}
+      aria-hidden={!(sidebarOpen || (narrow && chatOpen))}
+      onclick={onContentScrim}
       onkeydown={(e) => {
-        if (e.key === "Escape" && sidebarOpen) toggleSidebar();
+        if (e.key !== "Escape") return;
+        if (sidebarOpen) toggleSidebar();
+        else if (narrow && chatOpen) closeChat();
       }}
     ></div>
 
@@ -1322,6 +1354,14 @@
     position: relative;
   }
 
+  .settings-layer {
+    display: contents;
+  }
+
+  .settings-scrim {
+    display: none;
+  }
+
   .settings-pop {
     position: absolute;
     top: calc(100% + 8px);
@@ -1562,32 +1602,71 @@
       margin-left: 2px;
     }
 
+    .settings-layer.as-modal {
+      display: grid;
+      place-items: center;
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      padding: 16px;
+    }
+
+    .settings-layer.as-modal .settings-scrim {
+      display: block;
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      border: none;
+      padding: 0;
+      background: color-mix(in srgb, var(--mantle) 55%, transparent);
+      cursor: pointer;
+    }
+
+    .settings-layer.as-modal .settings-pop {
+      position: relative;
+      top: auto;
+      right: auto;
+      z-index: 1;
+      width: min(320px, 100%);
+      max-height: 80vh;
+      overflow-y: auto;
+      transform-origin: center center;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    }
+
     .chat-rail {
       position: fixed;
-      top: 0;
-      bottom: 0;
+      left: 0;
       right: 0;
+      bottom: 0;
+      top: auto;
       z-index: 20;
-      width: min(340px, 84vw);
+      width: 100%;
+      height: 80vh;
       overflow: visible;
       transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-      transform: translateX(105%);
+      transform: translateY(105%);
     }
 
     .chat-rail.open {
-      width: min(340px, 84vw);
-      transform: translateX(0);
+      width: 100%;
+      height: 80vh;
+      transform: translateY(0);
     }
 
     .chat-panel {
       width: 100% !important;
       min-width: 0;
       height: 100%;
-      border-radius: 16px 0 0 16px;
-      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
       opacity: 1;
       transform: none;
       transition: none;
+    }
+
+    .chat-resize-handle {
+      display: none;
     }
   }
 </style>
