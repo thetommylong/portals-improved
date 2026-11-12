@@ -2,11 +2,14 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { fade, scale } from "svelte/transition";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { StudentFeedbackLecturerResult } from "../../types/portal";
   import { notify } from "../../notifications";
   import { t } from "../../i18n.svelte";
   import Icon from "../Icon.svelte";
+  import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
+  import { backdropFade, modalScale } from "./popTransition";
 
   let { studentId }: { studentId: string } = $props();
 
@@ -23,14 +26,17 @@
   let comment2 = $state<string>("");
   let submitting = $state(false);
 
-  let dialogEl = $state<HTMLDialogElement>();
+  let dialogEl = $state<HTMLDivElement>();
   let lastTrigger = $state<HTMLElement>();
+  let focusHandle = $state<OverlayFocusHandle | null>(null);
 
   $effect(() => {
-    const el = dialogEl;
-    if (!el) return;
-    if (active && !el.open) el.showModal();
-    else if (!active && el.open) el.close();
+    if (!active || !dialogEl) return;
+    focusHandle = attachOverlayFocus(dialogEl, closeForm);
+    return () => {
+      focusHandle?.release();
+      focusHandle = null;
+    };
   });
 
   // Derived
@@ -166,13 +172,10 @@
   }
 
   function closeForm(): void {
+    if (!active) return;
     discardForm();
     requestAnimationFrame(() => lastTrigger?.focus());
     void load();
-  }
-
-  function onDialogClose(): void {
-    if (active) closeForm();
   }
 </script>
 
@@ -253,102 +256,128 @@
   </div>
 </div>
 
-<dialog
-  class="fb-dialog"
-  bind:this={dialogEl}
-  onclose={onDialogClose}
-  aria-label={t("feedback.formAria")}
->
-  {#if active && formRow}
-    <header class="fb-card-head fb-dialog-head">
-      <div class="fb-card-titlewrap">
-        <h3 class="fb-card-title">{active.subjectName}</h3>
-        <p class="fb-card-sub">{active.description || active.className}</p>
-      </div>
-      <button
-        class="fb-close-btn"
-        aria-label={t("feedback.close")}
-        onclick={closeForm}
-        disabled={submitting}
-      >
-        <Icon name="close" size={18} />
-      </button>
-    </header>
-
-    <div class="fb-dialog-body">
-      <section class="fb-q-list">
-        {#each formRow.questions ?? [] as q (q.feedbackQuestion.feedbackQuestionId)}
-          <div class="fb-q-card">
-            <h4 class="fb-q-title">
-              {q.feedbackQuestion.content ||
-                t("feedback.questionFallback", {
-                  n: q.feedbackQuestion.order ?? 0,
-                })}
-            </h4>
-            <div class="fb-answers">
-              {#each q.feedbackAnswers ?? [] as a (a.feedbackAnswerId)}
-                <button
-                  class={`fb-opt ${answers[q.feedbackQuestion.order ?? 0] === a.feedbackAnswerId ? "fb-opt-selected" : ""} fb-opt-${a.order ?? 0}`}
-                  onclick={() =>
-                    pickAnswer(
-                      q.feedbackQuestion.order ?? 0,
-                      q.feedbackQuestion.feedbackQuestionId,
-                      a.feedbackAnswerId,
-                    )}
-                  aria-pressed={answers[q.feedbackQuestion.order ?? 0] ===
-                    a.feedbackAnswerId}
-                  aria-label={t("feedback.answerAria", {
-                    n: q.feedbackQuestion.order ?? 0,
-                    content: a.content || String(a.order),
-                  })}
-                >
-                  {a.content || String(a.order)}
-                </button>
-              {/each}
-            </div>
+{#if active}
+  <div
+    class="fb-backdrop"
+    role="presentation"
+    onclick={closeForm}
+    transition:fade={backdropFade()}
+  >
+    <!-- click stop only: Escape + Tab owned by attachOverlayFocus -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="fb-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("feedback.formAria")}
+      tabindex="-1"
+      bind:this={dialogEl}
+      onclick={(e) => e.stopPropagation()}
+      transition:scale={modalScale()}
+    >
+      {#if formRow}
+        <header class="fb-card-head fb-dialog-head">
+          <div class="fb-card-titlewrap">
+            <h3 class="fb-card-title">{active.subjectName}</h3>
+            <p class="fb-card-sub">{active.description || active.className}</p>
           </div>
-        {/each}
-      </section>
+          <button
+            class="fb-close-btn"
+            aria-label={t("feedback.close")}
+            onclick={closeForm}
+            disabled={submitting}
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </header>
 
-      <section class="fb-comments">
-        <label class="fb-label" for="fb-comment1">GK1</label>
-        <textarea
-          id="fb-comment1"
-          class="fb-textarea"
-          rows="2"
-          placeholder={t("feedback.commentPlaceholder1")}
-          bind:value={comment1}
-          onblur={() => saveComment(1, comment1)}></textarea>
-        <label class="fb-label" for="fb-comment2">GK2</label>
-        <textarea
-          id="fb-comment2"
-          class="fb-textarea"
-          rows="2"
-          placeholder={t("feedback.commentPlaceholder2")}
-          bind:value={comment2}
-          onblur={() => saveComment(2, comment2)}></textarea>
-      </section>
-    </div>
+        <div class="fb-dialog-body">
+          <section class="fb-q-list">
+            {#each formRow.questions ?? [] as q (q.feedbackQuestion.feedbackQuestionId)}
+              <div class="fb-q-card">
+                <h4 class="fb-q-title">
+                  {q.feedbackQuestion.content ||
+                    t("feedback.questionFallback", {
+                      n: q.feedbackQuestion.order ?? 0,
+                    })}
+                </h4>
+                <div class="fb-answers">
+                  {#each q.feedbackAnswers ?? [] as a (a.feedbackAnswerId)}
+                    <button
+                      class={`fb-opt ${answers[q.feedbackQuestion.order ?? 0] === a.feedbackAnswerId ? "fb-opt-selected" : ""} fb-opt-${a.order ?? 0}`}
+                      onclick={() =>
+                        pickAnswer(
+                          q.feedbackQuestion.order ?? 0,
+                          q.feedbackQuestion.feedbackQuestionId,
+                          a.feedbackAnswerId,
+                        )}
+                      aria-pressed={answers[q.feedbackQuestion.order ?? 0] ===
+                        a.feedbackAnswerId}
+                      aria-label={t("feedback.answerAria", {
+                        n: q.feedbackQuestion.order ?? 0,
+                        content: a.content || String(a.order),
+                      })}
+                    >
+                      {a.content || String(a.order)}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </section>
 
-    <footer class="fb-actions">
-      {#if canFinish}
-        <button class="btn-primary" onclick={finish} disabled={submitting}
-          >{submitting
-            ? t("feedback.submitting")
-            : t("feedback.submit")}</button
-        >
-      {:else}
-        <span class="fb-disabled">{t("feedback.disabled")}</span>
+          <section class="fb-comments">
+            <label class="fb-label" for="fb-comment1">GK1</label>
+            <textarea
+              id="fb-comment1"
+              class="fb-textarea"
+              rows="2"
+              placeholder={t("feedback.commentPlaceholder1")}
+              bind:value={comment1}
+              onblur={() => saveComment(1, comment1)}></textarea>
+            <label class="fb-label" for="fb-comment2">GK2</label>
+            <textarea
+              id="fb-comment2"
+              class="fb-textarea"
+              rows="2"
+              placeholder={t("feedback.commentPlaceholder2")}
+              bind:value={comment2}
+              onblur={() => saveComment(2, comment2)}></textarea>
+          </section>
+        </div>
+
+        <footer class="fb-actions">
+          {#if canFinish}
+            <button class="btn-primary" onclick={finish} disabled={submitting}
+              >{submitting
+                ? t("feedback.submitting")
+                : t("feedback.submit")}</button
+            >
+          {:else}
+            <span class="fb-disabled">{t("feedback.disabled")}</span>
+          {/if}
+          <button class="btn-secondary" onclick={closeForm} disabled={submitting}
+            >{submitting ? t("feedback.closing") : t("feedback.cancel")}</button
+          >
+        </footer>
       {/if}
-      <button class="btn-secondary" onclick={closeForm} disabled={submitting}
-        >{submitting ? t("feedback.closing") : t("feedback.cancel")}</button
-      >
-    </footer>
-  {/if}
-</dialog>
+    </div>
+  </div>
+{/if}
 
 <style>
-  :global(.fb-dialog) {
+  .fb-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .fb-dialog {
     border: none;
     border-radius: 12px;
     padding: 14px 16px;
@@ -357,15 +386,6 @@
     background: var(--base);
     color: var(--text);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-  }
-
-  :global(.fb-dialog[open]) {
-    animation: dialog-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  :global(.fb-dialog::backdrop) {
-    background: rgba(0, 0, 0, 0.5);
-    animation: backdrop-in 0.2s ease-out both;
   }
 
   .fb-dialog-head {

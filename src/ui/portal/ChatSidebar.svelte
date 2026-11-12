@@ -2,6 +2,7 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
+  import { scale } from "svelte/transition";
   import { createAgent } from "../../sdk";
   import type {
     AgentEvent,
@@ -26,6 +27,7 @@
   import { t } from "../../i18n.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { echoUserMessage, isClearCommand } from "./chatEcho";
+  import { modalScale } from "./popTransition";
 
   let {
     agentContext,
@@ -344,6 +346,7 @@
         aria-modal="true"
         aria-labelledby="chat-clear-title"
         aria-describedby="chat-clear-body"
+        transition:scale={modalScale()}
       >
         <p id="chat-clear-title" class="chat-clear-title">
           {t("chat.clearConfirmTitle")}

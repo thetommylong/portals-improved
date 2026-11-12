@@ -3,12 +3,14 @@
   // Copyright (C) 2026 thetommylong
 
   import { Temporal } from "@js-temporal/polyfill";
+  import { fade, scale } from "svelte/transition";
   import type { ScheduleEntry } from "../../types/portal";
   import { runtime } from "../../adapters/runtime.svelte";
   import { i18n, t } from "../../i18n.svelte";
   import { validateOutboundUrl } from "../../sdk/outbound-url";
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
+  import { backdropFade, modalScale } from "./popTransition";
 
   let {
     entry,
@@ -107,6 +109,7 @@
   onkeydown={(e) => {
     if (e.key === "Escape") onclose();
   }}
+  transition:fade|global={backdropFade()}
 >
   <!-- click stop only: Escape on window; focus trap owns Tab -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -118,6 +121,7 @@
     tabindex="-1"
     bind:this={dialogEl}
     onclick={(e) => e.stopPropagation()}
+    transition:scale|global={modalScale()}
   >
     <div class="popup-header">
       <div class="popup-title">
@@ -212,7 +216,6 @@
     justify-content: center;
     padding: 24px;
     background: color-mix(in srgb, var(--mantle) 70%, transparent);
-    animation: backdrop-in 0.2s ease-out both;
   }
 
   .popup {
@@ -228,7 +231,6 @@
     background: var(--base);
     border: 1px solid var(--border-subtle);
     font-family: "Google Sans Flex", system-ui, sans-serif;
-    animation: popup-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .popup-header {
@@ -402,12 +404,6 @@
 
   .popup-link:hover {
     text-decoration: underline;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .popup {
-      animation: none;
-    }
   }
 
   @media (max-width: 768px) {
