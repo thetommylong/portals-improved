@@ -49,6 +49,6 @@
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
     "dompurify": "^3.4.17",
-    "marked": "^18.0.11"
+    "marked": "^18.2.0"
   }
 }
