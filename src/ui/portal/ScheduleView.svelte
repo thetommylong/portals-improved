@@ -193,6 +193,18 @@
 
   const isToday = $derived(selectedDate.toString() === todayIso);
 
+  const nowInRange = $derived(
+    nowMinutes >= range.startMin && nowMinutes <= range.endMin,
+  );
+
+  const nowLineTop = $derived(
+    ((nowMinutes - range.startMin) / 60) * HOUR_PX,
+  );
+
+  const weekHasToday = $derived(
+    weekDays.some((day) => day.toString() === todayIso),
+  );
+
   const computedLabel = $derived(
     isDesktop
       ? (() => {
@@ -344,17 +356,27 @@
                     </div>
                   {/each}
                 </div>
-
-                {#if day.toString() === todayIso && nowMinutes >= range.startMin && nowMinutes <= range.endMin}
-                  <div
-                    class="now-line"
-                    aria-hidden="true"
-                    style="top: {((nowMinutes - range.startMin) / 60) *
-                      HOUR_PX}px"
-                  ></div>
-                {/if}
               </div>
             {/each}
+
+            {#if weekHasToday && nowInRange}
+              <div
+                class="now-line-row"
+                aria-hidden="true"
+                style="top: {nowLineTop}px"
+              >
+                {#each weekDays as day (day.toString())}
+                  <div
+                    class="now-line-seg"
+                    class:current={day.toString() === todayIso}
+                  >
+                    {#if day.toString() === todayIso}
+                      <span class="now-dot"></span>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -391,12 +413,14 @@
               </div>
             {/each}
           </div>
-          {#if isToday && nowMinutes >= range.startMin && nowMinutes <= range.endMin}
+          {#if isToday && nowInRange}
             <div
               class="now-line"
               aria-hidden="true"
-              style="top: {((nowMinutes - range.startMin) / 60) * HOUR_PX}px"
-            ></div>
+              style="top: {nowLineTop}px"
+            >
+              <span class="now-dot"></span>
+            </div>
           {/if}
 
           {#if !loading && dayEntries.length === 0}
@@ -522,6 +546,7 @@
   .events {
     position: absolute;
     inset: 0;
+    z-index: 2;
     padding: 2px 0;
   }
 
@@ -534,18 +559,39 @@
     padding-bottom: 4px;
   }
 
+  /* Behind cards so lesson text stays readable across the week. */
+  .now-line-row {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    height: 2px;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .now-line-seg {
+    position: relative;
+    height: 2px;
+    background: color-mix(in srgb, var(--red) 35%, transparent);
+  }
+
+  .now-line-seg.current {
+    background: var(--red);
+  }
+
   .now-line {
     position: absolute;
     left: 0;
     right: 0;
     height: 2px;
-    background: var(--red);
-    z-index: 5;
+    background: color-mix(in srgb, var(--red) 70%, transparent);
+    z-index: 1;
     pointer-events: none;
   }
 
-  .now-line::before {
-    content: "";
+  .now-dot {
     position: absolute;
     left: -4px;
     top: -3px;
