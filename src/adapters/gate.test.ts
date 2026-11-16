@@ -12,8 +12,9 @@ vi.stubGlobal("GM_setValue", (key: string, value: string) => {
   store.set(key, value);
 });
 
-function stubLocation(hostname: string, search = ""): void {
+function stubLocation(hostname: string, search = "", name = ""): void {
   vi.stubGlobal("window", {
+    name,
     location: { hostname, search },
   });
 }
@@ -69,5 +70,14 @@ describe("gate", () => {
     const { shouldBoot, isMockForced } = await import("./gate");
     expect(isMockForced()).toBe(true);
     expect(shouldBoot()).toBe(true);
+  });
+
+  it("stays idle in the named reauth popup even on live hosts", async () => {
+    stubLocation("fsp.fpt.edu.vn", "", "fsp-reauth");
+    const { shouldBoot, isReauthPopup, REAUTH_POPUP_NAME } =
+      await import("./gate");
+    expect(REAUTH_POPUP_NAME).toBe("fsp-reauth");
+    expect(isReauthPopup()).toBe(true);
+    expect(shouldBoot()).toBe(false);
   });
 });

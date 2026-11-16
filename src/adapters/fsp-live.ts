@@ -45,11 +45,11 @@ import {
   isJwtExpired,
   parseJwtPayload,
 } from "./fsp-auth-token";
+import { REAUTH_POPUP_NAME } from "./gate";
 import { compactFspToolResult } from "./fsp-tool-compact";
 import { pathSegment } from "./path-segment";
 
 const BASE = "https://api.fpt.edu.vn/fsp/api";
-const REAUTH_POPUP_NAME = "fsp-reauth";
 const DEFAULT_REAUTH_TIMEOUT_MS = 120_000;
 
 const FEATURES: AdapterFeatures = {
@@ -70,8 +70,11 @@ let authRequiredNotified = false;
 
 function fireAuthRequired(): void {
   if (authRequiredNotified) return;
+  // Don't latch if the shell hasn't subscribed yet — otherwise the first
+  // pre-UI 401 permanently swallows the sticky banner.
+  if (!authRequiredHandler) return;
   authRequiredNotified = true;
-  authRequiredHandler?.();
+  authRequiredHandler();
 }
 
 function clearAuthRequiredLatch(): void {
@@ -335,7 +338,14 @@ export class FspLiveAdapter implements PortalAdapter {
 
   async getStudentContext(): Promise<StudentContext> {
     const payload = getTokenPayload();
-    if (!payload) throw new Error("No auth token found");
+    if (!payload) {
+      fireAuthRequired();
+      throw new Error("No auth token found");
+    }
+    if (isTokenExpired(payload)) {
+      fireAuthRequired();
+      throw new Error("Auth token expired");
+    }
 
     const campusId = (payload.campusId || payload.campusID) as string;
     const campusCode = (payload.campusCode || "") as string;
