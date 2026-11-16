@@ -126,6 +126,16 @@ export class MockAdapter implements PortalAdapter {
     return Promise.resolve(MOCK_USER_ID);
   }
 
+  onAuthRequired(_handler: (() => void) | null): void {
+    // mock session never expires
+  }
+
+  reauthenticate(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  clearAuthRequired(): void {}
+
   getStudentContext(): Promise<StudentContext> {
     return Promise.resolve({
       studentId: MOCK_STUDENT_ID,

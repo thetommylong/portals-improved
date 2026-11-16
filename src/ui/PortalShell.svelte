@@ -5,7 +5,7 @@
   import { fade, scale } from "svelte/transition";
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
-  import { notify } from "../notifications";
+  import { notify, notifyAction } from "../notifications";
   import { i18n, t, type MessageKey } from "../i18n.svelte";
   import UnavailableState from "./portal/UnavailableState.svelte";
   import NotificationsPanel from "./portal/NotificationsPanel.svelte";
@@ -384,6 +384,37 @@
 
   $effect(() => {
     if (!narrow) closeOverflow();
+  });
+
+  $effect(() => {
+    let banner: { dismiss: () => void } | null = null;
+
+    runtime.adapter.onAuthRequired(() => {
+      if (banner) return;
+      banner = notifyAction({
+        message: t("toast.authRequired"),
+        actionLabel: t("toast.authRequiredAction"),
+        type: "error",
+        onDismiss: () => {
+          banner = null;
+          runtime.adapter.clearAuthRequired();
+        },
+        onAction: async () => {
+          const ok = await runtime.adapter.reauthenticate();
+          if (!ok) {
+            notify(t("toast.authFailed"), "error");
+            throw new Error("reauth failed");
+          }
+          notify(t("toast.authRestored"), "success");
+        },
+      });
+    });
+
+    return () => {
+      runtime.adapter.onAuthRequired(null);
+      banner?.dismiss();
+      banner = null;
+    };
   });
 
   $effect(() => {

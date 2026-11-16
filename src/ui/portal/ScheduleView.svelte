@@ -197,9 +197,7 @@
     nowMinutes >= range.startMin && nowMinutes <= range.endMin,
   );
 
-  const nowLineTop = $derived(
-    ((nowMinutes - range.startMin) / 60) * HOUR_PX,
-  );
+  const nowLineTop = $derived(((nowMinutes - range.startMin) / 60) * HOUR_PX);
 
   const weekHasToday = $derived(
     weekDays.some((day) => day.toString() === todayIso),
