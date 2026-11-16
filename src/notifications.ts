@@ -24,9 +24,20 @@ const COLORS: Record<ToastKind, string> = {
 };
 
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NARROW_MQ = "(max-width: 768px)";
 
 let stack: HTMLDivElement | null = null;
 let escapeHandler: ((e: KeyboardEvent) => void) | null = null;
+
+function isNarrow(): boolean {
+  return window.matchMedia(NARROW_MQ).matches;
+}
+
+/** Mobile: from top. Desktop: from right. */
+function offscreenTransform(narrow: boolean): string {
+  if (REDUCED) return "none";
+  return narrow ? "translateY(-120%)" : "translateX(120%)";
+}
 
 function pageDocument(): Document {
   return typeof unsafeWindow !== "undefined" ? unsafeWindow.document : document;
@@ -89,6 +100,7 @@ function ensureStack(): HTMLDivElement {
   }
   stack?.remove();
 
+  const narrow = isNarrow();
   stack = doc.createElement("div");
   stack.setAttribute("role", "status");
   stack.setAttribute("aria-live", "polite");
@@ -101,7 +113,7 @@ function ensureStack(): HTMLDivElement {
     zIndex: "2147483647",
     display: "flex",
     flexDirection: "column",
-    alignItems: "flex-end",
+    alignItems: narrow ? "stretch" : "flex-end",
     gap: "8px",
     pointerEvents: "none",
     fontFamily: FONT,
@@ -140,12 +152,13 @@ function restoreStackPolite(s: HTMLDivElement, type: ToastKind): void {
 function styleToastShell(
   toast: HTMLButtonElement | HTMLDivElement,
   type: ToastKind,
+  narrow: boolean,
 ): void {
   Object.assign(toast.style, {
     pointerEvents: "auto",
     boxSizing: "border-box",
-    width: "max-content",
-    maxWidth: "min(360px, 100%)",
+    width: narrow ? "100%" : "max-content",
+    maxWidth: narrow ? "100%" : "min(360px, 100%)",
     padding: "12px 14px",
     borderRadius: "var(--radius-card)",
     background: "var(--panel-bg)",
@@ -160,7 +173,7 @@ function styleToastShell(
     fontFamily: FONT,
     fontSize: "13px",
     lineHeight: "1.4",
-    transform: REDUCED ? "translateX(0)" : "translateX(120%)",
+    transform: offscreenTransform(narrow),
     opacity: REDUCED ? "1" : "0",
     transition: REDUCED
       ? "none"
@@ -171,7 +184,7 @@ function styleToastShell(
 function attachEnter(toast: HTMLElement, icon: SVGSVGElement): void {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      toast.style.transform = "translateX(0)";
+      toast.style.transform = "none";
       toast.style.opacity = "1";
       icon.style.transform = "scale(1)";
     });
@@ -210,6 +223,8 @@ function scheduleRemove(
 
 export function notify(message: string, type: ToastKind = "info") {
   const s = ensureStack();
+  const narrow = isNarrow();
+  s.style.alignItems = narrow ? "stretch" : "flex-end";
 
   const bar = document.createElement("div");
   Object.assign(bar.style, {
@@ -243,12 +258,15 @@ export function notify(message: string, type: ToastKind = "info") {
   const toast = document.createElement("button");
   toast.type = "button";
   toast.className = "fsp-toast-timed";
-  toast.setAttribute("aria-label", `${type}: ${message}`);
+  toast.setAttribute(
+    "aria-label",
+    narrow ? `${type}: ${message}. Tap to dismiss` : `${type}: ${message}`,
+  );
   if (type === "error") {
     s.setAttribute("aria-live", "assertive");
     toast.setAttribute("role", "alert");
   }
-  styleToastShell(toast, type);
+  styleToastShell(toast, type, narrow);
   toast.style.cursor = "pointer";
 
   toast.addEventListener("mouseenter", () => {
@@ -296,7 +314,7 @@ export function notify(message: string, type: ToastKind = "info") {
   function dismiss() {
     cancelAnimationFrame(raf);
     clearTimeout(dismissTimer);
-    toast.style.transform = REDUCED ? "translateX(0)" : "translateX(120%)";
+    toast.style.transform = offscreenTransform(narrow);
     toast.style.opacity = "0";
     scheduleRemove(toast, s, type);
   }
@@ -329,6 +347,8 @@ export function notifyAction(opts: NotifyActionOptions): {
 } {
   const type = opts.type ?? "error";
   const s = ensureStack();
+  const narrow = isNarrow();
+  s.style.alignItems = narrow ? "stretch" : "flex-end";
 
   const icon = makeIcon(type);
 
@@ -405,7 +425,7 @@ export function notifyAction(opts: NotifyActionOptions): {
   if (type === "error") {
     s.setAttribute("aria-live", "assertive");
   }
-  styleToastShell(toast, type);
+  styleToastShell(toast, type, narrow);
   Object.assign(toast.style, {
     display: "flex",
     flexDirection: "column",
@@ -423,7 +443,7 @@ export function notifyAction(opts: NotifyActionOptions): {
     if (closed) return;
     closed = true;
     toast.removeAttribute("aria-busy");
-    toast.style.transform = REDUCED ? "translateX(0)" : "translateX(120%)";
+    toast.style.transform = offscreenTransform(narrow);
     toast.style.opacity = "0";
     opts.onDismiss?.();
     scheduleRemove(toast, s, type);
