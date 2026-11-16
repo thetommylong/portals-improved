@@ -61,6 +61,7 @@
   "toast.marksFailed": "Failed to load marks",
   "toast.marksStale": "Couldn't refresh. Showing saved marks.",
   "toast.standingFailed": "Failed to load standing",
+  "toast.offline": "You're offline. Showing saved content when available.",
   "toast.authRequired": "Session expired. Sign in again to keep using the portal.",
   "toast.authRequiredAction": "Sign in again",
   "toast.authRestored": "Signed in. You can continue.",

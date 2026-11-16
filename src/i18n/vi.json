@@ -61,6 +61,7 @@
   "toast.marksFailed": "Không tải được điểm",
   "toast.marksStale": "Không làm mới được. Đang hiển thị điểm đã lưu.",
   "toast.standingFailed": "Không tải được dữ liệu",
+  "toast.offline": "Bạn đang ngoại tuyến. Đang hiện nội dung đã lưu nếu có.",
   "toast.authRequired": "Phiên đã hết hạn. Đăng nhập lại để tiếp tục dùng cổng.",
   "toast.authRequiredAction": "Đăng nhập lại",
   "toast.authRestored": "Đã đăng nhập. Bạn có thể tiếp tục.",
