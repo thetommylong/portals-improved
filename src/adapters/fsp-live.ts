@@ -39,6 +39,7 @@ import type {
   SurveyLink,
 } from "../types/portal";
 import type { AdapterFeatures, PortalAdapter } from "../sdk/adapter";
+import { getOidcAccessToken } from "./fsp-auth-token";
 import { compactFspToolResult } from "./fsp-tool-compact";
 import { pathSegment } from "./path-segment";
 
@@ -60,6 +61,9 @@ const FEATURES: AdapterFeatures = {
 function getToken(): string {
   const accessToken = localStorage.getItem("access_token");
   if (accessToken) return accessToken;
+
+  const oidc = getOidcAccessToken();
+  if (oidc) return oidc;
 
   const el = document.querySelector(
     'meta[name="Authorization"]',
