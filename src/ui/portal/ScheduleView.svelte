@@ -5,8 +5,8 @@
   import { Temporal } from "@js-temporal/polyfill";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { ScheduleEntry } from "../../types/portal";
+  import { noteFetchFailure } from "../../offline";
   import { readWeek, writeWeek } from "../../scheduleCache";
-  import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
   import { getWeek } from "./dateHelper";
   import LessonCard from "./LessonCard.svelte";
@@ -83,12 +83,12 @@
       if (getWeek(selectedDate)[0].toString() === key) {
         entries = data;
       }
-    } catch {
-      if (!cache.has(key)) {
-        notify(t("toast.timetableFailed"), "error");
-      } else {
-        notify(t("toast.timetableOffline"), "info");
-      }
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: cache.has(key),
+        failMessage: t("toast.timetableFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }

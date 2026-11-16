@@ -4,7 +4,8 @@
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Club, Term } from "../../types/portal";
-  import { notify } from "../../notifications";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { readTerms, writeTerms } from "../../marksCache";
   import { i18n, t } from "../../i18n.svelte";
   import { pageLoading } from "./pageLoading.svelte";
@@ -91,8 +92,12 @@
       ) {
         selectedTermId = def.termId;
       }
-    } catch {
-      if (!cached) notify(t("toast.semestersFailed"), "error");
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.semestersFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     }
   }
 
@@ -105,11 +110,21 @@
       return;
     }
 
+    const key = cacheKey("clubs", studentId, termId);
+    const cached = readListCache<Club[]>(key);
+    if (cached) clubs = cached;
+
     loading = true;
     try {
-      clubs = await runtime.adapter.getClubsByTerm(termId, studentId);
-    } catch {
-      notify(t("toast.clubsFailed"), "error");
+      const data = await runtime.adapter.getClubsByTerm(termId, studentId);
+      clubs = data;
+      writeListCache(key, data);
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.clubsFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }

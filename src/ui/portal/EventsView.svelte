@@ -4,6 +4,8 @@
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { EventStudent } from "../../types/portal";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
   import { pageLoading } from "./pageLoading.svelte";
@@ -24,12 +26,25 @@
 
   async function load(): Promise<void> {
     loading = true;
+    let cached: EventStudent[] | null = null;
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
-      items = await runtime.adapter.getEventsByTerm(term.termId, studentId);
-    } catch {
-      notify(t("toast.eventsFailed"), "error");
+      const key = cacheKey("events", studentId, term.termId);
+      cached = readListCache<EventStudent[]>(key);
+      if (cached) items = cached;
+      const data = await runtime.adapter.getEventsByTerm(
+        term.termId,
+        studentId,
+      );
+      items = data;
+      writeListCache(key, data);
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.eventsFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }

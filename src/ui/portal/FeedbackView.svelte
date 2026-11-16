@@ -5,6 +5,8 @@
   import { fade, scale } from "svelte/transition";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { StudentFeedbackLecturerResult } from "../../types/portal";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { notify } from "../../notifications";
   import { t } from "../../i18n.svelte";
   import Icon from "../Icon.svelte";
@@ -66,12 +68,29 @@
 
   async function load(): Promise<void> {
     loading = true;
+    const key = cacheKey("feedback", studentId);
+    const cached = readListCache<{
+      pending: StudentFeedbackLecturerResult[];
+      submitted: StudentFeedbackLecturerResult[];
+    }>(key);
+    if (cached) {
+      pending = cached.pending;
+      submitted = cached.submitted;
+    }
     try {
       const data = await runtime.adapter.getFeedbackStatus(studentId);
       pending = data.unDoneFeedbacks;
       submitted = data.feedbacks;
-    } catch {
-      notify(t("toast.feedbackFailed"), "error");
+      writeListCache(key, {
+        pending: data.unDoneFeedbacks,
+        submitted: data.feedbacks,
+      });
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.feedbackFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }

@@ -2,7 +2,9 @@
 // Copyright (C) 2026 thetommylong
 
 import { runtime } from "./adapters/runtime.svelte";
+import { t } from "./i18n.svelte";
 import { diffNewUnread, notificationToastLabel } from "./notificationDiff";
+import { isAuthFailure, isOfflineFailure, notifyOfflineOnce } from "./offline";
 import { notify } from "./notifications";
 
 export const NOTIFICATION_POLL_MS = 60_000;
@@ -47,8 +49,11 @@ export function startNotificationPoller(
       for (const n of fresh.slice(0, MAX_TOASTS_PER_TICK)) {
         notify(notificationToastLabel(n), "info");
       }
-    } catch {
-      // Keep last badge; auth expiry still surfaces via gmFetch latch.
+    } catch (err) {
+      // Keep last badge; auth latch owns reauth — never toast offline for that.
+      if (!isAuthFailure(err) && isOfflineFailure(err)) {
+        notifyOfflineOnce(t("toast.offline"));
+      }
     } finally {
       inFlight = false;
     }

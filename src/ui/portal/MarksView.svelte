@@ -4,7 +4,7 @@
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { MarkCommon, Term } from "../../types/portal";
-  import { notify } from "../../notifications";
+  import { noteFetchFailure } from "../../offline";
   import { t } from "../../i18n.svelte";
   import {
     readTermMarks,
@@ -148,8 +148,12 @@
       ) {
         selectedTermId = def.termId;
       }
-    } catch {
-      if (!cached) notify(t("toast.semestersFailed"), "error");
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.semestersFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     }
   }
 
@@ -188,12 +192,12 @@
       if (selectedTermId === termId) {
         marks = data;
       }
-    } catch {
-      if (!cache.has(termId)) {
-        notify(t("toast.marksFailed"), "error");
-      } else if (force) {
-        notify(t("toast.marksStale"), "info");
-      }
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: cache.has(termId),
+        failMessage: t("toast.marksFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }

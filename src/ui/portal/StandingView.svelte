@@ -7,7 +7,8 @@
     DisciplineRuleStudent,
     RewardStudent,
   } from "../../types/portal";
-  import { notify } from "../../notifications";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { i18n, t } from "../../i18n.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
@@ -73,6 +74,9 @@
 
   async function load(): Promise<void> {
     loading = true;
+    const key = cacheKey("standing", studentId);
+    const cached = readListCache<StandingItem[]>(key);
+    if (cached) items = cached;
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const campusId = ctx.campusId;
@@ -118,8 +122,13 @@
       items = [...rewardItems, ...disciplineItems].sort((a, b) =>
         b.date.localeCompare(a.date),
       );
-    } catch {
-      notify(t("toast.standingFailed"), "error");
+      writeListCache(key, items);
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.standingFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }

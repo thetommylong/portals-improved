@@ -4,7 +4,8 @@
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { StudentHomeWork } from "../../types/portal";
-  import { notify } from "../../notifications";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { i18n, t } from "../../i18n.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
@@ -55,12 +56,25 @@
 
   async function load(): Promise<void> {
     loading = true;
+    let cached: StudentHomeWork[] | null = null;
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
-      items = await runtime.adapter.getStudentHomeWorks(studentId, term.termId);
-    } catch {
-      notify(t("toast.homeworksFailed"), "error");
+      const key = cacheKey("homeworks", studentId, term.termId);
+      cached = readListCache<StudentHomeWork[]>(key);
+      if (cached) items = cached;
+      const data = await runtime.adapter.getStudentHomeWorks(
+        studentId,
+        term.termId,
+      );
+      items = data;
+      writeListCache(key, data);
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.homeworksFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }
