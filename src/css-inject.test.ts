@@ -37,12 +37,16 @@ describe("css-inject", () => {
   });
 
   it("flushPendingCss injects via GM_addStyle", () => {
-    const addStyle = vi.fn();
+    const el = {
+      setAttribute: vi.fn(),
+    };
+    const addStyle = vi.fn(() => el);
     vi.stubGlobal("GM_addStyle", addStyle);
     queueMonkeyCss(".shell{display:flex}");
     flushPendingCss();
     expect(addStyle).toHaveBeenCalledOnce();
     expect(addStyle).toHaveBeenCalledWith(".shell{display:flex}");
+    expect(el.setAttribute).toHaveBeenCalledWith("data-fsp-css", "");
     expect(takePendingCss()).toEqual([]);
   });
 });

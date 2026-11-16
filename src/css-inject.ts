@@ -31,11 +31,17 @@ export function takePendingCss(): string[] {
 }
 
 export function injectCss(css: string): void {
+  // Mark so 50-portal strip can keep these across host stylesheet wipe.
+  const mark = (el: HTMLStyleElement | void | null) => {
+    el?.setAttribute?.("data-fsp-css", "");
+  };
+
   if (typeof GM_addStyle === "function") {
-    GM_addStyle(css);
+    mark(GM_addStyle(css) as HTMLStyleElement | void);
     return;
   }
   const el = document.createElement("style");
+  mark(el);
   el.append(css);
   (document.head || document.documentElement).appendChild(el);
 }

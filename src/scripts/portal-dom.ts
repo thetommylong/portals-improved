@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-/** Vite tags component CSS `<style>` chunks with this marker (see 50-portal boot). */
+/** Legacy Vite marker (pre-Vite 8). Still honored if present. */
 export const VITE_CSS_MARKER = "/*$vite$:";
+
+/** Set on styles we inject via `injectCss` / `GM_addStyle` (production path). */
+export const OWN_CSS_ATTR = "data-fsp-css";
 
 /**
  * Run `fn` once `doc.body` exists.
@@ -46,13 +49,40 @@ export function whenDocumentBodyReady(
   queueMicrotask(runWhenBodyExists);
 }
 
-/** Capture Vite-injected component CSS text before host stylesheet strip. */
+/** True for component CSS we must keep across the host stylesheet strip. */
+export function isOwnStyleElement(el: Element): boolean {
+  return (
+    el.hasAttribute(OWN_CSS_ATTR) ||
+    el.hasAttribute("data-vite-dev-id") ||
+    (el.textContent?.includes(VITE_CSS_MARKER) ?? false)
+  );
+}
+
+/**
+ * Detach our style nodes from `<head>` (same element refs — Vite serve HMR keeps
+ * pointing at them via `sheetsMap`).
+ *
+ * Vite 8 tags serve CSS with `data-vite-dev-id` and no longer prefixes the old
+ * `VITE_CSS_MARKER` comment. Matching only that marker dropped PortalShell CSS
+ * on strip.
+ */
+export function takeOwnStyleElements(
+  doc: Document = document,
+): HTMLStyleElement[] {
+  const head = doc.head;
+  if (!head) return [];
+  const own = [...head.querySelectorAll("style")].filter(isOwnStyleElement);
+  for (const el of own) el.remove();
+  return own as HTMLStyleElement[];
+}
+
+/** Capture own CSS text (tests / callers that reinject by string). */
 export function captureOwnViteCss(doc: Document = document): string[] {
   const head = doc.head;
   if (!head) return [];
   return [...head.querySelectorAll("style")]
-    .map((el) => el.textContent ?? "")
-    .filter((css) => css.includes(VITE_CSS_MARKER));
+    .filter(isOwnStyleElement)
+    .map((el) => el.textContent ?? "");
 }
 
 /**
@@ -82,7 +112,17 @@ export function stripHostStylesheets(doc: Document = document): void {
   }
 }
 
-/** Re-append captured Vite CSS chunks into `<head>` after strip. */
+/** Re-append previously detached own `<style>` nodes into `<head>`. */
+export function reinjectStyleElements(
+  elements: HTMLStyleElement[],
+  doc: Document = document,
+): void {
+  const head = doc.head;
+  if (!head) return;
+  for (const el of elements) head.appendChild(el);
+}
+
+/** Re-append captured CSS chunks into `<head>` after strip (string path). */
 export function reinjectCssText(
   cssChunks: string[],
   doc: Document = document,
@@ -91,6 +131,7 @@ export function reinjectCssText(
   if (!head) return;
   for (const css of cssChunks) {
     const style = doc.createElement("style");
+    style.setAttribute(OWN_CSS_ATTR, "");
     style.textContent = css;
     head.appendChild(style);
   }
