@@ -6,6 +6,7 @@
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
   import { notify, notifyAction } from "../notifications";
+  import { startNotificationPoller } from "../notificationPoller";
   import { i18n, t, type MessageKey } from "../i18n.svelte";
   import UnavailableState from "./portal/UnavailableState.svelte";
   import NotificationsPanel from "./portal/NotificationsPanel.svelte";
@@ -432,17 +433,17 @@
     runtime.adapter.getUserImage(userId).then((image) => {
       if (image) avatar = image;
     });
+  });
 
-    if (runtime.adapter.features.notifications) {
-      runtime.adapter
-        .getNotificationsByRecords(userId, 1)
-        .then((res) => {
-          unreadCount = res.numberOfUnreadNotifications;
-        })
-        .catch(() => {
-          /* badge stays at last known */
-        });
-    }
+  $effect(() => {
+    if (!runtime.adapter.features.notifications) return;
+    void userId;
+    return startNotificationPoller({
+      userId,
+      onUnread: (n) => {
+        unreadCount = n;
+      },
+    });
   });
 
   $effect(() => {
@@ -1192,6 +1193,7 @@
     <NotificationsPanel
       {userId}
       open={notifOpen}
+      refreshToken={unreadCount}
       onclose={() => (notifOpen = false)}
       onunread={(n: number) => (unreadCount = n)}
     />
