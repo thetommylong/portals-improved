@@ -47,7 +47,7 @@
 
   function minutesNow(): number {
     const now = Temporal.Now.plainTimeISO();
-    return now.hour * 60 + now.minute;
+    return now.hour * 60 + now.minute + now.second / 60;
   }
 
   async function load(date: Temporal.PlainDate, force = false): Promise<void> {
@@ -109,7 +109,7 @@
   $effect(() => {
     const timer = setInterval(() => {
       nowMinutes = minutesNow();
-    }, 30_000);
+    }, 1_000);
     return () => clearInterval(timer);
   });
 
@@ -546,7 +546,7 @@
   .events {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 1;
     padding: 2px 0;
   }
 
@@ -559,7 +559,7 @@
     padding-bottom: 4px;
   }
 
-  /* Behind cards so lesson text stays readable across the week. */
+  /* Over cards; off-today stays dim so the current column reads first. */
   .now-line-row {
     position: absolute;
     left: 0;
@@ -567,14 +567,15 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     height: 2px;
-    z-index: 1;
+    z-index: 3;
     pointer-events: none;
+    transition: top 1s linear;
   }
 
   .now-line-seg {
     position: relative;
     height: 2px;
-    background: color-mix(in srgb, var(--red) 35%, transparent);
+    background: color-mix(in srgb, var(--red) 40%, transparent);
   }
 
   .now-line-seg.current {
@@ -586,9 +587,10 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: color-mix(in srgb, var(--red) 70%, transparent);
-    z-index: 1;
+    background: var(--red);
+    z-index: 3;
     pointer-events: none;
+    transition: top 1s linear;
   }
 
   .now-dot {
