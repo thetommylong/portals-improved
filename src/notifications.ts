@@ -6,6 +6,10 @@ import { createIconSvg, type IconName } from "./ui/icons";
 export type ToastKind = "info" | "success" | "error";
 
 const DURATION = 4000;
+/** Matches theme `--motion-med` (exit / enter duration). */
+const MOTION_MS = 240;
+const FONT = '"Google Sans Flex", system-ui, sans-serif';
+const STYLE_ID = "fsp-toast-css";
 
 const ICONS: Record<ToastKind, IconName> = {
   success: "check_circle",
@@ -24,34 +28,94 @@ const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let stack: HTMLDivElement | null = null;
 let escapeHandler: ((e: KeyboardEvent) => void) | null = null;
 
-function ensureStack(): HTMLDivElement {
-  if (stack) return stack;
+function pageDocument(): Document {
+  return typeof unsafeWindow !== "undefined" ? unsafeWindow.document : document;
+}
 
-  stack = document.createElement("div");
+/** Prefer the shell host — boot's replaceChildren can leave a detached body stack. */
+function toastParent(doc: Document): HTMLElement {
+  return doc.getElementById("fsp-qol-root") ?? doc.body;
+}
+
+/** Clear the shell header (flush + floating) so toasts don't cover header actions. */
+function stackOffsetTop(doc: Document): string {
+  const header = doc.querySelector<HTMLElement>("#fsp-qol-root .header");
+  if (header) {
+    return `${Math.ceil(header.getBoundingClientRect().bottom + 8)}px`;
+  }
+  return "64px";
+}
+
+function ensureToastCss(doc: Document): void {
+  if (doc.getElementById(STYLE_ID)) return;
+  const el = doc.createElement("style");
+  el.id = STYLE_ID;
+  el.textContent = `
+.fsp-toast-timed:focus-visible,
+.fsp-toast-action:focus-visible,
+.fsp-toast-dismiss:focus-visible {
+  outline: 2px solid var(--accent-strong, var(--accent));
+  outline-offset: 1px;
+}
+.fsp-toast-action:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.fsp-toast-dismiss:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--panel-text) 10%, transparent);
+}
+.fsp-toast-action:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+`.trim();
+  (doc.head ?? toastParent(doc)).append(el);
+}
+
+function ensureStack(): HTMLDivElement {
+  const doc = pageDocument();
+  ensureToastCss(doc);
+  const parent = toastParent(doc);
+  const top = stackOffsetTop(doc);
+  // Recreate when detached or parented under the wrong node.
+  if (stack?.isConnected && stack.parentElement === parent) {
+    stack.style.top = top;
+    return stack;
+  }
+
+  if (escapeHandler) {
+    stack?.ownerDocument?.removeEventListener("keydown", escapeHandler);
+    escapeHandler = null;
+  }
+  stack?.remove();
+
+  stack = doc.createElement("div");
   stack.setAttribute("role", "status");
   stack.setAttribute("aria-live", "polite");
   stack.setAttribute("aria-relevant", "additions removals");
   Object.assign(stack.style, {
     position: "fixed",
-    top: "16px",
+    top,
     right: "16px",
-    zIndex: "2147483",
+    left: "16px",
+    zIndex: "2147483647",
     display: "flex",
     flexDirection: "column",
+    alignItems: "flex-end",
     gap: "8px",
     pointerEvents: "none",
-    fontFamily: "system-ui, -apple-system, sans-serif",
+    fontFamily: FONT,
   });
-  document.body.append(stack);
+  parent.append(stack);
 
   escapeHandler = (e: KeyboardEvent) => {
     if (e.key !== "Escape" || !stack?.lastElementChild) return;
     // Let modal dialogs own Escape; don't dismiss a toast underneath them.
-    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    if (doc.querySelector('[role="dialog"][aria-modal="true"]')) return;
     const last = stack.lastElementChild as HTMLElement;
     last.dispatchEvent(new Event("fsp-toast-dismiss"));
   };
-  document.addEventListener("keydown", escapeHandler);
+  doc.addEventListener("keydown", escapeHandler);
 
   return stack;
 }
@@ -61,10 +125,16 @@ function removeStackIfNeeded() {
     stack.remove();
     stack = null;
     if (escapeHandler) {
-      document.removeEventListener("keydown", escapeHandler);
+      pageDocument().removeEventListener("keydown", escapeHandler);
       escapeHandler = null;
     }
   }
+}
+
+function restoreStackPolite(s: HTMLDivElement, type: ToastKind): void {
+  if (type !== "error") return;
+  s.setAttribute("role", "status");
+  s.setAttribute("aria-live", "polite");
 }
 
 function styleToastShell(
@@ -73,10 +143,11 @@ function styleToastShell(
 ): void {
   Object.assign(toast.style, {
     pointerEvents: "auto",
-    minWidth: "260px",
-    maxWidth: "360px",
-    padding: "10px 14px",
-    borderRadius: "10px",
+    boxSizing: "border-box",
+    width: "max-content",
+    maxWidth: "min(360px, 100%)",
+    padding: "12px 14px",
+    borderRadius: "var(--radius-card)",
     background: "var(--panel-bg)",
     color: "var(--panel-text)",
     border: "1px solid var(--panel-border)",
@@ -86,13 +157,14 @@ function styleToastShell(
     position: "relative",
     textAlign: "left",
     font: "inherit",
+    fontFamily: FONT,
     fontSize: "13px",
     lineHeight: "1.4",
     transform: REDUCED ? "translateX(0)" : "translateX(120%)",
     opacity: REDUCED ? "1" : "0",
     transition: REDUCED
       ? "none"
-      : "transform 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+      : `transform var(--motion-med) cubic-bezier(0.16,1,0.3,1), opacity var(--motion-med) ease, box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease`,
   });
 }
 
@@ -114,11 +186,26 @@ function makeIcon(type: ToastKind): SVGSVGElement {
   });
   Object.assign(icon.style, {
     color: COLORS[type],
-    transition: REDUCED ? "none" : "transform 0.25s ease",
+    transition: REDUCED ? "none" : "transform var(--motion-fast) ease",
     transform: "scale(0.6)",
     flexShrink: "0",
   });
   return icon;
+}
+
+function scheduleRemove(
+  toast: HTMLElement,
+  s: HTMLDivElement,
+  type: ToastKind,
+): void {
+  setTimeout(
+    () => {
+      toast.remove();
+      restoreStackPolite(s, type);
+      removeStackIfNeeded();
+    },
+    REDUCED ? 0 : MOTION_MS,
+  );
 }
 
 export function notify(message: string, type: ToastKind = "info") {
@@ -129,11 +216,11 @@ export function notify(message: string, type: ToastKind = "info") {
     position: "absolute",
     bottom: "0",
     left: "0",
-    height: "3px",
+    height: "2px",
     width: "100%",
     transformOrigin: "left",
     background: COLORS[type],
-    opacity: "0.5",
+    opacity: "0.55",
     transition: REDUCED ? "none" : "transform 0.05s linear",
   });
 
@@ -147,7 +234,7 @@ export function notify(message: string, type: ToastKind = "info") {
   Object.assign(content.style, {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "10px",
     fontSize: "13px",
     fontWeight: "500",
   });
@@ -155,6 +242,7 @@ export function notify(message: string, type: ToastKind = "info") {
 
   const toast = document.createElement("button");
   toast.type = "button";
+  toast.className = "fsp-toast-timed";
   toast.setAttribute("aria-label", `${type}: ${message}`);
   if (type === "error") {
     s.setAttribute("aria-live", "assertive");
@@ -179,6 +267,7 @@ export function notify(message: string, type: ToastKind = "info") {
   let remaining = DURATION;
   let start = Date.now();
   let raf = 0;
+  let dismissTimer = 0;
 
   function tick() {
     const elapsed = Date.now() - start;
@@ -191,39 +280,39 @@ export function notify(message: string, type: ToastKind = "info") {
     raf = requestAnimationFrame(tick);
   }
 
+  function armTimer() {
+    remaining = DURATION;
+    start = Date.now();
+    bar.style.transform = "scaleX(1)";
+    if (REDUCED) {
+      clearTimeout(dismissTimer);
+      dismissTimer = window.setTimeout(dismiss, DURATION);
+      return;
+    }
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(tick);
+  }
+
   function dismiss() {
     cancelAnimationFrame(raf);
+    clearTimeout(dismissTimer);
     toast.style.transform = REDUCED ? "translateX(0)" : "translateX(120%)";
     toast.style.opacity = "0";
-    setTimeout(
-      () => {
-        toast.remove();
-        if (type === "error" && s) {
-          s.removeAttribute("role");
-          s.setAttribute("aria-live", "polite");
-        }
-        removeStackIfNeeded();
-      },
-      REDUCED ? 0 : 300,
-    );
+    scheduleRemove(toast, s, type);
   }
 
   toast.addEventListener("click", dismiss);
   toast.addEventListener("fsp-toast-dismiss", dismiss);
+  // Hover freezes; leave restarts a full DURATION so bar % matches real time left.
   toast.addEventListener("mouseenter", () => {
     cancelAnimationFrame(raf);
-    remaining -= Date.now() - start;
+    clearTimeout(dismissTimer);
   });
   toast.addEventListener("mouseleave", () => {
-    start = Date.now();
-    raf = requestAnimationFrame(tick);
+    armTimer();
   });
 
-  if (REDUCED) {
-    setTimeout(dismiss, DURATION);
-  } else {
-    raf = requestAnimationFrame(tick);
-  }
+  armTimer();
 }
 
 export interface NotifyActionOptions {
@@ -245,51 +334,69 @@ export function notifyAction(opts: NotifyActionOptions): {
 
   const text = document.createElement("span");
   text.textContent = opts.message;
-  Object.assign(text.style, { lineHeight: "1.4", flex: "1" });
-
-  const row = document.createElement("div");
-  Object.assign(row.style, {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "8px",
-    fontSize: "13px",
+  Object.assign(text.style, {
+    lineHeight: "1.4",
     fontWeight: "500",
-  });
-  row.append(icon, text);
-
-  const action = document.createElement("button");
-  action.type = "button";
-  action.textContent = opts.actionLabel;
-  Object.assign(action.style, {
-    marginTop: "8px",
-    marginLeft: "28px",
-    padding: "6px 10px",
-    borderRadius: "8px",
-    border: `1px solid ${COLORS[type]}`,
-    background: "transparent",
-    color: COLORS[type],
-    font: "inherit",
-    fontSize: "12px",
-    fontWeight: "600",
-    cursor: "pointer",
+    minWidth: "0",
   });
 
   const dismissBtn = document.createElement("button");
   dismissBtn.type = "button";
+  dismissBtn.className = "fsp-toast-dismiss";
   dismissBtn.setAttribute("aria-label", "Dismiss");
-  dismissBtn.textContent = "×";
+  const closeIcon = createIconSvg("close", {
+    className: "fsp-icon",
+    size: 18,
+  });
+  dismissBtn.append(closeIcon);
   Object.assign(dismissBtn.style, {
-    position: "absolute",
-    top: "4px",
-    right: "6px",
+    display: "inline-grid",
+    placeItems: "center",
+    width: "var(--hit-icon, 32px)",
+    height: "var(--hit-icon, 32px)",
+    minWidth: "var(--hit-icon, 32px)",
+    minHeight: "var(--hit-icon, 32px)",
+    margin: "-6px -6px 0 0",
     border: "none",
+    borderRadius: "var(--radius-control)",
     background: "transparent",
     color: "var(--panel-text)",
     opacity: "0.55",
     cursor: "pointer",
-    fontSize: "16px",
-    lineHeight: "1",
-    padding: "4px",
+    padding: "0",
+    flexShrink: "0",
+  });
+
+  const head = document.createElement("div");
+  Object.assign(head.style, {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+  });
+  head.append(icon, text, dismissBtn);
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "fsp-toast-action";
+  action.textContent = opts.actionLabel;
+  Object.assign(action.style, {
+    alignSelf: "flex-start",
+    marginLeft: "30px",
+    marginTop: "2px",
+    padding: "8px 12px",
+    minHeight: "var(--hit-control, 32px)",
+    borderRadius: "var(--radius-control)",
+    border: `1px solid ${COLORS[type]}`,
+    background: "transparent",
+    color: COLORS[type],
+    font: "inherit",
+    fontFamily: FONT,
+    fontSize: "13px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: REDUCED
+      ? "none"
+      : "background var(--motion-fast) ease, opacity var(--motion-fast) ease",
   });
 
   const toast = document.createElement("div");
@@ -299,7 +406,13 @@ export function notifyAction(opts: NotifyActionOptions): {
     s.setAttribute("aria-live", "assertive");
   }
   styleToastShell(toast, type);
-  toast.append(row, action, dismissBtn);
+  Object.assign(toast.style, {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    paddingRight: "10px",
+  });
+  toast.append(head, action);
   s.append(toast);
   attachEnter(toast, icon);
 
@@ -309,20 +422,11 @@ export function notifyAction(opts: NotifyActionOptions): {
   function dismiss() {
     if (closed) return;
     closed = true;
+    toast.removeAttribute("aria-busy");
     toast.style.transform = REDUCED ? "translateX(0)" : "translateX(120%)";
     toast.style.opacity = "0";
     opts.onDismiss?.();
-    setTimeout(
-      () => {
-        toast.remove();
-        if (type === "error" && s) {
-          s.removeAttribute("role");
-          s.setAttribute("aria-live", "polite");
-        }
-        removeStackIfNeeded();
-      },
-      REDUCED ? 0 : 300,
-    );
+    scheduleRemove(toast, s, type);
   }
 
   dismissBtn.addEventListener("click", dismiss);
@@ -332,7 +436,7 @@ export function notifyAction(opts: NotifyActionOptions): {
     if (busy || closed) return;
     busy = true;
     action.disabled = true;
-    action.style.opacity = "0.6";
+    toast.setAttribute("aria-busy", "true");
     void Promise.resolve(opts.onAction())
       .then(() => {
         dismiss();
@@ -340,7 +444,7 @@ export function notifyAction(opts: NotifyActionOptions): {
       .catch(() => {
         busy = false;
         action.disabled = false;
-        action.style.opacity = "1";
+        toast.removeAttribute("aria-busy");
       });
   });
 
