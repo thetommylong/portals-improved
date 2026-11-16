@@ -119,7 +119,25 @@ export function reinjectStyleElements(
 ): void {
   const head = doc.head;
   if (!head) return;
-  for (const el of elements) head.appendChild(el);
+  for (const el of elements) {
+    head.appendChild(el);
+    // Belt-and-suspenders: if strip disabled the sheet while detached, turn it
+    // back on (observed as a possible Firefox CSSOM quirk; cheap no-op otherwise).
+    try {
+      if (el.sheet) el.sheet.disabled = false;
+    } catch {
+      // cross-origin / UA sheet
+    }
+  }
+}
+
+/** True when head still has a style we claim as ours. */
+export function hasOwnStyleInHead(doc: Document = document): boolean {
+  const head = doc.head;
+  if (!head) return false;
+  return !!head.querySelector(
+    `style[${OWN_CSS_ATTR}], style[data-vite-dev-id]`,
+  );
 }
 
 /** Re-append captured CSS chunks into `<head>` after strip (string path). */

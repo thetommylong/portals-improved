@@ -145,9 +145,9 @@ describe("whenDocumentBodyReady", () => {
 
 describe("stylesheet strip / reinject", () => {
   it("isOwnStyleElement accepts vite-dev-id, data-fsp-css, and legacy marker", () => {
-    expect(isOwnStyleElement(fakeStyle("body{}", { "data-vite-dev-id": "/x" }))).toBe(
-      true,
-    );
+    expect(
+      isOwnStyleElement(fakeStyle("body{}", { "data-vite-dev-id": "/x" })),
+    ).toBe(true);
     expect(isOwnStyleElement(fakeStyle(".a{}", { [OWN_CSS_ATTR]: "" }))).toBe(
       true,
     );

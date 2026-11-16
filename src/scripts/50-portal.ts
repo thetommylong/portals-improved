@@ -4,8 +4,10 @@
 import { mount } from "svelte";
 import { runtime } from "../adapters/runtime.svelte";
 import PortalShell from "../ui/PortalShell.svelte";
+import { hasFlushedCss, reinjectFlushedCss } from "../css-inject";
 import sharedCss from "../ui/portal/shared.css?inline";
 import {
+  hasOwnStyleInHead,
   reinjectStyleElements,
   stripHostStylesheets,
   takeOwnStyleElements,
@@ -35,9 +37,16 @@ function boot(userId: string) {
     // detach those nodes, strip the rest, re-attach the same elements (keeps
     // Vite HMR sheetsMap valid). Orphan `@import` sheets with null ownerNode
     // are disabled inside stripHostStylesheets.
+    //
+    // First login can wipe our styles during waitForValidSession; reload then
+    // works because CSS is flushed again onto a clean head. If takeOwn finds
+    // nothing, replay the gate-time flush from memory.
     const ownStyles = takeOwnStyleElements();
     stripHostStylesheets();
     reinjectStyleElements(ownStyles);
+    if (!hasOwnStyleInHead() && hasFlushedCss()) {
+      reinjectFlushedCss();
+    }
 
     // Cut remaining host document loads (parser / late assets). New requests
     // started afterward still run: PortalShell injects its font <link>s and

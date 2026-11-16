@@ -13,6 +13,9 @@ type PendingCssHost = typeof globalThis & {
   [PENDING_CSS_KEY]?: string[];
 };
 
+/** CSS text last flushed at the gate — kept so strip can recover after login wait. */
+let flushedCss: string[] = [];
+
 function pendingHost(): PendingCssHost {
   return globalThis as PendingCssHost;
 }
@@ -30,28 +33,55 @@ export function takePendingCss(): string[] {
   return pending;
 }
 
-export function injectCss(css: string): void {
-  // Mark so 50-portal strip can keep these across host stylesheet wipe.
-  const mark = (el: HTMLStyleElement | void | null) => {
-    el?.setAttribute?.("data-fsp-css", "");
-  };
+function markOwn(el: HTMLStyleElement | void | null | undefined): void {
+  el?.setAttribute?.("data-fsp-css", "");
+}
 
+export function injectCss(css: string): void {
   if (typeof GM_addStyle === "function") {
-    mark(GM_addStyle(css) as HTMLStyleElement | void);
+    const ret = GM_addStyle(css) as HTMLStyleElement | void;
+    if (ret) {
+      markOwn(ret);
+      return;
+    }
+    // Some managers (esp. Firefox) return void — tag the newest <style> instead.
+    const head = document.head || document.documentElement;
+    const styles = head?.querySelectorAll?.("style");
+    markOwn(styles?.[styles.length - 1] as HTMLStyleElement | undefined);
     return;
   }
   const el = document.createElement("style");
-  mark(el);
+  markOwn(el);
   el.append(css);
   (document.head || document.documentElement).appendChild(el);
 }
 
 /** Apply CSS queued by the monkey entry, if any. */
 export function flushPendingCss(): void {
-  for (const css of takePendingCss()) injectCss(css);
+  const chunks = takePendingCss();
+  flushedCss.push(...chunks);
+  for (const css of chunks) injectCss(css);
+}
+
+/**
+ * Re-apply CSS remembered from {@link flushPendingCss}.
+ * Used when host strip finds no marked nodes (e.g. portal wiped `<head>` during
+ * `waitForValidSession` before first boot).
+ */
+export function reinjectFlushedCss(): void {
+  for (const css of flushedCss) injectCss(css);
+}
+
+export function hasFlushedCss(): boolean {
+  return flushedCss.length > 0;
 }
 
 /** Drop queued CSS without injecting — idle / no-op path. */
 export function discardPendingCss(): void {
   takePendingCss();
+}
+
+/** @internal tests */
+export function resetFlushedCssForTests(): void {
+  flushedCss = [];
 }
