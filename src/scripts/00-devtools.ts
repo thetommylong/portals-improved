@@ -97,6 +97,7 @@ export default function () {
   try {
     const _assign = unsafeWindow.location.assign.bind(unsafeWindow.location);
     Object.defineProperty(unsafeWindow.location, "assign", {
+      configurable: true,
       value(url: string) {
         if (/disable-devtool/i.test(url)) return;
         return _assign(url);
