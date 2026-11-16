@@ -48,13 +48,27 @@ function toastParent(doc: Document): HTMLElement {
   return doc.getElementById("fsp-qol-root") ?? doc.body;
 }
 
-/** Clear the shell header (flush + floating) so toasts don't cover header actions. */
-function stackOffsetTop(doc: Document): string {
+/** Bottom edge of shell header (viewport px), or a safe fallback. */
+function headerBottomPx(doc: Document): number {
   const header = doc.querySelector<HTMLElement>("#fsp-qol-root .header");
-  if (header) {
-    return `${Math.ceil(header.getBoundingClientRect().bottom + 8)}px`;
-  }
-  return "64px";
+  if (header) return Math.ceil(header.getBoundingClientRect().bottom);
+  return 56;
+}
+
+/** Lay out the fixed toast stack for current viewport. */
+function layoutStack(s: HTMLDivElement, doc: Document): void {
+  const narrow = isNarrow();
+  const headerBottom = headerBottomPx(doc);
+  // Mobile: clip at header edge so top slide enter/exit goes behind it.
+  // Desktop: sit just under header; slide in from the right (no clip).
+  Object.assign(s.style, {
+    top: narrow ? `${headerBottom}px` : `${headerBottom + 8}px`,
+    right: "16px",
+    left: "16px",
+    paddingTop: narrow ? "8px" : "0",
+    alignItems: narrow ? "stretch" : "flex-end",
+    overflow: narrow ? "hidden" : "visible",
+  });
 }
 
 function ensureToastCss(doc: Document): void {
@@ -87,10 +101,9 @@ function ensureStack(): HTMLDivElement {
   const doc = pageDocument();
   ensureToastCss(doc);
   const parent = toastParent(doc);
-  const top = stackOffsetTop(doc);
   // Recreate when detached or parented under the wrong node.
   if (stack?.isConnected && stack.parentElement === parent) {
-    stack.style.top = top;
+    layoutStack(stack, doc);
     return stack;
   }
 
@@ -100,24 +113,21 @@ function ensureStack(): HTMLDivElement {
   }
   stack?.remove();
 
-  const narrow = isNarrow();
   stack = doc.createElement("div");
   stack.setAttribute("role", "status");
   stack.setAttribute("aria-live", "polite");
   stack.setAttribute("aria-relevant", "additions removals");
   Object.assign(stack.style, {
     position: "fixed",
-    top,
-    right: "16px",
-    left: "16px",
     zIndex: "2147483647",
     display: "flex",
     flexDirection: "column",
-    alignItems: narrow ? "stretch" : "flex-end",
     gap: "8px",
     pointerEvents: "none",
     fontFamily: FONT,
+    boxSizing: "border-box",
   });
+  layoutStack(stack, doc);
   parent.append(stack);
 
   escapeHandler = (e: KeyboardEvent) => {
