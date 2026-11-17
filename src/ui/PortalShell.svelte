@@ -6,64 +6,21 @@
   import type { AgentContext } from "../sdk/types";
   import { notify, notifyAction } from "../notifications";
   import { startNotificationPoller } from "../notificationPoller";
-  import { t, type MessageKey } from "../i18n.svelte";
+  import { t } from "../i18n.svelte";
   import UnavailableState from "./portal/UnavailableState.svelte";
   import NotificationsPanel from "./portal/NotificationsPanel.svelte";
   import ShellHeader from "./portal/ShellHeader.svelte";
   import ShellSettings from "./portal/ShellSettings.svelte";
+  import ShellSidebar from "./portal/ShellSidebar.svelte";
+  import type { PageId } from "./portal/navCatalog";
   import { applyTheme, theme } from "../theme.svelte";
-  import {
-    SIDEBAR_WIDTH_MAX,
-    SIDEBAR_WIDTH_MIN,
-    shellChrome,
-  } from "../shellChrome.svelte";
+  import { shellChrome } from "../shellChrome.svelte";
   import { pointer } from "../pointer.svelte";
-  import Icon from "./Icon.svelte";
-  import type { IconName } from "./icons";
   import { pageLoading } from "./portal/pageLoading.svelte";
   import ViewChunkSkeleton from "./portal/ViewChunkSkeleton.svelte";
   // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
   // of the initial System.register entry execute path.
-
-  type PageId =
-    | "home"
-    | "feedback"
-    | "homeworks"
-    | "marks"
-    | "clubs"
-    | "events"
-    | "standing";
-
-  interface NavItem {
-    id: PageId;
-    label: MessageKey;
-    icon: IconName;
-  }
-
-  const ALL_NAV_ITEMS: NavItem[] = [
-    { id: "home", label: "nav.home", icon: "home" },
-    { id: "feedback", label: "nav.feedback", icon: "chat" },
-    { id: "homeworks", label: "nav.homeworks", icon: "assignment" },
-    { id: "marks", label: "nav.marks", icon: "done_all" },
-    { id: "clubs", label: "nav.clubs", icon: "group" },
-    { id: "events", label: "nav.events", icon: "event" },
-    { id: "standing", label: "nav.standing", icon: "shield_person" },
-  ];
-
-  const navItems = $derived.by(() => {
-    const f = runtime.adapter.features;
-    const supported: Record<NavItem["id"], boolean> = {
-      home: f.schedule,
-      feedback: f.feedback,
-      homeworks: f.homeworks,
-      marks: f.marks,
-      clubs: f.clubs,
-      events: f.events,
-      standing: f.standing,
-    };
-    return ALL_NAV_ITEMS.filter((item) => supported[item.id]);
-  });
 
   let { userId }: { userId: string } = $props();
 
@@ -105,14 +62,6 @@
   let name = $state("");
   let rollNumber = $state("");
   let avatar = $state<string | null>(null);
-  const avatarInitials = $derived.by(() => {
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return "?";
-    return parts
-      .slice(0, 2)
-      .map((p) => p.charAt(0).toUpperCase())
-      .join("");
-  });
   let notifOpen = $state(false);
   let unreadCount = $state(0);
   let scheduleDate = $state("");
@@ -148,7 +97,6 @@
   const CHAT_WIDTH_MIN = 280;
   const CHAT_WIDTH_MAX = 640;
   let chatWidth = $state(340);
-  let sidebarResizing = $state(false);
 
   $effect(() => {
     if ((!chatOpen && !chatPresent) || ChatSidebarComp) return;
@@ -419,26 +367,6 @@
     notifOpen = !notifOpen;
   }
 
-  function onNav(item: NavItem) {
-    if (item.id === activeNav) return;
-    const f = runtime.adapter.features;
-    const supported: Record<PageId, boolean> = {
-      home: f.schedule,
-      feedback: f.feedback,
-      homeworks: f.homeworks,
-      marks: f.marks,
-      clubs: f.clubs,
-      events: f.events,
-      standing: f.standing,
-    };
-    if (!supported[item.id]) {
-      notify(t("toast.viewUnavailable", { label: t(item.label) }), "info");
-      return;
-    }
-    activeNav = item.id;
-    if (isMobile.matches) sidebarOpen = false;
-  }
-
   function closeChat() {
     if (!chatOpen) return;
     chatOpen = false;
@@ -488,47 +416,6 @@
     } else if (e.key === "End") {
       e.preventDefault();
       chatWidth = CHAT_WIDTH_MAX;
-    }
-  }
-
-  function onSidebarResizeStart(e: PointerEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = shellChrome.sidebarWidth;
-    sidebarResizing = true;
-    const onMove = (ev: PointerEvent) => {
-      const delta = ev.clientX - startX;
-      shellChrome.setSidebarWidth(startWidth + delta, false);
-    };
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      sidebarResizing = false;
-      shellChrome.setSidebarWidth(shellChrome.sidebarWidth);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }
-
-  function onSidebarResizeKeydown(e: KeyboardEvent) {
-    const step = e.shiftKey ? 32 : 16;
-    const width = shellChrome.sidebarWidth;
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      shellChrome.setSidebarWidth(width + step);
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      shellChrome.setSidebarWidth(width - step);
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      shellChrome.setSidebarWidth(SIDEBAR_WIDTH_MIN);
-    } else if (e.key === "End") {
-      e.preventDefault();
-      shellChrome.setSidebarWidth(SIDEBAR_WIDTH_MAX);
     }
   }
 </script>
@@ -583,70 +470,14 @@
       }}
     ></div>
 
-    <div
-      class="sidebar-rail"
-      class:collapsed={!sidebarOpen}
-      class:resizing={sidebarResizing}
-      style={!narrow ? `--sidebar-w: ${shellChrome.sidebarWidth}px` : undefined}
-    >
-      <aside
-        class="sidebar"
-        style={!narrow ? `width: ${shellChrome.sidebarWidth}px` : undefined}
-        aria-hidden={!sidebarOpen}
-        inert={!sidebarOpen}
-      >
-        <div class="profile">
-          {#if avatar}
-            <img
-              class="avatar"
-              src={avatar}
-              alt={t("aria.avatar", { name: name || "" })}
-            />
-          {:else}
-            <div
-              class="avatar avatar-fallback"
-              aria-label={t("aria.avatar", { name: name || "" })}
-              role="img"
-            >
-              {avatarInitials}
-            </div>
-          {/if}
-          <p class="profile-name">{name || "..."}</p>
-          <p class="profile-roll">{rollNumber}</p>
-        </div>
-
-        <nav class="nav" aria-label={t("header.aria.mainNav")}>
-          {#each navItems as item (item.id)}
-            <button
-              class="nav-item"
-              class:active={activeNav === item.id}
-              aria-current={activeNav === item.id ? "page" : undefined}
-              onclick={() => onNav(item)}
-            >
-              <Icon class="nav-icon" name={item.icon} size={22} />
-              <span>{t(item.label)}</span>
-            </button>
-          {/each}
-        </nav>
-
-        {#if !narrow}
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <div
-            class="sidebar-resize-handle"
-            role="separator"
-            tabindex="0"
-            aria-orientation="vertical"
-            aria-valuenow={shellChrome.sidebarWidth}
-            aria-valuemin={SIDEBAR_WIDTH_MIN}
-            aria-valuemax={SIDEBAR_WIDTH_MAX}
-            aria-label={t("aria.resizeSidebar")}
-            onpointerdown={onSidebarResizeStart}
-            onkeydown={onSidebarResizeKeydown}
-          ></div>
-        {/if}
-      </aside>
-    </div>
+    <ShellSidebar
+      bind:open={sidebarOpen}
+      bind:activeNav
+      {narrow}
+      {name}
+      {rollNumber}
+      {avatar}
+    />
 
     <main id="fsp-main" class="main" tabindex="-1">
       {#if activeNav === "homeworks"}
@@ -833,199 +664,6 @@
     display: none;
   }
 
-  /*
-   * Rail clips; inner sidebar keeps a fixed 260px width so the profile/nav
-   * slide away instead of squashing as width animates to 0.
-   */
-  .sidebar-rail {
-    flex-shrink: 0;
-    align-self: stretch;
-    width: var(--sidebar-w, 260px);
-    overflow: hidden;
-    transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .sidebar-rail.collapsed {
-    width: 0;
-  }
-
-  .sidebar-rail.resizing {
-    transition: none;
-  }
-
-  .sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    box-sizing: border-box;
-    width: var(--sidebar-w, 260px);
-    min-width: var(--sidebar-w, 260px);
-    height: 100%;
-    background: var(--surface-raised);
-    border: none;
-    border-right: 1px solid var(--border-subtle);
-    border-radius: 0;
-    padding: 22px 24px;
-    overflow: hidden;
-    opacity: 1;
-    transform: translateX(0);
-    position: relative;
-    top: auto;
-    left: auto;
-    box-shadow: none;
-    transition:
-      opacity 0.22s ease,
-      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .sidebar-rail.collapsed .sidebar {
-    transform: translateX(-100%);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .sidebar-resize-handle {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    width: 6px;
-    cursor: col-resize;
-    touch-action: none;
-    z-index: 5;
-  }
-
-  .sidebar-resize-handle:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: -2px;
-  }
-
-  .sidebar-resize-handle::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 2px;
-    width: 2px;
-    background: transparent;
-    transition: background 0.15s ease;
-  }
-
-  .sidebar-resize-handle:hover::after,
-  .sidebar-resize-handle:focus-visible::after,
-  .sidebar-rail.resizing .sidebar-resize-handle::after {
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-  }
-
-  .profile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 0 14px;
-  }
-
-  .avatar {
-    width: 72px;
-    height: 72px;
-    border-radius: 8px;
-    background: var(--text);
-    object-fit: cover;
-    display: block;
-    align-self: center;
-    margin-inline: auto;
-  }
-
-  .avatar-fallback {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in srgb, var(--accent) 22%, var(--surface-raised));
-    color: var(--accent-strong);
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-  }
-
-  .profile-name {
-    font-size: 16px;
-    color: var(--text);
-    text-align: center;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .profile-roll {
-    font-size: 12px;
-    color: var(--text-secondary);
-    text-align: center;
-  }
-
-  .nav {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    height: var(--hit-nav);
-    min-height: var(--hit-nav);
-    flex-shrink: 0;
-    padding: 4px 12px;
-    border: none;
-    border-radius: 12px;
-    background: transparent;
-    cursor: pointer;
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 14px;
-    color: var(--text);
-    text-align: left;
-    transition:
-      background 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .nav-item:hover {
-    background: color-mix(in srgb, var(--surface0) 55%, transparent);
-  }
-
-  .nav-item.active {
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-    color: var(--text);
-  }
-
-  .nav-item.active:hover {
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-  }
-
-  .nav-item:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: 1px;
-  }
-
-  .nav-item :global(.nav-icon) {
-    box-sizing: content-box;
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-    /* Match header icon optical centering (path weight sits low in the viewBox). */
-    translate: 0 -0.5px;
-  }
-
-  .sidebar .nav-item {
-    transition: background 0.12s ease;
-  }
-
   .main {
     display: flex;
     flex-direction: column;
@@ -1137,11 +775,12 @@
     background: transparent;
   }
 
-  .shell.chrome-floating .content:has(.sidebar-rail.collapsed) {
+  .shell.chrome-floating .content:has(:global(.sidebar-rail.collapsed)) {
     gap: 0;
   }
 
-  .shell.chrome-floating .sidebar {
+  /* Sidebar lives in ShellSidebar — :global so floating chrome still reaches it. */
+  .shell.chrome-floating :global(.sidebar) {
     background: var(--base);
     border-right: none;
     border-radius: var(--radius-surface);
@@ -1167,10 +806,10 @@
 
     :global(.header),
     .main,
-    .sidebar,
+    :global(.sidebar),
     .shell.chrome-floating :global(.header),
     .shell.chrome-floating .main,
-    .shell.chrome-floating .sidebar {
+    .shell.chrome-floating :global(.sidebar) {
       border-radius: 0;
     }
 
@@ -1180,7 +819,7 @@
       padding: 0;
     }
 
-    .shell.chrome-floating .content:has(.sidebar-rail.collapsed) {
+    .shell.chrome-floating .content:has(:global(.sidebar-rail.collapsed)) {
       gap: 0;
     }
 
@@ -1193,7 +832,7 @@
       border-bottom: 1px solid var(--border-subtle);
     }
 
-    .shell.chrome-floating .sidebar {
+    .shell.chrome-floating :global(.sidebar) {
       border-right: none;
     }
 
@@ -1217,43 +856,6 @@
     .scrim.visible {
       opacity: 1;
       visibility: visible;
-    }
-
-    .sidebar-rail {
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      z-index: 20;
-      width: min(300px, 84vw);
-      overflow: visible;
-      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-      transform: translateX(0);
-    }
-
-    .sidebar-rail.collapsed {
-      width: min(300px, 84vw);
-      transform: translateX(-105%);
-    }
-
-    .sidebar {
-      display: flex;
-      width: 100%;
-      min-width: 0;
-      height: 100%;
-      border-radius: 0 16px 16px 0;
-      overflow-y: auto;
-      transform: none;
-      opacity: 1;
-      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
-      transition: none;
-    }
-
-    .sidebar-rail.collapsed .sidebar {
-      transform: none;
-      opacity: 1;
-      pointer-events: none;
-      box-shadow: none;
     }
 
     .chat-rail {
