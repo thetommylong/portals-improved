@@ -68,9 +68,17 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
-  background: var(--surface-sunken);
   border-radius: 0;
   overflow: hidden;
+}
+
+/*
+ * shared.css resets `main[class] { background: transparent }` at (0,1,1),
+ * which beats a lone `.main` (0,1,0). `.shell .main` is (0,2,0) — same win
+ * path floating already had via `.shell.chrome-floating .main`.
+ */
+.shell .main {
+  background: var(--mantle);
 }
 
 .chat-rail {

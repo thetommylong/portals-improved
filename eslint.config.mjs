@@ -14,6 +14,7 @@ export default tseslint.config(
       "dist/",
       "dist-site/",
       "tmp/",
+      ".tsc-node/",
       "node_modules/",
       "*.config.*",
       ".ua/",

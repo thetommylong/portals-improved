@@ -625,7 +625,7 @@
     flex-direction: column;
     gap: 8px;
     min-height: 0;
-    background: var(--surface-raised);
+    background: var(--base);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-card);
     padding: 10px 12px;

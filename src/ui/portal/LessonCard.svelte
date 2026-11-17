@@ -156,6 +156,7 @@
     height: 100%;
     min-height: inherit;
     border-radius: 8px;
+    /* Floating pairing: mantle timetable, base card fills. */
     background: var(--base);
     border: 1px solid var(--border-subtle);
     overflow: hidden;
@@ -224,7 +225,7 @@
   .lesson.clickable {
     cursor: pointer;
     appearance: none;
-    border: none;
+    /* Keep .lesson border — `border: none` was wiping the card chrome. */
     padding: 0;
     font: inherit;
     color: inherit;
