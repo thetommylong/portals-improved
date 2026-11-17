@@ -2,10 +2,10 @@
 // Copyright (C) 2026 thetommylong
 
 import { mount } from "svelte";
-import { runtime } from "../adapters/runtime.svelte";
-import PortalShell from "../ui/PortalShell.svelte";
-import { hasFlushedCss, reinjectFlushedCss } from "../css-inject";
-import sharedCss from "../ui/portal/shared.css?inline";
+import { runtime } from "../../adapters/runtime.svelte";
+import PortalShell from "../../ui/PortalShell.svelte";
+import { hasFlushedCss, reinjectFlushedCss } from "../../css-inject";
+import sharedCss from "../../ui/portal/shared.css?inline";
 import {
   hasOwnStyleInHead,
   reinjectStyleElements,
