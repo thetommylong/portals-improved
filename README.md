@@ -5,6 +5,9 @@ A userscript that replaces your university student portal with a mobile-first UI
 > [!WARNING]
 > **Vibe-coded software.** Use at your own risk.
 
+> [!NOTE]
+> Unofficial. Not affiliated with the schools or portals this runs on.
+
 ## The problem
 
 Student portals share the same shape: desktop-only, light mode, sideways-scrolling tables, and data the backend already has buried behind extra clicks. Change a filter and the page reloads. On a phone the UI fails, and the site blocks DevTools enough that you cannot inspect why.

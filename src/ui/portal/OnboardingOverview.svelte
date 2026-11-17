@@ -87,6 +87,7 @@
           </li>
         {/each}
       </ul>
+      <p class="ob-disclaimer">{t("settings.disclaimer")}</p>
       <div class="ob-actions">
         <button type="button" class="ob-btn primary" onclick={onDismiss}>
           {t("onboarding.gotIt")}
@@ -150,7 +151,7 @@
   }
 
   .ob-features {
-    margin: 0 0 18px;
+    margin: 0 0 12px;
     padding: 0 0 0 1.2em;
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 13px;
@@ -165,6 +166,14 @@
   .ob-feat-name {
     font-weight: 650;
     color: var(--text);
+  }
+
+  .ob-disclaimer {
+    margin: 0 0 16px;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-secondary);
   }
 
   .ob-actions {
