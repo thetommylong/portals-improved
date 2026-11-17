@@ -37,17 +37,17 @@ import type {
   TimeSlot,
   ScheduleEntry,
   SurveyLink,
-} from "../types/portal";
-import type { AdapterFeatures, PortalAdapter } from "../sdk/adapter";
+} from "../../types/portal";
+import type { AdapterFeatures, PortalAdapter } from "../../sdk/adapter";
 import {
   copyFreshOidcBlobs,
   getOidcAccessToken,
   isJwtExpired,
   parseJwtPayload,
 } from "./fsp-auth-token";
-import { REAUTH_POPUP_NAME } from "./gate";
+import { REAUTH_POPUP_NAME } from "../gate";
 import { compactFspToolResult } from "./fsp-tool-compact";
-import { pathSegment } from "./path-segment";
+import { pathSegment } from "../path-segment";
 
 const BASE = "https://api.fpt.edu.vn/fsp/api";
 const DEFAULT_REAUTH_TIMEOUT_MS = 120_000;

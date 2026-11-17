@@ -38,9 +38,9 @@ import type {
   TimeSlot,
   ScheduleEntry,
   SurveyLink,
-} from "../types/portal";
-import type { AdapterFeatures, PortalAdapter } from "../sdk/adapter";
-import { compactFspToolResult } from "./fsp-tool-compact";
+} from "../../types/portal";
+import type { AdapterFeatures, PortalAdapter } from "../../sdk/adapter";
+import { compactFspToolResult } from "../fsp/fsp-tool-compact";
 
 const FEATURES: AdapterFeatures = {
   schedule: true,

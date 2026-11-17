@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-import { FspLiveAdapter } from "./fsp-live";
+import { FspLiveAdapter } from "./fsp";
 import { MockAdapter } from "./mock";
 import { matchesHost, type PortalAdapter } from "../sdk/adapter";
 import { ADAPTER_KEY, isMockForced } from "./gate";
