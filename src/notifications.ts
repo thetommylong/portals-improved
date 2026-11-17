@@ -161,20 +161,22 @@ function restoreStackPolite(s: HTMLDivElement, type: ToastKind): void {
 
 function styleToastShell(
   toast: HTMLButtonElement | HTMLDivElement,
-  type: ToastKind,
+  _type: ToastKind,
   narrow: boolean,
 ): void {
   Object.assign(toast.style, {
     pointerEvents: "auto",
     boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "stretch",
     width: narrow ? "100%" : "max-content",
     maxWidth: narrow ? "100%" : "min(360px, 100%)",
-    padding: "12px 14px",
+    padding: "0",
     borderRadius: "var(--radius-card)",
     background: "var(--panel-bg)",
     color: "var(--panel-text)",
     border: "1px solid var(--panel-border)",
-    borderLeft: `3px solid ${COLORS[type]}`,
     boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
     overflow: "hidden",
     position: "relative",
@@ -189,6 +191,33 @@ function styleToastShell(
       ? "none"
       : `transform var(--motion-med) cubic-bezier(0.16,1,0.3,1), opacity var(--motion-med) ease, box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease`,
   });
+}
+
+/** Same 6px left accent as lesson cards (`.lesson-accent`). */
+function makeStripe(type: ToastKind): HTMLDivElement {
+  const stripe = document.createElement("div");
+  stripe.setAttribute("aria-hidden", "true");
+  Object.assign(stripe.style, {
+    flex: "0 0 6px",
+    alignSelf: "stretch",
+    background: COLORS[type],
+  });
+  return stripe;
+}
+
+function makeToastBody(extra?: Record<string, string>): HTMLDivElement {
+  const body = document.createElement("div");
+  Object.assign(body.style, {
+    flex: "1",
+    minWidth: "0",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    padding: "12px 14px",
+    position: "relative",
+    ...extra,
+  });
+  return body;
 }
 
 function attachEnter(toast: HTMLElement, icon: SVGSVGElement): void {
@@ -288,7 +317,9 @@ export function notify(message: string, type: ToastKind = "info") {
     toast.style.borderColor = "var(--panel-border)";
   });
 
-  toast.append(content, bar);
+  const body = makeToastBody();
+  body.append(content, bar);
+  toast.append(makeStripe(type), body);
   s.append(toast);
   attachEnter(toast, icon);
 
@@ -436,13 +467,12 @@ export function notifyAction(opts: NotifyActionOptions): {
     s.setAttribute("aria-live", "assertive");
   }
   styleToastShell(toast, type, narrow);
-  Object.assign(toast.style, {
-    display: "flex",
-    flexDirection: "column",
+  const body = makeToastBody({
     gap: "10px",
     paddingRight: "10px",
   });
-  toast.append(head, action);
+  body.append(head, action);
+  toast.append(makeStripe(type), body);
   s.append(toast);
   attachEnter(toast, icon);
 
