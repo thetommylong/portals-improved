@@ -3,6 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  FLUSH_CSS_HOOK_KEY,
   PENDING_CSS_KEY,
   discardPendingCss,
   flushPendingCss,
@@ -16,11 +17,13 @@ import {
 describe("css-inject", () => {
   beforeEach(() => {
     Reflect.deleteProperty(globalThis, PENDING_CSS_KEY);
+    Reflect.deleteProperty(globalThis, FLUSH_CSS_HOOK_KEY);
     resetFlushedCssForTests();
   });
 
   afterEach(() => {
     Reflect.deleteProperty(globalThis, PENDING_CSS_KEY);
+    Reflect.deleteProperty(globalThis, FLUSH_CSS_HOOK_KEY);
     resetFlushedCssForTests();
     vi.unstubAllGlobals();
   });
@@ -54,6 +57,24 @@ describe("css-inject", () => {
     expect(el.setAttribute).toHaveBeenCalledWith("data-fsp-css", "");
     expect(takePendingCss()).toEqual([]);
     expect(hasFlushedCss()).toBe(true);
+    expect(Reflect.get(globalThis, FLUSH_CSS_HOOK_KEY)).toBe(flushPendingCss);
+  });
+
+  it("live flush hook drains CSS queued after the gate", () => {
+    const el = { setAttribute: vi.fn() };
+    const addStyle = vi.fn(() => el);
+    vi.stubGlobal("GM_addStyle", addStyle);
+    flushPendingCss();
+    addStyle.mockClear();
+    queueMonkeyCss(".shell{display:flex}");
+    Reflect.get(globalThis, FLUSH_CSS_HOOK_KEY)?.();
+    expect(addStyle).toHaveBeenCalledWith(".shell{display:flex}");
+  });
+
+  it("discardPendingCss clears the live flush hook", () => {
+    flushPendingCss();
+    discardPendingCss();
+    expect(Reflect.has(globalThis, FLUSH_CSS_HOOK_KEY)).toBe(false);
   });
 
   it("marks last head style when GM_addStyle returns void", () => {

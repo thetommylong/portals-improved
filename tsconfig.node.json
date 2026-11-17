@@ -2,6 +2,8 @@
   "compilerOptions": {
     "ignoreDeprecations": "6.0",
     "composite": true,
+    // Emit away from repo root — sibling vite.config.js shadows vite.config.ts for Vite.
+    "outDir": ".tsc-node",
     "module": "nodenext",
     "moduleResolution": "nodenext"
   },

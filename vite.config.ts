@@ -7,8 +7,9 @@ import monkey from "vite-plugin-monkey";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-/** Keep in sync with `PENDING_CSS_KEY` in `src/css-inject.ts`. */
+/** Keep in sync with keys in `src/css-inject.ts`. */
 const PENDING_CSS_KEY = "__portalsImprovedPendingCss";
+const FLUSH_CSS_HOOK_KEY = "__portalsImprovedFlushCss";
 
 /**
  * `JSON.stringify` alone is not enough when the result is spliced into
@@ -85,10 +86,12 @@ export default defineConfig({
         // Default cssSideEffects GM_addStyle's the whole CSS graph at entry —
         // before the idle gate — and would paint portal rules onto every
         // @match page (TikTok, etc.). Queue instead; src/index.ts flushes only
-        // when shouldBoot() (see src/css-inject.ts / ADR 003).
+        // when shouldBoot() (see src/css-inject.ts / ADR 003). After that flush
+        // arms FLUSH_CSS_HOOK_KEY so lazy chunk `_css` calls inject immediately
+        // (PortalShell.layout.css + view chunks load after the gate).
         // Must be a self-contained expression: monkey stringifies this into the
         // userscript and cannot close over Vite-config imports.
-        cssSideEffects: `(css)=>{const k=${jsCodeStringLiteral(PENDING_CSS_KEY)};(globalThis[k]??=[]).push(css);}`,
+        cssSideEffects: `(css)=>{const k=${jsCodeStringLiteral(PENDING_CSS_KEY)};const h=${jsCodeStringLiteral(FLUSH_CSS_HOOK_KEY)};(globalThis[k]??=[]).push(css);const f=globalThis[h];if(typeof f==="function")f();}`,
       },
       userscript: {
         namespace: "npm/vite-plugin-monkey",

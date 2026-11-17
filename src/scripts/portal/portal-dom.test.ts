@@ -6,9 +6,11 @@ import {
   OWN_CSS_ATTR,
   VITE_CSS_MARKER,
   captureOwnViteCss,
+  guardAgainstHostChrome,
   isOwnStyleElement,
   reinjectCssText,
   reinjectStyleElements,
+  removeForeignStylesheets,
   stripHostStylesheets,
   takeOwnStyleElements,
   whenDocumentBodyReady,
@@ -268,5 +270,72 @@ describe("stylesheet strip / reinject", () => {
       `${VITE_CSS_MARKER}.b{}`,
     ]);
     expect(appended[0]!.setAttribute).toHaveBeenCalledWith(OWN_CSS_ATTR, "");
+  });
+
+  it("removeForeignStylesheets keeps own styles and marked font links", () => {
+    const hostStyle = {
+      tagName: "STYLE",
+      hasAttribute: (n: string) => n === OWN_CSS_ATTR,
+      remove: vi.fn(),
+      textContent: ".shell{}",
+    };
+    const angular = {
+      tagName: "STYLE",
+      hasAttribute: () => false,
+      remove: vi.fn(),
+      textContent: ".mat-button{}",
+    };
+    const font = {
+      tagName: "LINK",
+      hasAttribute: (n: string) => n === OWN_CSS_ATTR,
+      remove: vi.fn(),
+    };
+    const hostLink = {
+      tagName: "LINK",
+      hasAttribute: () => false,
+      remove: vi.fn(),
+    };
+    const nodes = [hostStyle, angular, font, hostLink];
+    const doc = {
+      head: {
+        querySelectorAll: vi.fn(() => nodes),
+      },
+    };
+
+    removeForeignStylesheets(asDoc(doc));
+
+    expect(hostStyle.remove).not.toHaveBeenCalled();
+    expect(font.remove).not.toHaveBeenCalled();
+    expect(angular.remove).toHaveBeenCalledOnce();
+    expect(hostLink.remove).toHaveBeenCalledOnce();
+  });
+
+  it("guardAgainstHostChrome removes body siblings and disconnects", () => {
+    const host = { id: "fsp-qol-root" } as HTMLElement;
+    const sibling = { remove: vi.fn() };
+    const bodyChildren = [host, sibling];
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    function FakeMO(this: {
+      observe: typeof observe;
+      disconnect: typeof disconnect;
+    }) {
+      this.observe = observe;
+      this.disconnect = disconnect;
+    }
+    vi.stubGlobal("MutationObserver", FakeMO);
+    const head = {
+      querySelectorAll: vi.fn(() => []),
+    };
+    const body = {
+      children: bodyChildren,
+    };
+    const doc = { head, body };
+
+    const stop = guardAgainstHostChrome(host, asDoc(doc));
+    expect(sibling.remove).toHaveBeenCalledOnce();
+    expect(observe).toHaveBeenCalledTimes(2);
+    stop();
+    expect(disconnect).toHaveBeenCalledOnce();
   });
 });

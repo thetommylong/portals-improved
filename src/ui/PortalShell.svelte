@@ -53,6 +53,8 @@
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = FONT_URL;
+    // Survive host-chrome guard (strips unmarked stylesheets).
+    link.setAttribute("data-fsp-css", "");
     document.head.appendChild(link);
   }
 

@@ -154,3 +154,46 @@ export function reinjectCssText(
     head.appendChild(style);
   }
 }
+
+/**
+ * Drop stylesheet / style nodes that are not ours. Used after the initial strip
+ * when the host SPA keeps injecting Angular / Material styles into `<head>`.
+ * Font `<link>`s tagged with {@link OWN_CSS_ATTR} are kept.
+ */
+export function removeForeignStylesheets(doc: Document = document): void {
+  const head = doc.head;
+  if (!head) return;
+  for (const el of [
+    ...head.querySelectorAll('link[rel="stylesheet"], style'),
+  ]) {
+    if (el.tagName === "STYLE" && isOwnStyleElement(el)) continue;
+    if (el.tagName === "LINK" && el.hasAttribute(OWN_CSS_ATTR)) continue;
+    el.remove();
+  }
+}
+
+/**
+ * Keep the replaced document exclusive to our shell: strip late host styles and
+ * remove body siblings Angular appends (e.g. CDK live announcer).
+ */
+export function guardAgainstHostChrome(
+  host: HTMLElement,
+  doc: Document = document,
+): () => void {
+  const head = doc.head;
+  const body = doc.body;
+  if (!head || !body) return () => {};
+
+  const scrub = () => {
+    removeForeignStylesheets(doc);
+    for (const child of [...body.children]) {
+      if (child !== host) child.remove();
+    }
+  };
+
+  scrub();
+  const mo = new MutationObserver(scrub);
+  mo.observe(head, { childList: true });
+  mo.observe(body, { childList: true });
+  return () => mo.disconnect();
+}
