@@ -1,7 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-const COLORS = ["#89b4fa", "#a6e3a1", "#f9e2af", "#f5c2e7", "#cba6f7", "#94e2d5"];
+const COLOR_VARS = [
+  "--accent",
+  "--green",
+  "--yellow",
+  "--pink",
+  "--peach",
+  "--lavender",
+  "--teal",
+  "--mauve",
+];
+
+function themeColors(el: Element): string[] {
+  const styles = getComputedStyle(el);
+  const out: string[] = [];
+  for (const name of COLOR_VARS) {
+    const v = styles.getPropertyValue(name).trim();
+    if (v) out.push(v);
+  }
+  return out.length > 0 ? out : ["var(--accent)"];
+}
 
 /** Short burst. Pass `host` to stack under a sibling (e.g. overview panel). */
 export function burstConfetti(x: number, y: number, host?: HTMLElement): void {
@@ -29,6 +48,10 @@ export function burstConfetti(x: number, y: number, host?: HTMLElement): void {
   if (!ctx) return;
   ctx.scale(dpr, dpr);
 
+  const colorRoot =
+    host ?? doc.getElementById("fsp-qol-root") ?? doc.documentElement;
+  const colors = themeColors(colorRoot);
+
   const parts = Array.from({ length: 48 }, (_, i) => {
     const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.2 * Math.PI;
     const s = 4 + Math.random() * 8;
@@ -41,7 +64,7 @@ export function burstConfetti(x: number, y: number, host?: HTMLElement): void {
       h: 6 + Math.random() * 6,
       rot: Math.random() * 6,
       vr: (Math.random() - 0.5) * 0.3,
-      color: COLORS[i % COLORS.length]!,
+      color: colors[i % colors.length]!,
       life: 1,
     };
   });
