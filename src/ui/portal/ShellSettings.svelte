@@ -225,6 +225,7 @@
         <span class="about-detail">
           v{__BUILD__.version} · {__BUILD__.commit}
         </span>
+        <p class="about-disclaimer">{t("settings.disclaimer")}</p>
         <a
           class="about-link"
           href="https://github.com/thetommylong/portals-improved/blob/main/LICENSE"
@@ -400,6 +401,14 @@
   .about-detail {
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .about-disclaimer {
+    margin: 0;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 11px;
+    line-height: 1.4;
     color: var(--text-secondary);
   }
 
