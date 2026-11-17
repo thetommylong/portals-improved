@@ -7,6 +7,7 @@
   import { cacheKey, readListCache, writeListCache } from "../../listCache";
   import { noteFetchFailure } from "../../offline";
   import { i18n, t } from "../../i18n.svelte";
+  import CardListSkeleton from "./CardListSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -92,7 +93,7 @@
 <div class="homeworks">
   <div class="feedback-body">
     {#if loading}
-      <p class="feedback-empty" role="status">{t("status.loading")}</p>
+      <CardListSkeleton />
     {:else if items.length === 0}
       <p class="feedback-empty" role="status">{t("homeworks.empty")}</p>
     {:else}

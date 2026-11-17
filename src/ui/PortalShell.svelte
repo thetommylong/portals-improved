@@ -32,6 +32,7 @@
   } from "./portal/overlayFocus";
   import { pageLoading } from "./portal/pageLoading.svelte";
   import { backdropFade, modalScale, popScale } from "./portal/popTransition";
+  import ViewChunkSkeleton from "./portal/ViewChunkSkeleton.svelte";
   // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
   // of the initial System.register entry execute path.
@@ -1186,9 +1187,7 @@
           {#if HomeworksViewComp}
             <HomeworksViewComp studentId={userId} bind:this={pages.homeworks} />
           {:else}
-            <div class="view-loading" role="status">
-              {t("nav.loadingView")}
-            </div>
+            <ViewChunkSkeleton />
           {/if}
         {:else}
           <UnavailableState />
@@ -1198,9 +1197,7 @@
           {#if FeedbackViewComp}
             <FeedbackViewComp studentId={userId} bind:this={pages.feedback} />
           {:else}
-            <div class="view-loading" role="status">
-              {t("nav.loadingView")}
-            </div>
+            <ViewChunkSkeleton />
           {/if}
         {:else}
           <UnavailableState />
@@ -1210,9 +1207,7 @@
           {#if MarksViewComp}
             <MarksViewComp studentId={userId} bind:this={pages.marks} />
           {:else}
-            <div class="view-loading" role="status">
-              {t("nav.loadingView")}
-            </div>
+            <ViewChunkSkeleton />
           {/if}
         {:else}
           <UnavailableState />
@@ -1222,9 +1217,7 @@
           {#if EventsViewComp}
             <EventsViewComp studentId={userId} bind:this={pages.events} />
           {:else}
-            <div class="view-loading" role="status">
-              {t("nav.loadingView")}
-            </div>
+            <ViewChunkSkeleton />
           {/if}
         {:else}
           <UnavailableState />
@@ -1234,9 +1227,7 @@
           {#if StandingViewComp}
             <StandingViewComp studentId={userId} bind:this={pages.standing} />
           {:else}
-            <div class="view-loading" role="status">
-              {t("nav.loadingView")}
-            </div>
+            <ViewChunkSkeleton />
           {/if}
         {:else}
           <UnavailableState />
@@ -1246,9 +1237,7 @@
           {#if ClubsViewComp}
             <ClubsViewComp studentId={userId} bind:this={pages.clubs} />
           {:else}
-            <div class="view-loading" role="status">
-              {t("nav.loadingView")}
-            </div>
+            <ViewChunkSkeleton />
           {/if}
         {:else}
           <UnavailableState />
@@ -1262,9 +1251,7 @@
               bind:this={pages.home}
             />
           {:else}
-            <div class="view-loading" role="status">
-              {t("nav.loadingView")}
-            </div>
+            <ViewChunkSkeleton />
           {/if}
         {:else}
           <UnavailableState />
@@ -1744,8 +1731,7 @@
     background: color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
-  .chat-loading,
-  .view-loading {
+  .chat-loading {
     display: flex;
     align-items: center;
     justify-content: center;

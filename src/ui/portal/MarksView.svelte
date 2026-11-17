@@ -13,6 +13,7 @@
     writeTerms,
   } from "../../marksCache";
   import { exportGradesToCSV } from "./csvExport";
+  import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import PredictorDrawer from "./PredictorDrawer.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
@@ -259,7 +260,7 @@
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">{t("status.loading")}</p>
+      <MarksGridSkeleton />
     {:else if marks.length === 0}
       <p class="marks-empty" role="status">{t("marks.empty")}</p>
     {:else}

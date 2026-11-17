@@ -8,6 +8,7 @@
   import { noteFetchFailure } from "../../offline";
   import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
+  import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -165,7 +166,7 @@
 <div class="homeworks">
   <div class="feedback-body" bind:clientWidth={gridWidth}>
     {#if loading}
-      <p class="feedback-empty" role="status">{t("status.loading")}</p>
+      <MarksGridSkeleton />
     {:else if items.length === 0}
       <p class="feedback-empty" role="status">{t("events.empty")}</p>
     {:else}

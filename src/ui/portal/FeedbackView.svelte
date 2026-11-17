@@ -12,6 +12,7 @@
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { backdropFade, modalScale } from "./popTransition";
+  import CardListSkeleton from "./CardListSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -212,7 +213,7 @@
 <div class="feedback">
   <div class="feedback-body">
     {#if loading}
-      <p class="feedback-empty" role="status">{t("status.loading")}</p>
+      <CardListSkeleton />
     {:else if pending.length === 0 && submitted.length === 0}
       <p class="feedback-empty" role="status">{t("feedback.empty")}</p>
     {:else}

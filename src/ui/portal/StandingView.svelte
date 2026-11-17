@@ -10,6 +10,7 @@
   import { cacheKey, readListCache, writeListCache } from "../../listCache";
   import { noteFetchFailure } from "../../offline";
   import { i18n, t } from "../../i18n.svelte";
+  import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -157,7 +158,7 @@
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">{t("status.loading")}</p>
+      <MarksGridSkeleton />
     {:else if items.length === 0}
       <p class="marks-empty" role="status">{t("standing.empty")}</p>
     {:else if filtered.length === 0}
