@@ -10,7 +10,7 @@ The FSP student portal is hostile to overlays (anti-devtools, heavy host CSS). S
 
 ## Decision
 
-The userscript **replaces** `document.body` and strips host stylesheets after session resolve (`src/scripts/50-portal.ts`). It is not a translucent HUD.
+The userscript **replaces** `document.body` and strips host stylesheets after session resolve (`src/scripts/portal`). It is not a translucent HUD.
 
 ## Consequences
 

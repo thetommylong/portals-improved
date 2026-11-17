@@ -14,7 +14,7 @@ Catalog of Web platform edges **portals-improved** can hit given how it is built
 
 | surface | edge case | why this project can hit it | MDN path | sev | like |
 | --- | --- | --- | --- | --- | --- |
-| `document.body` @ `document-start` | `body` is `null` until parser creates it | Userscript `run-at: document-start`; boot waits for `body` or `DOMContentLoaded` before `replaceChildren` (`50-portal.ts`) | `/en-US/docs/Web/API/Document/body` | H | H |
+| `document.body` @ `document-start` | `body` is `null` until parser creates it | Userscript `run-at: document-start`; boot waits for `body` or `DOMContentLoaded` before `replaceChildren` (`scripts/portal`) | `/en-US/docs/Web/API/Document/body` | H | H |
 | `Element.replaceChildren` | Empties body: discards portal DOM, listeners, pending in-tree scripts | Full-page replace into `#fsp-qol-root` (ADR 001) | `/en-US/docs/Web/API/Element/replaceChildren` | H | H |
 | `Element.replaceChildren` | `HierarchyRequestError` on tree-constraint violations | Unusual document types / framesets change what `body` is | `/en-US/docs/Web/API/Element/replaceChildren` | L | L |
 | `window.stop()` | Stops further resource loads; **cannot** interrupt already-running document scripts | Called after replace to cut portal asset loads | `/en-US/docs/Web/API/Window/stop` | M | H |
@@ -47,7 +47,7 @@ Catalog of Web platform edges **portals-improved** can hit given how it is built
 
 | surface | edge case | why this project can hit it | MDN path | sev | like |
 | --- | --- | --- | --- | --- | --- |
-| `Location.href` / `assign` | Navigate; `javascript:` XSS-adjacent; `SecurityError` cases | `00-devtools.ts` filters `disable-devtool` via href/assign patches | `/en-US/docs/Web/API/Location/href`, `/en-US/docs/Web/API/Location/assign`, `/en-US/docs/Web/URI/Reference/Schemes/javascript` | H | M |
+| `Location.href` / `assign` | Navigate; `javascript:` XSS-adjacent; `SecurityError` cases | `scripts/devtools` filters `disable-devtool` via href/assign patches | `/en-US/docs/Web/API/Location/href`, `/en-US/docs/Web/API/Location/assign`, `/en-US/docs/Web/URI/Reference/Schemes/javascript` | H | M |
 | `history.pushState` / `replaceState` | Same-origin URL or throw; no immediate load; cloneable state | Same disable-devtool URL filter | `/en-US/docs/Web/API/History/pushState`, `/en-US/docs/Web/API/History/replaceState` | M | M |
 | Capture + `stopPropagation` | Does **not** cancel default actions (`preventDefault` needed) | Capture F12/contextmenu only `stopPropagation` — browser defaults may still fire | `/en-US/docs/Web/API/Event/stopPropagation` | M | H |
 | `stopImmediatePropagation` | Stops same-target listeners too | Portal listener earlier in capture can starve the patch | `/en-US/docs/Web/API/Event/stopImmediatePropagation` | M | M |
@@ -97,7 +97,7 @@ Catalog of Web platform edges **portals-improved** can hit given how it is built
 
 ## Highest-priority watch list
 
-1. **Bootstrap races:** `document.body` null, DCL-already-fired after dynamic import, `window.stop` vs remaining portal loads (`50-portal.ts`).
+1. **Bootstrap races:** `document.body` null, DCL-already-fired after dynamic import, `window.stop` vs remaining portal loads (`scripts/portal`).
 2. **Layout:** sticky + overflow ancestors; fixed + visual viewport / transformed containing blocks (schedule + overlays).
 3. **Privilege split:** demo `fetch`/CSP vs production `GM_xmlhttpRequest` + `connect: *`; outbound URL validation must stay in front of grants.
 4. **Auth scrape:** page-readable storage/meta/cookie tokens (XSS = session).
@@ -113,8 +113,8 @@ Catalog of Web platform edges **portals-improved** can hit given how it is built
 | --- | --- |
 | Match / grants / connect | `vite.config.ts`, `docs/adr/003-match-all-lazy-gate.md` |
 | Gate / idle boot | `src/index.ts`, `src/adapters/gate.ts`, `src/boot.ts` |
-| Full-page replace | `src/scripts/50-portal.ts`, `src/site/main.ts`, ADR 001 |
-| Anti-devtools | `src/scripts/00-devtools.ts` |
+| Full-page replace | `src/scripts/portal`, `src/site/main.ts`, ADR 001 |
+| Anti-devtools | `src/scripts/devtools` |
 | Auth / GM network | `src/adapters/fsp-live.ts`, `src/sdk/openai.ts`, `src/sdk/outbound-url.ts` |
 | Demo shim / CSP | `src/site/gm-shim.ts`, `site/index.html` |
 | Pointer / theme / toasts | `src/pointer.svelte.ts`, `src/theme.svelte.ts`, `src/notifications.ts` |
