@@ -2,11 +2,19 @@
   // SPDX-License-Identifier: AGPL-3.0-only
   // Copyright (C) 2026 thetommylong
 
-  import { fade, scale } from "svelte/transition";
+  import { fade, fly, scale } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
+  import { prefersReducedMotion } from "svelte/motion";
   import type { MessageKey } from "../../i18n.svelte";
   import { t } from "../../i18n.svelte";
+  import { burstConfetti } from "../confetti";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { backdropFade, modalScale } from "./popTransition";
+
+  function featMotion(i: number) {
+    if (prefersReducedMotion.current) return { duration: 0 };
+    return { y: 8, duration: 220, delay: 40 + i * 35, easing: cubicOut };
+  }
 
   const FEATURES: { name: MessageKey; hint: MessageKey }[] = [
     { name: "onboarding.featWeek", hint: "onboarding.featWeekHint" },
@@ -27,17 +35,32 @@
     onStartTour: () => void;
   } = $props();
 
+  let layer: HTMLDivElement | undefined = $state();
   let panel: HTMLDivElement | undefined = $state();
+  let celebrated = false;
 
   $effect(() => {
-    if (!open || !panel) return;
+    if (!open) {
+      celebrated = false;
+      return;
+    }
+    if (!panel) return;
     const handle: OverlayFocusHandle = attachOverlayFocus(panel, onDismiss);
+    if (!celebrated && layer) {
+      celebrated = true;
+      const r = panel.getBoundingClientRect();
+      burstConfetti(
+        r.left + r.width / 2,
+        r.top + Math.min(72, r.height * 0.2),
+        layer,
+      );
+    }
     return () => handle.release();
   });
 </script>
 
 {#if open}
-  <div class="ob-layer" role="presentation">
+  <div class="ob-layer" bind:this={layer} role="presentation">
     <button
       type="button"
       class="ob-scrim"
@@ -57,8 +80,8 @@
       <h2 id="ob-title" class="ob-title">{t("onboarding.ariaDialog")}</h2>
       <p class="ob-pitch">{t("onboarding.pitch")}</p>
       <ul class="ob-features">
-        {#each FEATURES as feat (feat.name)}
-          <li>
+        {#each FEATURES as feat, i (feat.name)}
+          <li in:fly={featMotion(i)}>
             <span class="ob-feat-name">{t(feat.name)}:</span>
             {t(feat.hint)}
           </li>

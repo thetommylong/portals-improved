@@ -7,6 +7,7 @@
   import { notify, notifyAction } from "../notifications";
   import { startNotificationPoller } from "../notificationPoller";
   import { t } from "../i18n.svelte";
+  import { burstConfetti } from "./confetti";
   import {
     needsFirstRun,
     needsUpdateToast,
@@ -269,9 +270,23 @@
       return;
     }
     if (needsUpdateToast()) {
-      notify(t("toast.updated", { version: __BUILD__.version }), "info", {
-        href: RELEASES_URL,
-        sticky: true,
+      notifyAction({
+        type: "info",
+        message: t("toast.updated", { version: __BUILD__.version }),
+        actionLabel: t("toast.updatedAction"),
+        onAction: () => {
+          window.open(RELEASES_URL, "_blank", "noopener,noreferrer");
+        },
+      });
+      requestAnimationFrame(() => {
+        const doc =
+          typeof unsafeWindow !== "undefined" ? unsafeWindow.document : document;
+        const el = doc.querySelector(".fsp-toast-sticky");
+        const r = el?.getBoundingClientRect();
+        burstConfetti(
+          r ? r.left + r.width / 2 : innerWidth * 0.82,
+          r ? r.top + r.height / 3 : 80,
+        );
       });
       setLastSeenVersion();
     }

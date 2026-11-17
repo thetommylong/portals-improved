@@ -400,6 +400,8 @@ export interface NotifyActionOptions {
   onAction: () => void | Promise<void>;
   onDismiss?: () => void;
   type?: ToastKind;
+  /** Default true. Set false when the action should leave the toast up (e.g. open a link). */
+  dismissOnAction?: boolean;
 }
 
 /** Sticky toast with an explicit action; stays until action succeeds or dismiss. */
@@ -407,6 +409,7 @@ export function notifyAction(opts: NotifyActionOptions): {
   dismiss: () => void;
 } {
   const type = opts.type ?? "error";
+  const dismissOnAction = opts.dismissOnAction !== false;
   const s = ensureStack();
   const narrow = isNarrow();
   s.style.alignItems = narrow ? "stretch" : "flex-end";
@@ -481,12 +484,14 @@ export function notifyAction(opts: NotifyActionOptions): {
   });
 
   const toast = document.createElement("div");
+  toast.className = "fsp-toast-sticky";
   toast.setAttribute("role", type === "error" ? "alert" : "status");
   toast.setAttribute("aria-label", `${type}: ${opts.message}`);
   if (type === "error") {
     s.setAttribute("aria-live", "assertive");
   }
   styleToastShell(toast, type, narrow);
+  toast.style.cursor = "pointer";
   const body = makeToastBody({
     gap: "10px",
     paddingRight: "10px",
@@ -509,17 +514,34 @@ export function notifyAction(opts: NotifyActionOptions): {
     scheduleRemove(toast, s, type);
   }
 
-  dismissBtn.addEventListener("click", dismiss);
+  dismissBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dismiss();
+  });
   toast.addEventListener("fsp-toast-dismiss", dismiss);
+  // Click message / chrome to dismiss; action button is separate.
+  toast.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!(t instanceof Node)) return;
+    if (action.contains(t) || dismissBtn.contains(t)) return;
+    dismiss();
+  });
 
-  action.addEventListener("click", () => {
+  action.addEventListener("click", (e) => {
+    e.stopPropagation();
     if (busy || closed) return;
     busy = true;
     action.disabled = true;
     toast.setAttribute("aria-busy", "true");
     void Promise.resolve(opts.onAction())
       .then(() => {
-        dismiss();
+        if (dismissOnAction) {
+          dismiss();
+          return;
+        }
+        busy = false;
+        action.disabled = false;
+        toast.removeAttribute("aria-busy");
       })
       .catch(() => {
         busy = false;
