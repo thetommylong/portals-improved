@@ -75,6 +75,7 @@
   "onboarding.ariaTour": "Feature tour",
   "toast.updated": "Portals Improved v{version} is in.",
   "toast.updatedAction": "What's new",
+  "toast.dismiss": "Dismiss",
   "toast.profileFailed": "Failed to load profile",
   "toast.viewUnavailable": "{label} isn't available on this portal.",
   "toast.timetableFailed": "Failed to load timetable",

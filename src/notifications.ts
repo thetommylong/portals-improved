@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
+import { t } from "./i18n.svelte";
 import { createIconSvg, type IconName } from "./ui/icons";
 
 export type ToastKind = "info" | "success" | "error";
@@ -427,7 +428,7 @@ export function notifyAction(opts: NotifyActionOptions): {
   const dismissBtn = document.createElement("button");
   dismissBtn.type = "button";
   dismissBtn.className = "fsp-toast-dismiss";
-  dismissBtn.setAttribute("aria-label", "Dismiss");
+  dismissBtn.setAttribute("aria-label", t("toast.dismiss"));
   const closeIcon = createIconSvg("close", {
     className: "fsp-icon",
     size: 18,
