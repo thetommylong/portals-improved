@@ -4,7 +4,7 @@
 
   import { runtime } from "../adapters/runtime.svelte";
   import type { AgentContext } from "../sdk/types";
-  import { notify, notifyAction } from "../notifications";
+  import { notify, notifyAction, pageDocument } from "../notifications";
   import { startNotificationPoller } from "../notificationPoller";
   import { t } from "../i18n.svelte";
   import { burstConfetti } from "./confetti";
@@ -279,9 +279,7 @@
         },
       });
       requestAnimationFrame(() => {
-        const doc =
-          typeof unsafeWindow !== "undefined" ? unsafeWindow.document : document;
-        const el = doc.querySelector(".fsp-toast-sticky");
+        const el = pageDocument().querySelector(".fsp-toast-sticky");
         const r = el?.getBoundingClientRect();
         burstConfetti(
           r ? r.left + r.width / 2 : innerWidth * 0.82,

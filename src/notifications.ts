@@ -39,7 +39,7 @@ function offscreenTransform(narrow: boolean): string {
   return narrow ? "translateY(-120%)" : "translateX(120%)";
 }
 
-function pageDocument(): Document {
+export function pageDocument(): Document {
   return typeof unsafeWindow !== "undefined" ? unsafeWindow.document : document;
 }
 

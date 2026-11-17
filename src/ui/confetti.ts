@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
+import { pageDocument } from "../notifications";
+
 const COLOR_VARS = [
   "--accent",
   "--green",
@@ -24,8 +26,7 @@ function themeColors(el: Element): string[] {
 
 /** Short burst. Pass `host` to stack under a sibling (e.g. overview panel). */
 export function burstConfetti(x: number, y: number, host?: HTMLElement): void {
-  const doc =
-    typeof unsafeWindow !== "undefined" ? unsafeWindow.document : document;
+  const doc = pageDocument();
   const win = doc.defaultView ?? window;
   if (win.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
