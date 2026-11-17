@@ -4,7 +4,7 @@
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { MarkCommon, Term } from "../../types/portal";
-  import { notify } from "../../notifications";
+  import { noteFetchFailure } from "../../offline";
   import { t } from "../../i18n.svelte";
   import {
     readTermMarks,
@@ -13,6 +13,7 @@
     writeTerms,
   } from "../../marksCache";
   import { exportGradesToCSV } from "./csvExport";
+  import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import PredictorDrawer from "./PredictorDrawer.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
@@ -148,8 +149,12 @@
       ) {
         selectedTermId = def.termId;
       }
-    } catch {
-      if (!cached) notify(t("toast.semestersFailed"), "error");
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.semestersFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     }
   }
 
@@ -173,7 +178,8 @@
       }
     }
 
-    if (!cache.has(termId)) {
+    // Force refresh always hits the network and shows the header spin.
+    if (force || !cache.has(termId)) {
       loading = true;
     }
     try {
@@ -188,12 +194,12 @@
       if (selectedTermId === termId) {
         marks = data;
       }
-    } catch {
-      if (!cache.has(termId)) {
-        notify(t("toast.marksFailed"), "error");
-      } else if (force) {
-        notify(t("toast.marksStale"), "info");
-      }
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: cache.has(termId),
+        failMessage: t("toast.marksFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }
@@ -254,7 +260,7 @@
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">{t("status.loading")}</p>
+      <MarksGridSkeleton />
     {:else if marks.length === 0}
       <p class="marks-empty" role="status">{t("marks.empty")}</p>
     {:else}

@@ -2,13 +2,15 @@
 // Copyright (C) 2026 thetommylong
 
 import { mount } from "svelte";
-import { runtime } from "../adapters/runtime.svelte";
-import PortalShell from "../ui/PortalShell.svelte";
-import sharedCss from "../ui/portal/shared.css?inline";
+import { runtime } from "../../adapters/runtime.svelte";
+import PortalShell from "../../ui/PortalShell.svelte";
+import { hasFlushedCss, reinjectFlushedCss } from "../../css-inject";
+import sharedCss from "../../ui/portal/shared.css?inline";
 import {
-  captureOwnViteCss,
-  reinjectCssText,
+  hasOwnStyleInHead,
+  reinjectStyleElements,
   stripHostStylesheets,
+  takeOwnStyleElements,
   whenDocumentBodyReady,
 } from "./portal-dom";
 
@@ -30,14 +32,21 @@ function boot(userId: string) {
     // drop every <link rel="stylesheet"> and inline <style> from <head> — the
     // portal's own rules, but also a mock host's styling (e.g. example.com's
     // `html{color-scheme:light dark}` + `body{...text-align:center}`) which
-    // would otherwise inherit into the shell. Our own CSS survives: component
-    // css is injected as a <style> chunk tagged with vite's `/*$vite$:*/`
-    // marker — capture it before the strip and re-add it after (the bundle
-    // only injects that chunk once per load). Orphan `@import` sheets with
-    // null ownerNode are disabled inside stripHostStylesheets.
-    const ownCss = captureOwnViteCss();
+    // would otherwise inherit into the shell. Our own CSS survives: serve mode
+    // tags chunks with `data-vite-dev-id`, production with `data-fsp-css` —
+    // detach those nodes, strip the rest, re-attach the same elements (keeps
+    // Vite HMR sheetsMap valid). Orphan `@import` sheets with null ownerNode
+    // are disabled inside stripHostStylesheets.
+    //
+    // First login can wipe our styles during waitForValidSession; reload then
+    // works because CSS is flushed again onto a clean head. If takeOwn finds
+    // nothing, replay the gate-time flush from memory.
+    const ownStyles = takeOwnStyleElements();
     stripHostStylesheets();
-    reinjectCssText(ownCss);
+    reinjectStyleElements(ownStyles);
+    if (!hasOwnStyleInHead() && hasFlushedCss()) {
+      reinjectFlushedCss();
+    }
 
     // Cut remaining host document loads (parser / late assets). New requests
     // started afterward still run: PortalShell injects its font <link>s and

@@ -4,9 +4,11 @@
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { Club, Term } from "../../types/portal";
-  import { notify } from "../../notifications";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { readTerms, writeTerms } from "../../marksCache";
   import { i18n, t } from "../../i18n.svelte";
+  import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -91,32 +93,49 @@
       ) {
         selectedTermId = def.termId;
       }
-    } catch {
-      if (!cached) notify(t("toast.semestersFailed"), "error");
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached,
+        failMessage: t("toast.semestersFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     }
   }
 
   void init();
 
-  async function load(termId: string): Promise<void> {
+  async function load(termId: string, force = false): Promise<void> {
     const term = terms.find((t) => t.termId === termId);
     if (!term) {
       clubs = [];
       return;
     }
 
+    const key = cacheKey("clubs", studentId, termId);
+    let cached: Club[] | null = null;
+    if (!force) {
+      cached = readListCache<Club[]>(key);
+      if (cached) clubs = cached;
+    }
+
     loading = true;
     try {
-      clubs = await runtime.adapter.getClubsByTerm(termId, studentId);
-    } catch {
-      notify(t("toast.clubsFailed"), "error");
+      const data = await runtime.adapter.getClubsByTerm(termId, studentId);
+      clubs = data;
+      writeListCache(key, data);
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached || clubs.length > 0,
+        failMessage: t("toast.clubsFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }
   }
 
   export function refresh(): void {
-    void load(selectedTermId);
+    void load(selectedTermId, true);
   }
 
   $effect(() => {
@@ -151,7 +170,7 @@
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">{t("status.loading")}</p>
+      <MarksGridSkeleton />
     {:else if clubs.length === 0}
       <p class="marks-empty" role="status">{t("clubs.empty")}</p>
     {:else}

@@ -37,13 +37,20 @@ import type {
   TimeSlot,
   ScheduleEntry,
   SurveyLink,
-} from "../types/portal";
-import type { AdapterFeatures, PortalAdapter } from "../sdk/adapter";
-import { getOidcAccessToken } from "./fsp-auth-token";
+} from "../../types/portal";
+import type { AdapterFeatures, PortalAdapter } from "../../sdk/adapter";
+import {
+  copyFreshOidcBlobs,
+  getOidcAccessToken,
+  isJwtExpired,
+  parseJwtPayload,
+} from "./fsp-auth-token";
+import { REAUTH_POPUP_NAME } from "../gate";
 import { compactFspToolResult } from "./fsp-tool-compact";
-import { pathSegment } from "./path-segment";
+import { pathSegment } from "../path-segment";
 
 const BASE = "https://api.fpt.edu.vn/fsp/api";
+const DEFAULT_REAUTH_TIMEOUT_MS = 120_000;
 
 const FEATURES: AdapterFeatures = {
   schedule: true,
@@ -57,6 +64,26 @@ const FEATURES: AdapterFeatures = {
   session: true,
   supportsMutations: true,
 };
+
+let authRequiredHandler: (() => void) | null = null;
+let authRequiredNotified = false;
+
+function fireAuthRequired(): void {
+  if (authRequiredNotified) return;
+  // Don't latch if the shell hasn't subscribed yet — otherwise the first
+  // pre-UI 401 permanently swallows the sticky banner.
+  if (!authRequiredHandler) return;
+  authRequiredNotified = true;
+  authRequiredHandler();
+}
+
+function clearAuthRequiredLatch(): void {
+  authRequiredNotified = false;
+}
+
+function noteAuthFailureStatus(status: number): void {
+  if (status === 401 || status === 403) fireAuthRequired();
+}
 
 function getToken(): string {
   const accessToken = localStorage.getItem("access_token");
@@ -87,20 +114,19 @@ function getTokenPayload(): Record<string, unknown> | null {
   } catch {
     return null;
   }
-
-  try {
-    const segment = token.split(".")[1];
-    const base64 = segment.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
-  }
+  return parseJwtPayload(token);
 }
 
 function isTokenExpired(payload: Record<string, unknown>): boolean {
-  const exp = payload.exp;
-  return typeof exp !== "number" || Date.now() / 1000 >= exp;
+  return isJwtExpired(payload);
+}
+
+function reauthPopupUrl(): string {
+  const { protocol, hostname } = window.location;
+  if (hostname === "fsp.fpt.edu.vn" || hostname.endsWith(".fsp.fpt.edu.vn")) {
+    return `${protocol}//${hostname}/`;
+  }
+  return "https://fsp.fpt.edu.vn/";
 }
 
 function gmFetch<T>(
@@ -109,10 +135,26 @@ function gmFetch<T>(
   body?: unknown,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
+    let token: string;
+    try {
+      token = getToken();
+    } catch (err) {
+      fireAuthRequired();
+      reject(err instanceof Error ? err : new Error("No auth token found"));
+      return;
+    }
+
+    const payload = parseJwtPayload(token);
+    if (!payload || isJwtExpired(payload)) {
+      fireAuthRequired();
+      reject(new Error("Auth token expired"));
+      return;
+    }
+
     const headers: Record<string, string> = {
       Accept: "application/json, text/plain, */*",
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${token}`,
     };
 
     GM_xmlhttpRequest({
@@ -125,6 +167,7 @@ function gmFetch<T>(
         if (res.status >= 200 && res.status < 300) {
           resolve(res.response as T);
         } else {
+          noteAuthFailureStatus(res.status);
           reject(
             new Error(`HTTP ${res.status}: ${JSON.stringify(res.response)}`),
           );
@@ -239,9 +282,70 @@ export class FspLiveAdapter implements PortalAdapter {
     });
   }
 
+  onAuthRequired(handler: (() => void) | null): void {
+    authRequiredHandler = handler;
+  }
+
+  clearAuthRequired(): void {
+    clearAuthRequiredLatch();
+  }
+
+  reauthenticate(
+    timeoutMs: number = DEFAULT_REAUTH_TIMEOUT_MS,
+  ): Promise<boolean> {
+    const popup = window.open(
+      reauthPopupUrl(),
+      REAUTH_POPUP_NAME,
+      "popup=yes,width=480,height=720",
+    );
+    if (!popup) return Promise.resolve(false);
+
+    const startedAt = Date.now();
+    return new Promise((resolve) => {
+      const finish = (ok: boolean) => {
+        try {
+          if (!popup.closed) popup.close();
+        } catch {
+          // popup may already be gone
+        }
+        if (ok) clearAuthRequiredLatch();
+        resolve(ok);
+      };
+
+      const tick = () => {
+        try {
+          if (popup.closed) {
+            finish(false);
+            return;
+          }
+          if (copyFreshOidcBlobs(popup.sessionStorage, sessionStorage)) {
+            finish(true);
+            return;
+          }
+        } catch {
+          // Cross-origin during IdP redirect — keep polling.
+        }
+        if (Date.now() - startedAt > timeoutMs) {
+          finish(false);
+          return;
+        }
+        setTimeout(tick, 500);
+      };
+
+      setTimeout(tick, 500);
+    });
+  }
+
   async getStudentContext(): Promise<StudentContext> {
     const payload = getTokenPayload();
-    if (!payload) throw new Error("No auth token found");
+    if (!payload) {
+      fireAuthRequired();
+      throw new Error("No auth token found");
+    }
+    if (isTokenExpired(payload)) {
+      fireAuthRequired();
+      throw new Error("Auth token expired");
+    }
 
     const campusId = (payload.campusId || payload.campusID) as string;
     const campusCode = (payload.campusCode || "") as string;
@@ -630,14 +734,30 @@ export class FspLiveAdapter implements PortalAdapter {
 
   getUserImage(userId: string): Promise<string | null> {
     return new Promise((resolve) => {
+      let token: string;
+      try {
+        token = getToken();
+      } catch {
+        fireAuthRequired();
+        resolve(null);
+        return;
+      }
+      const payload = parseJwtPayload(token);
+      if (!payload || isJwtExpired(payload)) {
+        fireAuthRequired();
+        resolve(null);
+        return;
+      }
+
       GM_xmlhttpRequest({
         method: "GET",
         url: `${BASE}/user-management/users/image/${pathSegment(userId)}/by-user-id`,
         headers: {
           Accept: "application/json, text/plain, */*",
-          Authorization: `Bearer ${getToken()}`,
+          Authorization: `Bearer ${token}`,
         },
         onload(res) {
+          noteAuthFailureStatus(res.status);
           if (res.status !== 200 || !res.responseText) {
             resolve(null);
             return;

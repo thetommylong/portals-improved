@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-import type { ScheduleEntry, TimeSlot } from "../types/portal";
+import type { ScheduleEntry, TimeSlot } from "../../types/portal";
 
 /** Fields the model needs for schedule Q&A — drops URLs, UUIDs, long plan text. */
 export interface CompactScheduleEntry {

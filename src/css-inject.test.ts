@@ -6,17 +6,22 @@ import {
   PENDING_CSS_KEY,
   discardPendingCss,
   flushPendingCss,
+  hasFlushedCss,
   queueMonkeyCss,
+  reinjectFlushedCss,
+  resetFlushedCssForTests,
   takePendingCss,
 } from "./css-inject";
 
 describe("css-inject", () => {
   beforeEach(() => {
     Reflect.deleteProperty(globalThis, PENDING_CSS_KEY);
+    resetFlushedCssForTests();
   });
 
   afterEach(() => {
     Reflect.deleteProperty(globalThis, PENDING_CSS_KEY);
+    resetFlushedCssForTests();
     vi.unstubAllGlobals();
   });
 
@@ -37,12 +42,48 @@ describe("css-inject", () => {
   });
 
   it("flushPendingCss injects via GM_addStyle", () => {
-    const addStyle = vi.fn();
+    const el = {
+      setAttribute: vi.fn(),
+    };
+    const addStyle = vi.fn(() => el);
     vi.stubGlobal("GM_addStyle", addStyle);
     queueMonkeyCss(".shell{display:flex}");
     flushPendingCss();
     expect(addStyle).toHaveBeenCalledOnce();
     expect(addStyle).toHaveBeenCalledWith(".shell{display:flex}");
+    expect(el.setAttribute).toHaveBeenCalledWith("data-fsp-css", "");
     expect(takePendingCss()).toEqual([]);
+    expect(hasFlushedCss()).toBe(true);
+  });
+
+  it("marks last head style when GM_addStyle returns void", () => {
+    const last = { setAttribute: vi.fn() };
+    vi.stubGlobal(
+      "GM_addStyle",
+      vi.fn(() => undefined),
+    );
+    vi.stubGlobal("document", {
+      head: {
+        querySelectorAll: vi.fn(() => [{}, last]),
+      },
+      documentElement: null,
+      createElement: vi.fn(),
+    });
+    queueMonkeyCss(".a{}");
+    flushPendingCss();
+    expect(last.setAttribute).toHaveBeenCalledWith("data-fsp-css", "");
+  });
+
+  it("reinjectFlushedCss replays remembered chunks", () => {
+    const el = { setAttribute: vi.fn() };
+    const addStyle = vi.fn(() => el);
+    vi.stubGlobal("GM_addStyle", addStyle);
+    queueMonkeyCss(".one{}");
+    flushPendingCss();
+    addStyle.mockClear();
+    el.setAttribute.mockClear();
+    reinjectFlushedCss();
+    expect(addStyle).toHaveBeenCalledWith(".one{}");
+    expect(el.setAttribute).toHaveBeenCalledWith("data-fsp-css", "");
   });
 });

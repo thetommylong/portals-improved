@@ -73,6 +73,12 @@ export interface PortalAdapter {
   readonly features: AdapterFeatures;
 
   waitForValidSession(timeoutMs: number): Promise<string | null>;
+  /** Single subscriber; live adapter fires when the bearer is unusable. Pass null to clear. */
+  onAuthRequired(handler: (() => void) | null): void;
+  /** Open portal SSO in a popup and copy a fresh OIDC blob into this tab. */
+  reauthenticate(timeoutMs?: number): Promise<boolean>;
+  /** Allow another auth-required prompt after the user dismisses the banner. */
+  clearAuthRequired(): void;
   getStudentContext(): Promise<StudentContext>;
   buildSsoUrl(url: string): Promise<string>;
 

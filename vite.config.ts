@@ -72,6 +72,9 @@ export default defineConfig({
     svelte(),
     monkey({
       entry: "src/index.ts",
+      // Serve runs as page ES modules; copy GM_* from the VM sandbox onto
+      // window so bare globals (gate/secrets/theme) resolve without unimport.
+      server: { mountGmApi: true },
       build: {
         fileName: "script.user.js",
         // Vendor SystemJS into the bundle instead of @require from jsDelivr

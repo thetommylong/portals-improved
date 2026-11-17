@@ -13,11 +13,14 @@
   let {
     userId,
     open,
+    refreshToken = 0,
     onclose,
     onunread,
   }: {
     userId: string;
     open: boolean;
+    /** Shell poller bumps unread — reload list while panel is open. */
+    refreshToken?: number;
     onclose: () => void;
     onunread?: (count: number) => void;
   } = $props();
@@ -62,9 +65,9 @@
   });
 
   $effect(() => {
-    if (open && loadedOnce) {
-      untrack(() => void load());
-    }
+    if (!open || !loadedOnce) return;
+    void refreshToken;
+    untrack(() => void load());
   });
 
   function typeCode(n: Notification): string {

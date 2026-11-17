@@ -7,8 +7,10 @@
     DisciplineRuleStudent,
     RewardStudent,
   } from "../../types/portal";
-  import { notify } from "../../notifications";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { i18n, t } from "../../i18n.svelte";
+  import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -71,8 +73,14 @@
     expandedId = expandedId === id ? null : id;
   }
 
-  async function load(): Promise<void> {
+  async function load(force = false): Promise<void> {
     loading = true;
+    const key = cacheKey("standing", studentId);
+    let cached: StandingItem[] | null = null;
+    if (!force) {
+      cached = readListCache<StandingItem[]>(key);
+      if (cached) items = cached;
+    }
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const campusId = ctx.campusId;
@@ -118,15 +126,20 @@
       items = [...rewardItems, ...disciplineItems].sort((a, b) =>
         b.date.localeCompare(a.date),
       );
-    } catch {
-      notify(t("toast.standingFailed"), "error");
+      writeListCache(key, items);
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached || items.length > 0,
+        failMessage: t("toast.standingFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }
   }
 
   export function refresh(): void {
-    void load();
+    void load(true);
   }
 
   void load();
@@ -145,7 +158,7 @@
 
   <div class="marks-body">
     {#if loading}
-      <p class="marks-empty" role="status">{t("status.loading")}</p>
+      <MarksGridSkeleton />
     {:else if items.length === 0}
       <p class="marks-empty" role="status">{t("standing.empty")}</p>
     {:else if filtered.length === 0}

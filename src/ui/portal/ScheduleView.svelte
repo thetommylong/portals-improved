@@ -5,13 +5,14 @@
   import { Temporal } from "@js-temporal/polyfill";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { ScheduleEntry } from "../../types/portal";
+  import { noteFetchFailure } from "../../offline";
   import { readWeek, writeWeek } from "../../scheduleCache";
-  import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
   import { getWeek } from "./dateHelper";
   import LessonCard from "./LessonCard.svelte";
   import LessonPopup from "./LessonPopup.svelte";
   import { pageLoading } from "./pageLoading.svelte";
+  import Skeleton from "./Skeleton.svelte";
 
   let {
     studentId,
@@ -47,7 +48,7 @@
 
   function minutesNow(): number {
     const now = Temporal.Now.plainTimeISO();
-    return now.hour * 60 + now.minute;
+    return now.hour * 60 + now.minute + now.second / 60;
   }
 
   async function load(date: Temporal.PlainDate, force = false): Promise<void> {
@@ -68,7 +69,8 @@
       }
     }
 
-    if (!cache.has(key)) {
+    // Force refresh always hits the network and shows the header spin.
+    if (force || !cache.has(key)) {
       loading = true;
     }
     try {
@@ -83,12 +85,12 @@
       if (getWeek(selectedDate)[0].toString() === key) {
         entries = data;
       }
-    } catch {
-      if (!cache.has(key)) {
-        notify(t("toast.timetableFailed"), "error");
-      } else {
-        notify(t("toast.timetableOffline"), "info");
-      }
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: cache.has(key),
+        failMessage: t("toast.timetableFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }
@@ -109,7 +111,7 @@
   $effect(() => {
     const timer = setInterval(() => {
       nowMinutes = minutesNow();
-    }, 30_000);
+    }, 1_000);
     return () => clearInterval(timer);
   });
 
@@ -189,9 +191,36 @@
     return entries.filter((e) => e.date.slice(0, 10) === date.toString());
   }
 
+  /** Deterministic fake lesson blocks for cold-load skeleton (stable across re-renders). */
+  function skeletonLessonsForDay(
+    dayIndex: number,
+    maxHeight: number,
+  ): { key: string; top: number; height: number }[] {
+    const count = 1 + ((dayIndex * 2 + 1) % 3);
+    const out: { key: string; top: number; height: number }[] = [];
+    let cursor = (1 + (dayIndex % 3)) * HOUR_PX;
+    for (let i = 0; i < count; i++) {
+      const height = (1.25 + ((dayIndex + i) % 3) * 0.5) * HOUR_PX;
+      if (cursor + height > maxHeight - 8) break;
+      out.push({ key: `sk-${dayIndex}-${i}`, top: cursor, height });
+      cursor += height + (0.5 + ((dayIndex + i) % 2) * 0.5) * HOUR_PX;
+    }
+    return out;
+  }
+
   const todayIso = Temporal.Now.plainDateISO().toString();
 
   const isToday = $derived(selectedDate.toString() === todayIso);
+
+  const nowInRange = $derived(
+    nowMinutes >= range.startMin && nowMinutes <= range.endMin,
+  );
+
+  const nowLineTop = $derived(((nowMinutes - range.startMin) / 60) * HOUR_PX);
+
+  const weekHasToday = $derived(
+    weekDays.some((day) => day.toString() === todayIso),
+  );
 
   const computedLabel = $derived(
     isDesktop
@@ -287,7 +316,14 @@
   });
 </script>
 
-<div class="schedule" class:schedule-loading={loading && entries.length === 0}>
+<div
+  class="schedule"
+  class:schedule-skeleton={loading && entries.length === 0}
+  aria-busy={loading && entries.length === 0}
+>
+  {#if loading && entries.length === 0}
+    <span class="sk-sr">{t("status.loading")}</span>
+  {/if}
   <div class="schedule-body" bind:this={scroller}>
     {#if isDesktop}
       <div class="schedule-inner" style="height: {gridHeight + DAY_HEADER_H}px">
@@ -323,38 +359,53 @@
             class="day-grid week-grid"
             style="height: {gridHeight}px; grid-template-columns: repeat(7, 1fr)"
           >
-            {#each weekDays as day (day.toString())}
+            {#each weekDays as day, di (day.toString())}
               {@const list = sortedEntries(entriesFor(day))}
               <div class="day-column">
                 <div class="events">
-                  {#each list as entry, i (entry.id)}
-                    <div
-                      class="event"
-                      style="top: {eventTop(entry)}px; height: {effectiveHeight(
-                        list,
-                        i,
-                      )}px"
-                    >
-                      <LessonCard
-                        {entry}
-                        height={effectiveHeight(list, i)}
-                        onneed={handleNeed}
-                        onopen={() => openEntry(entry)}
-                      />
-                    </div>
-                  {/each}
+                  {#if loading && entries.length === 0}
+                    {#each skeletonLessonsForDay(di, gridHeight) as block (block.key)}
+                      {@render skeletonLesson(block.top, block.height)}
+                    {/each}
+                  {:else}
+                    {#each list as entry, i (entry.id)}
+                      <div
+                        class="event"
+                        style="top: {eventTop(
+                          entry,
+                        )}px; height: {effectiveHeight(list, i)}px"
+                      >
+                        <LessonCard
+                          {entry}
+                          height={effectiveHeight(list, i)}
+                          onneed={handleNeed}
+                          onopen={() => openEntry(entry)}
+                        />
+                      </div>
+                    {/each}
+                  {/if}
                 </div>
-
-                {#if day.toString() === todayIso && nowMinutes >= range.startMin && nowMinutes <= range.endMin}
-                  <div
-                    class="now-line"
-                    aria-hidden="true"
-                    style="top: {((nowMinutes - range.startMin) / 60) *
-                      HOUR_PX}px"
-                  ></div>
-                {/if}
               </div>
             {/each}
+
+            {#if weekHasToday && nowInRange && !(loading && entries.length === 0)}
+              <div
+                class="now-line-row"
+                aria-hidden="true"
+                style="top: {nowLineTop}px"
+              >
+                {#each weekDays as day (day.toString())}
+                  <div
+                    class="now-line-seg"
+                    class:current={day.toString() === todayIso}
+                  >
+                    {#if day.toString() === todayIso}
+                      <span class="now-dot"></span>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -374,29 +425,37 @@
 
         <div class="day-grid">
           <div class="events">
-            {#each dayList as entry, i (entry.id)}
-              <div
-                class="event"
-                style="top: {eventTop(entry)}px; height: {effectiveHeight(
-                  dayList,
-                  i,
-                )}px"
-              >
-                <LessonCard
-                  {entry}
-                  height={effectiveHeight(dayList, i)}
-                  onneed={handleNeed}
-                  onopen={() => openEntry(entry)}
-                />
-              </div>
-            {/each}
+            {#if loading && entries.length === 0}
+              {#each skeletonLessonsForDay(selectedDate.dayOfWeek % 7, gridHeight) as block (block.key)}
+                {@render skeletonLesson(block.top, block.height)}
+              {/each}
+            {:else}
+              {#each dayList as entry, i (entry.id)}
+                <div
+                  class="event"
+                  style="top: {eventTop(entry)}px; height: {effectiveHeight(
+                    dayList,
+                    i,
+                  )}px"
+                >
+                  <LessonCard
+                    {entry}
+                    height={effectiveHeight(dayList, i)}
+                    onneed={handleNeed}
+                    onopen={() => openEntry(entry)}
+                  />
+                </div>
+              {/each}
+            {/if}
           </div>
-          {#if isToday && nowMinutes >= range.startMin && nowMinutes <= range.endMin}
+          {#if isToday && nowInRange && !(loading && entries.length === 0)}
             <div
               class="now-line"
               aria-hidden="true"
-              style="top: {((nowMinutes - range.startMin) / 60) * HOUR_PX}px"
-            ></div>
+              style="top: {nowLineTop}px"
+            >
+              <span class="now-dot"></span>
+            </div>
           {/if}
 
           {#if !loading && dayEntries.length === 0}
@@ -409,6 +468,20 @@
     {/if}
   </div>
 </div>
+
+{#snippet skeletonLesson(top: number, height: number)}
+  <div
+    class="event sk-lesson"
+    style="top: {top}px; height: {height}px"
+    aria-hidden="true"
+  >
+    <Skeleton height="14px" width="70%" radius="var(--radius-control)" />
+    <Skeleton height="11px" width="45%" radius="var(--radius-control)" />
+    {#if height >= HOUR_PX * 1.5}
+      <Skeleton height="11px" width="55%" radius="var(--radius-control)" />
+    {/if}
+  </div>
+{/snippet}
 
 {#if selectedEntry}
   <LessonPopup
@@ -522,6 +595,7 @@
   .events {
     position: absolute;
     inset: 0;
+    z-index: 1;
     padding: 2px 0;
   }
 
@@ -534,18 +608,66 @@
     padding-bottom: 4px;
   }
 
+  .sk-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .sk-lesson {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 10px 12px;
+    box-sizing: border-box;
+    pointer-events: none;
+  }
+
+  /* Over cards; off-today stays dim so the current column reads first. */
+  .now-line-row {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    height: 2px;
+    z-index: 3;
+    pointer-events: none;
+    transition: top 1s linear;
+  }
+
+  .now-line-seg {
+    position: relative;
+    height: 2px;
+    background: color-mix(in srgb, var(--red) 40%, transparent);
+  }
+
+  .now-line-seg.current {
+    background: var(--red);
+  }
+
   .now-line {
     position: absolute;
     left: 0;
     right: 0;
     height: 2px;
     background: var(--red);
-    z-index: 5;
+    z-index: 3;
     pointer-events: none;
+    transition: top 1s linear;
   }
 
-  .now-line::before {
-    content: "";
+  .now-dot {
     position: absolute;
     left: -4px;
     top: -3px;
@@ -564,11 +686,6 @@
     color: var(--text-secondary);
     font-size: 13px;
     user-select: none;
-  }
-
-  .schedule-loading {
-    opacity: 0.5;
-    pointer-events: none;
   }
 
   @media (max-width: 768px) {

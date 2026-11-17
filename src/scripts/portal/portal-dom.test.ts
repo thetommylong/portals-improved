@@ -3,10 +3,14 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  OWN_CSS_ATTR,
   VITE_CSS_MARKER,
   captureOwnViteCss,
+  isOwnStyleElement,
   reinjectCssText,
+  reinjectStyleElements,
   stripHostStylesheets,
+  takeOwnStyleElements,
   whenDocumentBodyReady,
 } from "./portal-dom";
 
@@ -16,11 +20,21 @@ function asDoc(value: unknown): Document {
   return value as Document;
 }
 
-function fakeStyle(css: string) {
+function fakeStyle(
+  css: string,
+  attrs: Record<string, string> = {},
+): HTMLStyleElement {
+  const attrsMap = new Map(Object.entries(attrs));
   return {
+    tagName: "STYLE",
     textContent: css,
     remove: vi.fn(),
-  };
+    hasAttribute: (name: string) => attrsMap.has(name),
+    getAttribute: (name: string) => attrsMap.get(name) ?? null,
+    setAttribute: (name: string, value: string) => {
+      attrsMap.set(name, value);
+    },
+  } as unknown as HTMLStyleElement;
 }
 
 function fakeHead(nodes: { remove: ReturnType<typeof vi.fn> }[]) {
@@ -130,11 +144,23 @@ describe("whenDocumentBodyReady", () => {
 });
 
 describe("stylesheet strip / reinject", () => {
-  it("captureOwnViteCss keeps only vite-marked style text", () => {
+  it("isOwnStyleElement accepts vite-dev-id, data-fsp-css, and legacy marker", () => {
+    expect(
+      isOwnStyleElement(fakeStyle("body{}", { "data-vite-dev-id": "/x" })),
+    ).toBe(true);
+    expect(isOwnStyleElement(fakeStyle(".a{}", { [OWN_CSS_ATTR]: "" }))).toBe(
+      true,
+    );
+    expect(isOwnStyleElement(fakeStyle(`${VITE_CSS_MARKER}.b{}`))).toBe(true);
+    expect(isOwnStyleElement(fakeStyle("body{color:red}"))).toBe(false);
+  });
+
+  it("captureOwnViteCss keeps vite-dev-id, marked, and fsp-tagged styles", () => {
     const nodes = [
       fakeStyle("body{color:red}"),
       fakeStyle(`${VITE_CSS_MARKER}1 .shell{}`),
-      fakeStyle(`${VITE_CSS_MARKER}2 .card{}`),
+      fakeStyle(".card{}", { "data-vite-dev-id": "/card.css" }),
+      fakeStyle(".toast{}", { [OWN_CSS_ATTR]: "" }),
     ];
     const doc = {
       head: { querySelectorAll: vi.fn(() => nodes) },
@@ -142,8 +168,31 @@ describe("stylesheet strip / reinject", () => {
 
     expect(captureOwnViteCss(asDoc(doc))).toEqual([
       `${VITE_CSS_MARKER}1 .shell{}`,
-      `${VITE_CSS_MARKER}2 .card{}`,
+      ".card{}",
+      ".toast{}",
     ]);
+  });
+
+  it("takeOwnStyleElements detaches own nodes for reattach", () => {
+    const host = fakeStyle("body{color:red}");
+    const own = fakeStyle(".shell{}", { "data-vite-dev-id": "/shell.css" });
+    const nodes = [host, own];
+    const doc = {
+      head: { querySelectorAll: vi.fn(() => nodes) },
+    };
+
+    expect(takeOwnStyleElements(asDoc(doc))).toEqual([own]);
+    expect(own.remove).toHaveBeenCalledOnce();
+    expect(host.remove).not.toHaveBeenCalled();
+  });
+
+  it("reinjectStyleElements appends the same nodes", () => {
+    const el = fakeStyle(".shell{}");
+    const head = { appendChild: vi.fn() };
+    const doc = { head };
+
+    reinjectStyleElements([el], asDoc(doc));
+    expect(head.appendChild).toHaveBeenCalledWith(el);
   });
 
   it("stripHostStylesheets removes DOM owners and disables orphan sheets", () => {
@@ -188,15 +237,23 @@ describe("stylesheet strip / reinject", () => {
   });
 
   it("reinjectCssText appends style tags after strip", () => {
-    const appended: { textContent: string | null }[] = [];
+    const appended: {
+      textContent: string | null;
+      setAttribute: ReturnType<typeof vi.fn>;
+    }[] = [];
     const head = {
-      appendChild: vi.fn((el: { textContent: string | null }) => {
-        appended.push(el);
-      }),
+      appendChild: vi.fn(
+        (el: {
+          textContent: string | null;
+          setAttribute: ReturnType<typeof vi.fn>;
+        }) => {
+          appended.push(el);
+        },
+      ),
     };
     const createElement = vi.fn((tag: string) => {
       expect(tag).toBe("style");
-      return { textContent: null };
+      return { textContent: null, setAttribute: vi.fn() };
     });
     const doc = { head, createElement };
 
@@ -210,5 +267,6 @@ describe("stylesheet strip / reinject", () => {
       `${VITE_CSS_MARKER}.a{}`,
       `${VITE_CSS_MARKER}.b{}`,
     ]);
+    expect(appended[0]!.setAttribute).toHaveBeenCalledWith(OWN_CSS_ATTR, "");
   });
 });

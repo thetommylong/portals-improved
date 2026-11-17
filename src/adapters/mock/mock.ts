@@ -38,9 +38,9 @@ import type {
   TimeSlot,
   ScheduleEntry,
   SurveyLink,
-} from "../types/portal";
-import type { AdapterFeatures, PortalAdapter } from "../sdk/adapter";
-import { compactFspToolResult } from "./fsp-tool-compact";
+} from "../../types/portal";
+import type { AdapterFeatures, PortalAdapter } from "../../sdk/adapter";
+import { compactFspToolResult } from "../fsp/fsp-tool-compact";
 
 const FEATURES: AdapterFeatures = {
   schedule: true,
@@ -125,6 +125,16 @@ export class MockAdapter implements PortalAdapter {
   waitForValidSession(): Promise<string | null> {
     return Promise.resolve(MOCK_USER_ID);
   }
+
+  onAuthRequired(_handler: (() => void) | null): void {
+    // mock session never expires
+  }
+
+  reauthenticate(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  clearAuthRequired(): void {}
 
   getStudentContext(): Promise<StudentContext> {
     return Promise.resolve({

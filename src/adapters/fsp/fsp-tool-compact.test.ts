@@ -2,7 +2,7 @@
 // Copyright (C) 2026 thetommylong
 
 import { describe, expect, it } from "vitest";
-import type { ScheduleEntry, TimeSlot } from "../types/portal";
+import type { ScheduleEntry, TimeSlot } from "../../types/portal";
 import { compactFspToolResult, compactScheduleEntry } from "./fsp-tool-compact";
 
 function entry(overrides: Partial<ScheduleEntry> = {}): ScheduleEntry {

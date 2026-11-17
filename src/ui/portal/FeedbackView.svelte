@@ -5,11 +5,14 @@
   import { fade, scale } from "svelte/transition";
   import { runtime } from "../../adapters/runtime.svelte";
   import type { StudentFeedbackLecturerResult } from "../../types/portal";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { notify } from "../../notifications";
   import { t } from "../../i18n.svelte";
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { backdropFade, modalScale } from "./popTransition";
+  import CardListSkeleton from "./CardListSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -64,21 +67,41 @@
     ),
   );
 
-  async function load(): Promise<void> {
+  async function load(force = false): Promise<void> {
     loading = true;
+    const key = cacheKey("feedback", studentId);
+    let cached: {
+      pending: StudentFeedbackLecturerResult[];
+      submitted: StudentFeedbackLecturerResult[];
+    } | null = null;
+    if (!force) {
+      cached = readListCache(key);
+      if (cached) {
+        pending = cached.pending;
+        submitted = cached.submitted;
+      }
+    }
     try {
       const data = await runtime.adapter.getFeedbackStatus(studentId);
       pending = data.unDoneFeedbacks;
       submitted = data.feedbacks;
-    } catch {
-      notify(t("toast.feedbackFailed"), "error");
+      writeListCache(key, {
+        pending: data.unDoneFeedbacks,
+        submitted: data.feedbacks,
+      });
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached || pending.length > 0 || submitted.length > 0,
+        failMessage: t("toast.feedbackFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }
   }
 
   export function refresh(): void {
-    void load();
+    void load(true);
   }
 
   void load();
@@ -190,7 +213,7 @@
 <div class="feedback">
   <div class="feedback-body">
     {#if loading}
-      <p class="feedback-empty" role="status">{t("status.loading")}</p>
+      <CardListSkeleton />
     {:else if pending.length === 0 && submitted.length === 0}
       <p class="feedback-empty" role="status">{t("feedback.empty")}</p>
     {:else}

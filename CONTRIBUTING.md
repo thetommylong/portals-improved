@@ -8,8 +8,8 @@ Thanks for your interest in Portals Improved.
 - **Verify before submitting**: `pnpm lint` → `pnpm check` → `pnpm test` → `pnpm build` (CI also runs `pnpm site:build`). Both halves of `pnpm check` (svelte-check *and* the `vite.config.ts` pass) must be clean.
 - **Architecture**: UI and SDK talk only to the `PortalAdapter` contract in `src/sdk/adapter.ts`, never to a concrete adapter directly. New features go through the contract so every portal — and the mock — stays usable for previews.
 - **Portable by default**: don't put portal-specific behavior in the shell. If FSP needs something another portal won't, gate it behind `AdapterFeatures` and implement it in that portal's adapter.
-- **New portal**: implement the contract, set `features` honestly, add the class to `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts`, declare the host fragment on the adapter's `hosts` field, **and** add the same fragment to `LIVE_HOST_FRAGMENTS` in `src/adapters/hosts.ts` (idle gate). Ship a mock twin. Highest-value contribution here.
-- **New scripts**: drop a file in `src/scripts/` — they're auto-discovered via `import.meta.glob`. Export a default function and, if it's portal-specific, `export const portal` (a host fragment matched via `matchesHost`).
+- **New portal**: implement the contract, set `features` honestly, and drop a folder under `src/adapters/<name>/` with `index.ts` (default-export the class) plus `hosts.ts` (host fragments). Root `hosts.ts` aggregates those for the idle gate; discovery globs live adapters — no hand-maintained registry. Ship a mock twin under `adapters/mock/`. Highest-value contribution here. See ADR 004.
+- **New scripts**: drop a folder under `src/scripts/<name>/` with `index.ts` — boot globs `scripts/*/index.ts`. Export a default function and, if it's portal-specific, `export const portal` (a host fragment matched via `matchesHost`). Helpers sit beside `index.ts` and are not auto-booted.
 - **New GM APIs**: `vite.config.ts` owns the `grant` list. Using an ungranted `GM_*` API means `undefined` at runtime.
 
 ## Building locally

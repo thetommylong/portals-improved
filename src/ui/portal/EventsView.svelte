@@ -4,8 +4,11 @@
 
   import { runtime } from "../../adapters/runtime.svelte";
   import type { EventStudent } from "../../types/portal";
+  import { cacheKey, readListCache, writeListCache } from "../../listCache";
+  import { noteFetchFailure } from "../../offline";
   import { notify } from "../../notifications";
   import { i18n, t } from "../../i18n.svelte";
+  import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import { pageLoading } from "./pageLoading.svelte";
 
   let { studentId }: { studentId: string } = $props();
@@ -22,14 +25,29 @@
   let togglingId = $state<string | null>(null);
   let gridWidth = $state(0);
 
-  async function load(): Promise<void> {
+  async function load(force = false): Promise<void> {
     loading = true;
+    let cached: EventStudent[] | null = null;
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
-      items = await runtime.adapter.getEventsByTerm(term.termId, studentId);
-    } catch {
-      notify(t("toast.eventsFailed"), "error");
+      const key = cacheKey("events", studentId, term.termId);
+      if (!force) {
+        cached = readListCache<EventStudent[]>(key);
+        if (cached) items = cached;
+      }
+      const data = await runtime.adapter.getEventsByTerm(
+        term.termId,
+        studentId,
+      );
+      items = data;
+      writeListCache(key, data);
+    } catch (err) {
+      noteFetchFailure(err, {
+        hasCache: !!cached || items.length > 0,
+        failMessage: t("toast.eventsFailed"),
+        offlineMessage: t("toast.offline"),
+      });
     } finally {
       loading = false;
     }
@@ -72,7 +90,7 @@
   }
 
   export function refresh(): void {
-    void load();
+    void load(true);
   }
 
   void load();
@@ -148,7 +166,7 @@
 <div class="homeworks">
   <div class="feedback-body" bind:clientWidth={gridWidth}>
     {#if loading}
-      <p class="feedback-empty" role="status">{t("status.loading")}</p>
+      <MarksGridSkeleton />
     {:else if items.length === 0}
       <p class="feedback-empty" role="status">{t("events.empty")}</p>
     {:else}
