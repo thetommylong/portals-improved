@@ -7,8 +7,16 @@
   import { notify, notifyAction } from "../notifications";
   import { startNotificationPoller } from "../notificationPoller";
   import { t } from "../i18n.svelte";
+  import {
+    needsFirstRun,
+    needsUpdateToast,
+    RELEASES_URL,
+    setLastSeenVersion,
+  } from "../onboarding";
   import UnavailableState from "./portal/UnavailableState.svelte";
   import NotificationsPanel from "./portal/NotificationsPanel.svelte";
+  import OnboardingOverview from "./portal/OnboardingOverview.svelte";
+  import OnboardingTour from "./portal/OnboardingTour.svelte";
   import ShellHeader from "./portal/ShellHeader.svelte";
   import ShellSettings from "./portal/ShellSettings.svelte";
   import ShellSidebar from "./portal/ShellSidebar.svelte";
@@ -63,6 +71,8 @@
   let name = $state("");
   let rollNumber = $state("");
   let avatar = $state<string | null>(null);
+  let onboardingOverviewOpen = $state(false);
+  let onboardingTourOpen = $state(false);
   let notifOpen = $state(false);
   let unreadCount = $state(0);
   let scheduleDate = $state("");
@@ -234,6 +244,38 @@
     lastTrigger = document.activeElement as HTMLElement;
     if (narrow) sidebarOpen = false;
   }
+
+  function finishOnboarding() {
+    onboardingOverviewOpen = false;
+    onboardingTourOpen = false;
+    setLastSeenVersion();
+  }
+
+  function startOnboardingTour() {
+    onboardingOverviewOpen = false;
+    onboardingTourOpen = true;
+    if (narrow) sidebarOpen = true;
+  }
+
+  function replayIntro() {
+    closeSettings();
+    onboardingTourOpen = false;
+    onboardingOverviewOpen = true;
+  }
+
+  $effect(() => {
+    if (needsFirstRun()) {
+      onboardingOverviewOpen = true;
+      return;
+    }
+    if (needsUpdateToast()) {
+      notify(t("toast.updated", { version: __BUILD__.version }), "info", {
+        href: RELEASES_URL,
+        sticky: true,
+      });
+      setLastSeenVersion();
+    }
+  });
 
   $effect(() => {
     let banner: { dismiss: () => void } | null = null;
@@ -453,7 +495,12 @@
     onPrepareOverflowOpen={prepareOverflowOpen}
   >
     {#snippet settingsPanel()}
-      <ShellSettings bind:open={settingsOpen} {narrow} trigger={settingsBtn} />
+      <ShellSettings
+        bind:open={settingsOpen}
+        {narrow}
+        trigger={settingsBtn}
+        onReplayIntro={replayIntro}
+      />
     {/snippet}
   </ShellHeader>
 
@@ -606,4 +653,15 @@
       onunread={(n: number) => (unreadCount = n)}
     />
   {/if}
+
+  <OnboardingOverview
+    open={onboardingOverviewOpen}
+    onDismiss={finishOnboarding}
+    onStartTour={startOnboardingTour}
+  />
+  <OnboardingTour
+    open={onboardingTourOpen}
+    features={runtime.adapter.features}
+    onDone={finishOnboarding}
+  />
 </div>

@@ -11,6 +11,7 @@
     theme,
   } from "../../theme.svelte";
   import { CHROME_OPTIONS, shellChrome } from "../../shellChrome.svelte";
+  import { RELEASES_URL } from "../../onboarding";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { backdropFade, modalScale, popScale } from "./popTransition";
 
@@ -18,11 +19,13 @@
     open = $bindable(false),
     narrow = false,
     trigger,
+    onReplayIntro,
   }: {
     open?: boolean;
     narrow?: boolean;
     /** Settings gear — outside-click ignores this node. */
     trigger?: HTMLElement;
+    onReplayIntro?: () => void;
   } = $props();
 
   let settingsPop: HTMLDivElement | undefined = $state();
@@ -230,6 +233,19 @@
         >
           AGPL-3.0-only
         </a>
+        {#if onReplayIntro}
+          <button type="button" class="about-btn" onclick={onReplayIntro}>
+            {t("settings.replayIntro")}
+          </button>
+        {/if}
+        <a
+          class="about-link"
+          href={RELEASES_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t("settings.whatsNew")}
+        </a>
       </div>
     </div>
   </div>
@@ -396,6 +412,28 @@
 
   .about-link:hover {
     text-decoration: underline;
+  }
+
+  .about-btn {
+    align-self: flex-start;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 11px;
+    color: var(--info-ink);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .about-btn:hover {
+    text-decoration: underline;
+  }
+
+  .about-btn:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 
   @media (max-width: 768px) {

@@ -254,11 +254,12 @@
       {/if}
     </div>
   </div>
-  <div class="header-right">
+  <div class="header-right" data-onboarding="header">
     {#if showChat}
       <button
         class="icon-btn header-action"
         class:active={chatOpen}
+        data-onboarding="chat"
         aria-label={t("aria.toggleAssistant")}
         aria-expanded={chatOpen}
         onclick={onToggleChat}
@@ -339,6 +340,7 @@
               class="overflow-item"
               class:active={chatOpen}
               role="menuitem"
+              data-onboarding="chat"
               onclick={() => {
                 closeOverflow();
                 onToggleChat();

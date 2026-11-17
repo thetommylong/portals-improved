@@ -154,6 +154,9 @@
           class="nav-item"
           class:active={activeNav === item.id}
           aria-current={activeNav === item.id ? "page" : undefined}
+          data-onboarding={item.id === "home" || item.id === "marks"
+            ? item.id
+            : undefined}
           onclick={() => onNav(item)}
         >
           <Icon class="nav-icon" name={item.icon} size={22} />

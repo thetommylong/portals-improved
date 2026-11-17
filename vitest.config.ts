@@ -4,6 +4,9 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  define: {
+    __BUILD__: JSON.stringify({ version: "9.9.9", commit: "test" }),
+  },
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",

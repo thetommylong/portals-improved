@@ -77,6 +77,7 @@ function ensureToastCss(doc: Document): void {
   el.id = STYLE_ID;
   el.textContent = `
 .fsp-toast-timed:focus-visible,
+.fsp-toast-sticky:focus-visible,
 .fsp-toast-action:focus-visible,
 .fsp-toast-dismiss:focus-visible {
   outline: 2px solid var(--accent-strong, var(--accent));
@@ -260,23 +261,15 @@ function scheduleRemove(
   );
 }
 
-export function notify(message: string, type: ToastKind = "info") {
+export function notify(
+  message: string,
+  type: ToastKind = "info",
+  opts?: { href?: string; onClick?: () => void; sticky?: boolean },
+) {
   const s = ensureStack();
   const narrow = isNarrow();
+  const sticky = opts?.sticky === true;
   s.style.alignItems = narrow ? "stretch" : "flex-end";
-
-  const bar = document.createElement("div");
-  Object.assign(bar.style, {
-    position: "absolute",
-    bottom: "0",
-    left: "0",
-    height: "2px",
-    width: "100%",
-    transformOrigin: "left",
-    background: COLORS[type],
-    opacity: "0.55",
-    transition: REDUCED ? "none" : "transform 0.05s linear",
-  });
 
   const icon = makeIcon(type);
 
@@ -296,7 +289,7 @@ export function notify(message: string, type: ToastKind = "info") {
 
   const toast = document.createElement("button");
   toast.type = "button";
-  toast.className = "fsp-toast-timed";
+  toast.className = sticky ? "fsp-toast-sticky" : "fsp-toast-timed";
   toast.setAttribute(
     "aria-label",
     narrow ? `${type}: ${message}. Tap to dismiss` : `${type}: ${message}`,
@@ -318,17 +311,36 @@ export function notify(message: string, type: ToastKind = "info") {
   });
 
   const body = makeToastBody();
-  body.append(content, bar);
-  toast.append(makeStripe(type), body);
-  s.append(toast);
-  attachEnter(toast, icon);
+  body.append(content);
 
   let remaining = DURATION;
   let start = Date.now();
   let raf = 0;
   let dismissTimer = 0;
+  let bar: HTMLDivElement | null = null;
+
+  if (!sticky) {
+    bar = document.createElement("div");
+    Object.assign(bar.style, {
+      position: "absolute",
+      bottom: "0",
+      left: "0",
+      height: "2px",
+      width: "100%",
+      transformOrigin: "left",
+      background: COLORS[type],
+      opacity: "0.55",
+      transition: REDUCED ? "none" : "transform 0.05s linear",
+    });
+    body.append(bar);
+  }
+
+  toast.append(makeStripe(type), body);
+  s.append(toast);
+  attachEnter(toast, icon);
 
   function tick() {
+    if (!bar) return;
     const elapsed = Date.now() - start;
     const pct = Math.max(0, 1 - elapsed / remaining);
     bar.style.transform = `scaleX(${pct})`;
@@ -340,6 +352,7 @@ export function notify(message: string, type: ToastKind = "info") {
   }
 
   function armTimer() {
+    if (sticky || !bar) return;
     remaining = DURATION;
     start = Date.now();
     bar.style.transform = "scaleX(1)";
@@ -360,18 +373,25 @@ export function notify(message: string, type: ToastKind = "info") {
     scheduleRemove(toast, s, type);
   }
 
-  toast.addEventListener("click", dismiss);
+  toast.addEventListener("click", () => {
+    if (opts?.href) {
+      window.open(opts.href, "_blank", "noopener,noreferrer");
+    }
+    opts?.onClick?.();
+    dismiss();
+  });
   toast.addEventListener("fsp-toast-dismiss", dismiss);
-  // Hover freezes; leave restarts a full DURATION so bar % matches real time left.
-  toast.addEventListener("mouseenter", () => {
-    cancelAnimationFrame(raf);
-    clearTimeout(dismissTimer);
-  });
-  toast.addEventListener("mouseleave", () => {
+  if (!sticky) {
+    // Hover freezes; leave restarts a full DURATION so bar % matches real time left.
+    toast.addEventListener("mouseenter", () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(dismissTimer);
+    });
+    toast.addEventListener("mouseleave", () => {
+      armTimer();
+    });
     armTimer();
-  });
-
-  armTimer();
+  }
 }
 
 export interface NotifyActionOptions {
