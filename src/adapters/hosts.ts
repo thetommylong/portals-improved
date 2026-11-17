@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-/** Host fragments claimed by live adapters. Keep in sync with each adapter's
- *  `hosts` field — used by the idle gate without importing heavy adapter modules. */
-export const LIVE_HOST_FRAGMENTS = ["fsp"] as const;
+/** Eager per-folder hosts — gate stays free of live/mock adapter bodies. */
+const hostModules = import.meta.glob<{ default: readonly string[] }>(
+  "./*/hosts.ts",
+  { eager: true },
+);
+
+export const LIVE_HOST_FRAGMENTS = Object.values(hostModules).flatMap(
+  (mod) => mod.default,
+);
