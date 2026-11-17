@@ -24,15 +24,17 @@
   let togglingId = $state<string | null>(null);
   let gridWidth = $state(0);
 
-  async function load(): Promise<void> {
+  async function load(force = false): Promise<void> {
     loading = true;
     let cached: EventStudent[] | null = null;
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
       const key = cacheKey("events", studentId, term.termId);
-      cached = readListCache<EventStudent[]>(key);
-      if (cached) items = cached;
+      if (!force) {
+        cached = readListCache<EventStudent[]>(key);
+        if (cached) items = cached;
+      }
       const data = await runtime.adapter.getEventsByTerm(
         term.termId,
         studentId,
@@ -41,7 +43,7 @@
       writeListCache(key, data);
     } catch (err) {
       noteFetchFailure(err, {
-        hasCache: !!cached,
+        hasCache: !!cached || items.length > 0,
         failMessage: t("toast.eventsFailed"),
         offlineMessage: t("toast.offline"),
       });
@@ -87,7 +89,7 @@
   }
 
   export function refresh(): void {
-    void load();
+    void load(true);
   }
 
   void load();

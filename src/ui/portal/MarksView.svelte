@@ -177,7 +177,8 @@
       }
     }
 
-    if (!cache.has(termId)) {
+    // Force refresh always hits the network and shows the header spin.
+    if (force || !cache.has(termId)) {
       loading = true;
     }
     try {

@@ -66,16 +66,19 @@
     ),
   );
 
-  async function load(): Promise<void> {
+  async function load(force = false): Promise<void> {
     loading = true;
     const key = cacheKey("feedback", studentId);
-    const cached = readListCache<{
+    let cached: {
       pending: StudentFeedbackLecturerResult[];
       submitted: StudentFeedbackLecturerResult[];
-    }>(key);
-    if (cached) {
-      pending = cached.pending;
-      submitted = cached.submitted;
+    } | null = null;
+    if (!force) {
+      cached = readListCache(key);
+      if (cached) {
+        pending = cached.pending;
+        submitted = cached.submitted;
+      }
     }
     try {
       const data = await runtime.adapter.getFeedbackStatus(studentId);
@@ -87,7 +90,7 @@
       });
     } catch (err) {
       noteFetchFailure(err, {
-        hasCache: !!cached,
+        hasCache: !!cached || pending.length > 0 || submitted.length > 0,
         failMessage: t("toast.feedbackFailed"),
         offlineMessage: t("toast.offline"),
       });
@@ -97,7 +100,7 @@
   }
 
   export function refresh(): void {
-    void load();
+    void load(true);
   }
 
   void load();

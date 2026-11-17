@@ -68,7 +68,8 @@
       }
     }
 
-    if (!cache.has(key)) {
+    // Force refresh always hits the network and shows the header spin.
+    if (force || !cache.has(key)) {
       loading = true;
     }
     try {

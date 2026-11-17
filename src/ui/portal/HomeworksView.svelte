@@ -54,15 +54,17 @@
     }).format(new Date(iso));
   }
 
-  async function load(): Promise<void> {
+  async function load(force = false): Promise<void> {
     loading = true;
     let cached: StudentHomeWork[] | null = null;
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const term = await runtime.adapter.getDefaultTerm(ctx.campusId);
       const key = cacheKey("homeworks", studentId, term.termId);
-      cached = readListCache<StudentHomeWork[]>(key);
-      if (cached) items = cached;
+      if (!force) {
+        cached = readListCache<StudentHomeWork[]>(key);
+        if (cached) items = cached;
+      }
       const data = await runtime.adapter.getStudentHomeWorks(
         studentId,
         term.termId,
@@ -71,7 +73,7 @@
       writeListCache(key, data);
     } catch (err) {
       noteFetchFailure(err, {
-        hasCache: !!cached,
+        hasCache: !!cached || items.length > 0,
         failMessage: t("toast.homeworksFailed"),
         offlineMessage: t("toast.offline"),
       });
@@ -81,7 +83,7 @@
   }
 
   export function refresh(): void {
-    void load();
+    void load(true);
   }
 
   void load();

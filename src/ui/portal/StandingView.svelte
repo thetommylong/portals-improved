@@ -72,11 +72,14 @@
     expandedId = expandedId === id ? null : id;
   }
 
-  async function load(): Promise<void> {
+  async function load(force = false): Promise<void> {
     loading = true;
     const key = cacheKey("standing", studentId);
-    const cached = readListCache<StandingItem[]>(key);
-    if (cached) items = cached;
+    let cached: StandingItem[] | null = null;
+    if (!force) {
+      cached = readListCache<StandingItem[]>(key);
+      if (cached) items = cached;
+    }
     try {
       const ctx = await runtime.adapter.getStudentContext();
       const campusId = ctx.campusId;
@@ -125,7 +128,7 @@
       writeListCache(key, items);
     } catch (err) {
       noteFetchFailure(err, {
-        hasCache: !!cached,
+        hasCache: !!cached || items.length > 0,
         failMessage: t("toast.standingFailed"),
         offlineMessage: t("toast.offline"),
       });
@@ -135,7 +138,7 @@
   }
 
   export function refresh(): void {
-    void load();
+    void load(true);
   }
 
   void load();

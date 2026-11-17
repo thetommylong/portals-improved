@@ -269,6 +269,7 @@
   let settingsBtn: HTMLButtonElement | undefined = $state();
   let settingsPop: HTMLDivElement | undefined = $state();
   let overflowOpen = $state(false);
+  let refreshBtn: HTMLButtonElement | undefined = $state();
   let overflowBtn: HTMLButtonElement | undefined = $state();
   let overflowPop: HTMLDivElement | undefined = $state();
 
@@ -488,6 +489,113 @@
     pages[activeNav]?.refresh();
   }
 
+  /**
+   * Header refresh / more_vert spin: keep the silly infinite spin, then ease
+   * out to a small overshoot and ease out back to upright. Overshoot is not
+   * tied to load progress.
+   */
+  let spinPhase = $state<"idle" | "spin">("idle");
+  const SETTLE_OUT_MS = 165;
+  const SETTLE_BACK_MS = 140;
+  const OVERSHOOT_DEG = 14;
+
+  function iconRotationDeg(el: Element): number {
+    const cs = getComputedStyle(el);
+    // Prefer individual `rotate` — Gecko often leaves transform as none while
+    // a `rotate` keyframe animation is running (matrix read → 0 → snap).
+    const rot = cs.rotate;
+    if (rot && rot !== "none") {
+      const n = Number.parseFloat(rot);
+      if (Number.isFinite(n)) {
+        let deg = n;
+        while (deg > 180) deg -= 360;
+        while (deg < -180) deg += 360;
+        return deg;
+      }
+    }
+    const t = cs.transform;
+    if (!t || t === "none") return 0;
+    const m = new DOMMatrixReadOnly(t);
+    let deg = (Math.atan2(m.b, m.a) * 180) / Math.PI;
+    while (deg > 180) deg -= 360;
+    while (deg < -180) deg += 360;
+    return deg;
+  }
+
+  function spinningIconHosts(): HTMLElement[] {
+    const hosts: HTMLElement[] = [];
+    if (narrow) {
+      if (overflowBtn) hosts.push(overflowBtn);
+    } else if (refreshBtn) {
+      hosts.push(refreshBtn);
+    }
+    const menuRefresh = overflowPop?.querySelector<HTMLElement>(
+      ".overflow-item.spinning",
+    );
+    if (menuRefresh) hosts.push(menuRefresh);
+    return hosts;
+  }
+
+  function springIconsHome(): void {
+    const hosts = spinningIconHosts();
+    const jobs = hosts.map((host) => {
+      const icon = host.querySelector<HTMLElement>(".fsp-icon");
+      return { icon, deg: icon ? iconRotationDeg(icon) : 0 };
+    });
+    if (jobs.every((j) => !j.icon)) {
+      spinPhase = "idle";
+      return;
+    }
+
+    // Freeze CSS spin on the live nodes, then two ease-out hops (to overshoot,
+    // then home). Hold element refs so class churn can't remount mid-flight.
+    for (const { icon, deg } of jobs) {
+      if (!icon) continue;
+      icon.getAnimations().forEach((a) => a.cancel());
+      icon.style.animation = "none";
+      icon.style.rotate = `${deg}deg`;
+    }
+    spinPhase = "idle";
+
+    for (const { icon, deg } of jobs) {
+      if (!icon) continue;
+      // Ease past upright to the far side, then ease back to 0.
+      const overshoot = deg >= 0 ? -OVERSHOOT_DEG : OVERSHOOT_DEG;
+      void (async () => {
+        try {
+          const out = icon.animate(
+            [{ rotate: `${deg}deg` }, { rotate: `${overshoot}deg` }],
+            {
+              duration: SETTLE_OUT_MS,
+              easing: "ease-out",
+              fill: "forwards",
+            },
+          );
+          await out.finished;
+          out.commitStyles();
+          out.cancel();
+
+          const back = icon.animate(
+            [{ rotate: `${overshoot}deg` }, { rotate: "0deg" }],
+            {
+              duration: SETTLE_BACK_MS,
+              easing: "ease-out",
+              fill: "forwards",
+            },
+          );
+          await back.finished;
+          back.commitStyles();
+          back.cancel();
+        } catch {
+          // Animation canceled (new refresh) — leave cleanup to the next run.
+        } finally {
+          icon.style.animation = "";
+          icon.style.rotate = "";
+        }
+      })();
+    }
+  }
+
   const viewChunkPending = $derived.by(() => {
     const f = runtime.adapter.features;
     switch (activeNav) {
@@ -509,6 +617,19 @@
   });
 
   const contentRefreshing = $derived(pageLoading.active || viewChunkPending);
+
+  $effect(() => {
+    if (contentRefreshing) {
+      spinPhase = "spin";
+      return;
+    }
+    if (spinPhase !== "spin") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      spinPhase = "idle";
+      return;
+    }
+    springIconsHome();
+  });
 
   function onNotifications() {
     if (notifOpen) {
@@ -861,7 +982,8 @@
       </div>
       <button
         class="icon-btn header-action"
-        class:spinning={contentRefreshing}
+        class:spinning={spinPhase === "spin"}
+        bind:this={refreshBtn}
         aria-label={t("aria.refresh")}
         aria-busy={contentRefreshing}
         onclick={refresh}
@@ -892,7 +1014,7 @@
           class="icon-btn"
           class:active={overflowOpen || chatOpen || settingsOpen}
           class:has-badge={unreadCount > 0}
-          class:spinning={contentRefreshing}
+          class:spinning={spinPhase === "spin"}
           bind:this={overflowBtn}
           aria-label={t("aria.moreActions")}
           aria-expanded={overflowOpen}
@@ -938,7 +1060,7 @@
             </button>
             <button
               class="overflow-item"
-              class:spinning={contentRefreshing}
+              class:spinning={spinPhase === "spin"}
               role="menuitem"
               aria-busy={contentRefreshing}
               onclick={() => {
@@ -1295,7 +1417,7 @@
   }
 
   .icon-btn.spinning > :global(.fsp-icon) {
-    animation: refresh-spin 0.75s linear infinite;
+    animation: refresh-spin 0.85s linear infinite;
   }
 
   @keyframes refresh-spin {
@@ -1742,7 +1864,7 @@
   }
 
   .overflow-item.spinning > :global(.fsp-icon) {
-    animation: refresh-spin 0.75s linear infinite;
+    animation: refresh-spin 2.2s linear infinite;
   }
 
   .overflow-count {

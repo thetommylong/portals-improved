@@ -103,7 +103,7 @@
 
   void init();
 
-  async function load(termId: string): Promise<void> {
+  async function load(termId: string, force = false): Promise<void> {
     const term = terms.find((t) => t.termId === termId);
     if (!term) {
       clubs = [];
@@ -111,8 +111,11 @@
     }
 
     const key = cacheKey("clubs", studentId, termId);
-    const cached = readListCache<Club[]>(key);
-    if (cached) clubs = cached;
+    let cached: Club[] | null = null;
+    if (!force) {
+      cached = readListCache<Club[]>(key);
+      if (cached) clubs = cached;
+    }
 
     loading = true;
     try {
@@ -121,7 +124,7 @@
       writeListCache(key, data);
     } catch (err) {
       noteFetchFailure(err, {
-        hasCache: !!cached,
+        hasCache: !!cached || clubs.length > 0,
         failMessage: t("toast.clubsFailed"),
         offlineMessage: t("toast.offline"),
       });
@@ -131,7 +134,7 @@
   }
 
   export function refresh(): void {
-    void load(selectedTermId);
+    void load(selectedTermId, true);
   }
 
   $effect(() => {
