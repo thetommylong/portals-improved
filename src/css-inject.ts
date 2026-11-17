@@ -9,8 +9,16 @@
  */
 export const PENDING_CSS_KEY = "__portalsImprovedPendingCss";
 
+/**
+ * Set on `globalThis` after the first boot flush. Vite `cssSideEffects` calls
+ * this so CSS from lazy System.register chunks injects immediately — the gate
+ * flush alone only sees CSS queued before `import("./boot")`.
+ */
+export const FLUSH_CSS_HOOK_KEY = "__portalsImprovedFlushCss";
+
 type PendingCssHost = typeof globalThis & {
   [PENDING_CSS_KEY]?: string[];
+  [FLUSH_CSS_HOOK_KEY]?: () => void;
 };
 
 /** CSS text last flushed at the gate — kept so strip can recover after login wait. */
@@ -61,6 +69,8 @@ export function flushPendingCss(): void {
   const chunks = takePendingCss();
   flushedCss.push(...chunks);
   for (const css of chunks) injectCss(css);
+  // Arm live flush so later chunk `_css(...)` side effects paint immediately.
+  pendingHost()[FLUSH_CSS_HOOK_KEY] = flushPendingCss;
 }
 
 /**
@@ -79,9 +89,11 @@ export function hasFlushedCss(): boolean {
 /** Drop queued CSS without injecting — idle / no-op path. */
 export function discardPendingCss(): void {
   takePendingCss();
+  Reflect.deleteProperty(pendingHost(), FLUSH_CSS_HOOK_KEY);
 }
 
 /** @internal tests */
 export function resetFlushedCssForTests(): void {
   flushedCss = [];
+  Reflect.deleteProperty(pendingHost(), FLUSH_CSS_HOOK_KEY);
 }

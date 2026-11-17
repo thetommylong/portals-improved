@@ -4,9 +4,14 @@
 import { mount } from "svelte";
 import { runtime } from "../../adapters/runtime.svelte";
 import PortalShell from "../../ui/PortalShell.svelte";
-import { hasFlushedCss, reinjectFlushedCss } from "../../css-inject";
+import {
+  flushPendingCss,
+  hasFlushedCss,
+  reinjectFlushedCss,
+} from "../../css-inject";
 import sharedCss from "../../ui/portal/shared.css?inline";
 import {
+  guardAgainstHostChrome,
   hasOwnStyleInHead,
   reinjectStyleElements,
   stripHostStylesheets,
@@ -27,6 +32,10 @@ function boot(userId: string) {
     host.id = "fsp-qol-root";
 
     document.body.replaceChildren(host);
+
+    // Lazy boot chunks queue CSS after the gate flush (PortalShell.layout.css).
+    // Drain that queue before strip so layout rules are in <head> and marked.
+    flushPendingCss();
 
     // The shell replaces the whole document, so no host stylesheet is wanted:
     // drop every <link rel="stylesheet"> and inline <style> from <head> — the
@@ -54,6 +63,10 @@ function boot(userId: string) {
     // depend on in-flight host loads that stop() aborts. Keep stop() — ADR 001
     // replace is meant to abandon the portal page, not race it.
     window.stop();
+
+    // Angular keeps appending Material <style> tags + CDK nodes after stop();
+    // scrub them so unscoped .shell/.content/.main rules stay ours.
+    guardAgainstHostChrome(host);
 
     const style = document.createElement("style");
     style.textContent = sharedCss;

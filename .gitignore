@@ -36,6 +36,7 @@ console-export-*.log
 
 # Build artifacts
 *.tsbuildinfo
+.tsc-node/
 vite.config.js
 vite.config.d.ts
 vite.site.config.js
