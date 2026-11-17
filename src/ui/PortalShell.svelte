@@ -10,6 +10,7 @@
   import { i18n, t, type MessageKey } from "../i18n.svelte";
   import UnavailableState from "./portal/UnavailableState.svelte";
   import NotificationsPanel from "./portal/NotificationsPanel.svelte";
+  import ShellHeader from "./portal/ShellHeader.svelte";
   import {
     ACCENTS,
     DARK_FLAVORS,
@@ -269,10 +270,7 @@
   let settingsOpen = $state(false);
   let settingsBtn: HTMLButtonElement | undefined = $state();
   let settingsPop: HTMLDivElement | undefined = $state();
-  let overflowOpen = $state(false);
-  let refreshBtn: HTMLButtonElement | undefined = $state();
   let overflowBtn: HTMLButtonElement | undefined = $state();
-  let overflowPop: HTMLDivElement | undefined = $state();
 
   pointer.start();
 
@@ -293,24 +291,12 @@
       (narrow ? overflowBtn : settingsBtn) ??
       (document.activeElement as HTMLElement);
     if (narrow) sidebarOpen = false;
-    overflowOpen = false;
     settingsOpen = true;
   }
 
-  function closeOverflow() {
-    if (!overflowOpen) return;
-    overflowOpen = false;
-  }
-
-  function toggleOverflow() {
-    if (overflowOpen) {
-      closeOverflow();
-      return;
-    }
+  function prepareOverflowOpen() {
     lastTrigger = document.activeElement as HTMLElement;
     if (narrow) sidebarOpen = false;
-    closeSettings();
-    overflowOpen = true;
   }
 
   /** Arrow/Home/End navigation for settings role=radiogroup clusters. */
@@ -364,29 +350,6 @@
       document.removeEventListener("pointerdown", onPointerdown);
       handle.release();
     };
-  });
-
-  $effect(() => {
-    if (!overflowOpen || !overflowPop) return;
-    const handle: OverlayFocusHandle = attachOverlayFocus(
-      overflowPop,
-      closeOverflow,
-    );
-    function onPointerdown(e: Event) {
-      if (!(e.target instanceof Node)) return;
-      if (overflowPop?.contains(e.target)) return;
-      if (overflowBtn?.contains(e.target)) return;
-      closeOverflow();
-    }
-    document.addEventListener("pointerdown", onPointerdown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerdown);
-      handle.release();
-    };
-  });
-
-  $effect(() => {
-    if (!narrow) closeOverflow();
   });
 
   $effect(() => {
@@ -490,113 +453,6 @@
     pages[activeNav]?.refresh();
   }
 
-  /**
-   * Header refresh / more_vert spin: keep the silly infinite spin, then ease
-   * out to a small overshoot and ease out back to upright. Overshoot is not
-   * tied to load progress.
-   */
-  let spinPhase = $state<"idle" | "spin">("idle");
-  const SETTLE_OUT_MS = 165;
-  const SETTLE_BACK_MS = 140;
-  const OVERSHOOT_DEG = 14;
-
-  function iconRotationDeg(el: Element): number {
-    const cs = getComputedStyle(el);
-    // Prefer individual `rotate` — Gecko often leaves transform as none while
-    // a `rotate` keyframe animation is running (matrix read → 0 → snap).
-    const rot = cs.rotate;
-    if (rot && rot !== "none") {
-      const n = Number.parseFloat(rot);
-      if (Number.isFinite(n)) {
-        let deg = n;
-        while (deg > 180) deg -= 360;
-        while (deg < -180) deg += 360;
-        return deg;
-      }
-    }
-    const t = cs.transform;
-    if (!t || t === "none") return 0;
-    const m = new DOMMatrixReadOnly(t);
-    let deg = (Math.atan2(m.b, m.a) * 180) / Math.PI;
-    while (deg > 180) deg -= 360;
-    while (deg < -180) deg += 360;
-    return deg;
-  }
-
-  function spinningIconHosts(): HTMLElement[] {
-    const hosts: HTMLElement[] = [];
-    if (narrow) {
-      if (overflowBtn) hosts.push(overflowBtn);
-    } else if (refreshBtn) {
-      hosts.push(refreshBtn);
-    }
-    const menuRefresh = overflowPop?.querySelector<HTMLElement>(
-      ".overflow-item.spinning",
-    );
-    if (menuRefresh) hosts.push(menuRefresh);
-    return hosts;
-  }
-
-  function springIconsHome(): void {
-    const hosts = spinningIconHosts();
-    const jobs = hosts.map((host) => {
-      const icon = host.querySelector<HTMLElement>(".fsp-icon");
-      return { icon, deg: icon ? iconRotationDeg(icon) : 0 };
-    });
-    if (jobs.every((j) => !j.icon)) {
-      spinPhase = "idle";
-      return;
-    }
-
-    // Freeze CSS spin on the live nodes, then two ease-out hops (to overshoot,
-    // then home). Hold element refs so class churn can't remount mid-flight.
-    for (const { icon, deg } of jobs) {
-      if (!icon) continue;
-      icon.getAnimations().forEach((a) => a.cancel());
-      icon.style.animation = "none";
-      icon.style.rotate = `${deg}deg`;
-    }
-    spinPhase = "idle";
-
-    for (const { icon, deg } of jobs) {
-      if (!icon) continue;
-      // Ease past upright to the far side, then ease back to 0.
-      const overshoot = deg >= 0 ? -OVERSHOOT_DEG : OVERSHOOT_DEG;
-      void (async () => {
-        try {
-          const out = icon.animate(
-            [{ rotate: `${deg}deg` }, { rotate: `${overshoot}deg` }],
-            {
-              duration: SETTLE_OUT_MS,
-              easing: "ease-out",
-              fill: "forwards",
-            },
-          );
-          await out.finished;
-          out.commitStyles();
-          out.cancel();
-
-          const back = icon.animate(
-            [{ rotate: `${overshoot}deg` }, { rotate: "0deg" }],
-            {
-              duration: SETTLE_BACK_MS,
-              easing: "ease-out",
-              fill: "forwards",
-            },
-          );
-          await back.finished;
-          back.commitStyles();
-          back.cancel();
-        } catch {
-          // Animation canceled (new refresh) — leave cleanup to the next run.
-        } finally {
-          icon.style.animation = "";
-          icon.style.rotate = "";
-        }
-      })();
-    }
-  }
-
   const viewChunkPending = $derived.by(() => {
     const f = runtime.adapter.features;
     switch (activeNav) {
@@ -618,19 +474,6 @@
   });
 
   const contentRefreshing = $derived(pageLoading.active || viewChunkPending);
-
-  $effect(() => {
-    if (contentRefreshing) {
-      spinPhase = "spin";
-      return;
-    }
-    if (spinPhase !== "spin") return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      spinPhase = "idle";
-      return;
-    }
-    springIconsHome();
-  });
 
   function onNotifications() {
     if (notifOpen) {
@@ -760,347 +603,192 @@
   <a class="skip-link" href="#fsp-main">{t("aria.skipToMain")}</a>
   <h1 class="shell-title">{t("aria.appName")}</h1>
 
-  <header class="header">
-    <div class="header-left">
-      <button
-        class="icon-btn"
-        aria-label={t("aria.toggleMenu")}
-        onclick={toggleSidebar}
-      >
-        <Icon name="menu" size={22} />
-      </button>
-      <div class="header-nav">
-        {#if activeNav === "home"}
-          <button class="toolbar-btn" onclick={() => pages.home?.goToday()}>
-            {t("header.today")}
-          </button>
-          <button
-            class="toolbar-btn toolbar-nav"
-            aria-label={t("header.aria.previous")}
-            onclick={() => pages.home?.goTo(-1)}
-          >
-            ‹
-          </button>
-          <button
-            class="toolbar-btn toolbar-nav"
-            aria-label={t("header.aria.next")}
-            onclick={() => pages.home?.goTo(1)}
-          >
-            ›
-          </button>
-          <span class="schedule-date">{scheduleDate}</span>
-        {/if}
-      </div>
-    </div>
-    <div class="header-right">
-      {#if runtime.adapter.features.session}
-        <button
-          class="icon-btn header-action"
-          class:active={chatOpen}
-          aria-label={t("aria.toggleAssistant")}
-          aria-expanded={chatOpen}
-          onclick={toggleChat}
-        >
-          <Icon name="chat" size={22} />
-        </button>
-      {/if}
-      <div class="settings-wrap">
-        <button
-          class="icon-btn header-action"
-          class:active={settingsOpen}
-          bind:this={settingsBtn}
-          aria-label={t("aria.appearance")}
-          aria-expanded={settingsOpen}
-          onclick={() => {
-            if (settingsOpen) closeSettings();
-            else openSettings();
-          }}
-        >
-          <Icon name="settings" size={22} />
-        </button>
-        {#if settingsOpen}
-          <div class="settings-layer" class:as-modal={narrow}>
-            {#if narrow}
-              <div
-                class="settings-scrim"
-                role="presentation"
-                onclick={closeSettings}
-                transition:fade={backdropFade()}
-              ></div>
-            {/if}
+  <ShellHeader
+    {activeNav}
+    {scheduleDate}
+    {chatOpen}
+    {settingsOpen}
+    {unreadCount}
+    {contentRefreshing}
+    showChat={runtime.adapter.features.session}
+    showNotifications={runtime.adapter.features.notifications}
+    {narrow}
+    bind:settingsBtn
+    bind:overflowBtn
+    onToggleSidebar={toggleSidebar}
+    onGoToday={() => pages.home?.goToday()}
+    onGoPrev={() => pages.home?.goTo(-1)}
+    onGoNext={() => pages.home?.goTo(1)}
+    onToggleChat={toggleChat}
+    onToggleSettings={() => {
+      if (settingsOpen) closeSettings();
+      else openSettings();
+    }}
+    onOpenSettings={openSettings}
+    onCloseSettings={closeSettings}
+    onRefresh={refresh}
+    {onNotifications}
+    onPrepareOverflowOpen={prepareOverflowOpen}
+  >
+    {#snippet settingsPanel()}
+      {#if settingsOpen}
+        <div class="settings-layer" class:as-modal={narrow}>
+          {#if narrow}
             <div
-              class="settings-pop"
-              bind:this={settingsPop}
-              role="dialog"
-              aria-modal="true"
-              aria-label={t("aria.appearance")}
-              tabindex="-1"
-              transition:scale={narrow ? modalScale() : popScale()}
-            >
-              <p class="settings-title">{t("settings.theme")}</p>
-              <div
-                class="settings-flavors"
-                role="radiogroup"
-                tabindex="0"
-                aria-label={t("settings.flavor")}
-                onkeydown={(e) =>
-                  onRadioGroupKeydown(e, FLAVOR_OPTIONS, theme.flavor, (v) =>
-                    theme.setFlavor(v as (typeof FLAVOR_OPTIONS)[number]),
-                  )}
-              >
-                {#each FLAVOR_OPTIONS as option (option)}
-                  <button
-                    class="settings-flavor"
-                    class:selected={theme.flavor === option}
-                    role="radio"
-                    aria-checked={theme.flavor === option}
-                    tabindex={theme.flavor === option ? 0 : -1}
-                    onclick={() => theme.setFlavor(option)}
-                  >
-                    {option[0].toUpperCase() + option.slice(1)}
-                  </button>
-                {/each}
-              </div>
-              {#if theme.flavor === "system"}
-                <p class="settings-title">{t("settings.darkGroup")}</p>
-                <div
-                  class="settings-flavors trio"
-                  role="radiogroup"
-                  tabindex="0"
-                  aria-label={t("settings.darkFlavor")}
-                  onkeydown={(e) =>
-                    onRadioGroupKeydown(
-                      e,
-                      DARK_FLAVORS,
-                      theme.systemDark,
-                      (v) =>
-                        theme.setSystemDark(v as (typeof DARK_FLAVORS)[number]),
-                    )}
-                >
-                  {#each DARK_FLAVORS as dark (dark)}
-                    <button
-                      class="settings-flavor"
-                      class:selected={theme.systemDark === dark}
-                      role="radio"
-                      aria-checked={theme.systemDark === dark}
-                      tabindex={theme.systemDark === dark ? 0 : -1}
-                      onclick={() => theme.setSystemDark(dark)}
-                    >
-                      {dark[0].toUpperCase() + dark.slice(1)}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-              <p class="settings-title">{t("settings.accent")}</p>
-              <div
-                class="settings-accents"
-                role="radiogroup"
-                tabindex="0"
-                aria-label={t("settings.accentColor")}
-                onkeydown={(e) =>
-                  onRadioGroupKeydown(e, ACCENTS, theme.accent, (v) =>
-                    theme.setAccent(v as (typeof ACCENTS)[number]),
-                  )}
-              >
-                {#each ACCENTS as accent (accent)}
-                  <button
-                    class="accent-dot"
-                    class:selected={theme.accent === accent}
-                    style={`background: var(--${accent});`}
-                    role="radio"
-                    aria-checked={theme.accent === accent}
-                    tabindex={theme.accent === accent ? 0 : -1}
-                    aria-label={accent}
-                    title={accent}
-                    onclick={() => theme.setAccent(accent)}
-                  ></button>
-                {/each}
-              </div>
-              <p class="settings-title">{t("settings.language")}</p>
-              <select
-                class="settings-select"
-                aria-label={t("settings.languageGroup")}
-                value={i18n.locale}
-                onchange={(e) => {
-                  const next = (e.currentTarget as HTMLSelectElement).value;
-                  if (next === "vi" || next === "en") i18n.setLocale(next);
-                }}
-              >
-                <option value="vi">Tiếng Việt</option>
-                <option value="en">English</option>
-              </select>
-              <p class="settings-title">{t("settings.layout")}</p>
-              <div
-                class="settings-flavors"
-                role="radiogroup"
-                tabindex="0"
-                aria-label={t("settings.layoutGroup")}
-                onkeydown={(e) =>
-                  onRadioGroupKeydown(
-                    e,
-                    CHROME_OPTIONS,
-                    shellChrome.chrome,
-                    (v) =>
-                      shellChrome.setChrome(
-                        v as (typeof CHROME_OPTIONS)[number],
-                      ),
-                  )}
-              >
-                {#each CHROME_OPTIONS as option (option)}
-                  <button
-                    class="settings-flavor"
-                    class:selected={shellChrome.chrome === option}
-                    role="radio"
-                    aria-checked={shellChrome.chrome === option}
-                    tabindex={shellChrome.chrome === option ? 0 : -1}
-                    onclick={() => shellChrome.setChrome(option)}
-                  >
-                    {option === "flush"
-                      ? t("settings.layoutFlush")
-                      : t("settings.layoutFloating")}
-                  </button>
-                {/each}
-              </div>
-              <hr class="settings-sep" />
-              <p class="settings-title">{t("settings.about")}</p>
-              <div class="about">
-                <span class="about-name">portals-improved</span>
-                <span class="about-detail">
-                  v{__BUILD__.version} · {__BUILD__.commit}
-                </span>
-                <a
-                  class="about-link"
-                  href="https://github.com/thetommylong/portals-improved/blob/main/LICENSE"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  AGPL-3.0-only
-                </a>
-              </div>
-            </div>
-          </div>
-        {/if}
-      </div>
-      <button
-        class="icon-btn header-action"
-        class:spinning={spinPhase === "spin"}
-        bind:this={refreshBtn}
-        aria-label={t("aria.refresh")}
-        aria-busy={contentRefreshing}
-        onclick={refresh}
-      >
-        <Icon name="refresh" size={22} />
-      </button>
-      {#if runtime.adapter.features.notifications}
-        <button
-          class="icon-btn header-action"
-          class:has-badge={unreadCount > 0}
-          aria-label={unreadCount > 0
-            ? t("aria.notificationsUnread", { n: unreadCount })
-            : t("aria.notificationsNone")}
-          onclick={onNotifications}
-        >
-          <Icon
-            name={unreadCount > 0 ? "notifications_active" : "notifications"}
-            size={22}
-          />
-          {#if unreadCount > 0}
-            <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+              class="settings-scrim"
+              role="presentation"
+              onclick={closeSettings}
+              transition:fade={backdropFade()}
+            ></div>
           {/if}
-        </button>
-      {/if}
-
-      <div class="overflow-wrap">
-        <button
-          class="icon-btn"
-          class:active={overflowOpen || chatOpen || settingsOpen}
-          class:has-badge={unreadCount > 0}
-          class:spinning={spinPhase === "spin"}
-          bind:this={overflowBtn}
-          aria-label={t("aria.moreActions")}
-          aria-expanded={overflowOpen}
-          aria-haspopup="menu"
-          onclick={toggleOverflow}
-        >
-          <Icon name="more_vert" size={22} />
-          {#if unreadCount > 0}
-            <span class="badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
-          {/if}
-        </button>
-        {#if overflowOpen}
           <div
-            class="overflow-pop"
-            bind:this={overflowPop}
-            role="menu"
-            aria-label={t("aria.moreActions")}
+            class="settings-pop"
+            bind:this={settingsPop}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("aria.appearance")}
             tabindex="-1"
-            transition:scale={popScale()}
+            transition:scale={narrow ? modalScale() : popScale()}
           >
-            {#if runtime.adapter.features.session}
-              <button
-                class="overflow-item"
-                class:active={chatOpen}
-                role="menuitem"
-                onclick={() => {
-                  closeOverflow();
-                  toggleChat();
-                }}
-              >
-                <Icon name="chat" size={20} />
-                <span>{t("header.actionAssistant")}</span>
-              </button>
-            {/if}
-            <button
-              class="overflow-item"
-              class:active={settingsOpen}
-              role="menuitem"
-              onclick={openSettings}
+            <p class="settings-title">{t("settings.theme")}</p>
+            <div
+              class="settings-flavors"
+              role="radiogroup"
+              tabindex="0"
+              aria-label={t("settings.flavor")}
+              onkeydown={(e) =>
+                onRadioGroupKeydown(e, FLAVOR_OPTIONS, theme.flavor, (v) =>
+                  theme.setFlavor(v as (typeof FLAVOR_OPTIONS)[number]),
+                )}
             >
-              <Icon name="settings" size={20} />
-              <span>{t("header.actionAppearance")}</span>
-            </button>
-            <button
-              class="overflow-item"
-              class:spinning={spinPhase === "spin"}
-              role="menuitem"
-              aria-busy={contentRefreshing}
-              onclick={() => {
-                closeOverflow();
-                refresh();
+              {#each FLAVOR_OPTIONS as option (option)}
+                <button
+                  class="settings-flavor"
+                  class:selected={theme.flavor === option}
+                  role="radio"
+                  aria-checked={theme.flavor === option}
+                  tabindex={theme.flavor === option ? 0 : -1}
+                  onclick={() => theme.setFlavor(option)}
+                >
+                  {option[0].toUpperCase() + option.slice(1)}
+                </button>
+              {/each}
+            </div>
+            {#if theme.flavor === "system"}
+              <p class="settings-title">{t("settings.darkGroup")}</p>
+              <div
+                class="settings-flavors trio"
+                role="radiogroup"
+                tabindex="0"
+                aria-label={t("settings.darkFlavor")}
+                onkeydown={(e) =>
+                  onRadioGroupKeydown(e, DARK_FLAVORS, theme.systemDark, (v) =>
+                    theme.setSystemDark(v as (typeof DARK_FLAVORS)[number]),
+                  )}
+              >
+                {#each DARK_FLAVORS as dark (dark)}
+                  <button
+                    class="settings-flavor"
+                    class:selected={theme.systemDark === dark}
+                    role="radio"
+                    aria-checked={theme.systemDark === dark}
+                    tabindex={theme.systemDark === dark ? 0 : -1}
+                    onclick={() => theme.setSystemDark(dark)}
+                  >
+                    {dark[0].toUpperCase() + dark.slice(1)}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            <p class="settings-title">{t("settings.accent")}</p>
+            <div
+              class="settings-accents"
+              role="radiogroup"
+              tabindex="0"
+              aria-label={t("settings.accentColor")}
+              onkeydown={(e) =>
+                onRadioGroupKeydown(e, ACCENTS, theme.accent, (v) =>
+                  theme.setAccent(v as (typeof ACCENTS)[number]),
+                )}
+            >
+              {#each ACCENTS as accent (accent)}
+                <button
+                  class="accent-dot"
+                  class:selected={theme.accent === accent}
+                  style={`background: var(--${accent});`}
+                  role="radio"
+                  aria-checked={theme.accent === accent}
+                  tabindex={theme.accent === accent ? 0 : -1}
+                  aria-label={accent}
+                  title={accent}
+                  onclick={() => theme.setAccent(accent)}
+                ></button>
+              {/each}
+            </div>
+            <p class="settings-title">{t("settings.language")}</p>
+            <select
+              class="settings-select"
+              aria-label={t("settings.languageGroup")}
+              value={i18n.locale}
+              onchange={(e) => {
+                const next = (e.currentTarget as HTMLSelectElement).value;
+                if (next === "vi" || next === "en") i18n.setLocale(next);
               }}
             >
-              <Icon name="refresh" size={20} />
-              <span>{t("header.actionRefresh")}</span>
-            </button>
-            {#if runtime.adapter.features.notifications}
-              <button
-                class="overflow-item"
-                class:has-badge={unreadCount > 0}
-                role="menuitem"
-                onclick={() => {
-                  closeOverflow();
-                  onNotifications();
-                }}
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
+            </select>
+            <p class="settings-title">{t("settings.layout")}</p>
+            <div
+              class="settings-flavors"
+              role="radiogroup"
+              tabindex="0"
+              aria-label={t("settings.layoutGroup")}
+              onkeydown={(e) =>
+                onRadioGroupKeydown(
+                  e,
+                  CHROME_OPTIONS,
+                  shellChrome.chrome,
+                  (v) =>
+                    shellChrome.setChrome(v as (typeof CHROME_OPTIONS)[number]),
+                )}
+            >
+              {#each CHROME_OPTIONS as option (option)}
+                <button
+                  class="settings-flavor"
+                  class:selected={shellChrome.chrome === option}
+                  role="radio"
+                  aria-checked={shellChrome.chrome === option}
+                  tabindex={shellChrome.chrome === option ? 0 : -1}
+                  onclick={() => shellChrome.setChrome(option)}
+                >
+                  {option === "flush"
+                    ? t("settings.layoutFlush")
+                    : t("settings.layoutFloating")}
+                </button>
+              {/each}
+            </div>
+            <hr class="settings-sep" />
+            <p class="settings-title">{t("settings.about")}</p>
+            <div class="about">
+              <span class="about-name">portals-improved</span>
+              <span class="about-detail">
+                v{__BUILD__.version} · {__BUILD__.commit}
+              </span>
+              <a
+                class="about-link"
+                href="https://github.com/thetommylong/portals-improved/blob/main/LICENSE"
+                target="_blank"
+                rel="noreferrer"
               >
-                <Icon
-                  name={unreadCount > 0
-                    ? "notifications_active"
-                    : "notifications"}
-                  size={20}
-                />
-                <span>{t("header.actionNotifications")}</span>
-                {#if unreadCount > 0}
-                  <span class="overflow-count"
-                    >{unreadCount > 99 ? "99+" : unreadCount}</span
-                  >
-                {/if}
-              </button>
-            {/if}
+                AGPL-3.0-only
+              </a>
+            </div>
           </div>
-        {/if}
-      </div>
-    </div>
-  </header>
+        </div>
+      {/if}
+    {/snippet}
+  </ShellHeader>
 
   <div class="content">
     <div
@@ -1350,98 +1038,6 @@
     gap: 0;
     height: 100%;
     padding: 0;
-  }
-
-  .header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--surface-raised);
-    border: none;
-    border-bottom: 1px solid var(--border-subtle);
-    border-radius: 0;
-    padding: 10px 20px;
-    flex-shrink: 0;
-    height: auto;
-    line-height: normal;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-  }
-
-  .icon-btn {
-    display: inline-grid;
-    place-items: center;
-    /* Sized via --hit-* from pointer mode (media + last pointerType). */
-    min-width: var(--hit-icon);
-    min-height: var(--hit-icon);
-    width: var(--hit-icon);
-    height: var(--hit-icon);
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    cursor: pointer;
-    color: var(--text);
-    transition: transform 0.15s ease;
-    position: relative;
-  }
-
-  .icon-btn > :global(.fsp-icon) {
-    display: block;
-    /* Material-derived paths sit slightly low in the 24 box; nudge optically. */
-    translate: 0 -0.5px;
-  }
-
-  .icon-btn.spinning > :global(.fsp-icon) {
-    animation: refresh-spin 0.85s linear infinite;
-  }
-
-  @keyframes refresh-spin {
-    to {
-      rotate: 360deg;
-    }
-  }
-
-  .icon-btn:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: 1px;
-  }
-
-  .icon-btn.active {
-    color: var(--accent-strong);
-  }
-
-  .icon-btn .badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-control);
-    background: var(--red);
-    color: var(--mantle);
-    font-size: 11px;
-    font-weight: 700;
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-  }
-
-  .badge {
-    transition: transform 0.15s ease;
   }
 
   .content {
@@ -1740,132 +1336,6 @@
     font-size: 13px;
   }
 
-  .header-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 14px;
-    min-width: 0;
-  }
-
-  /* Tag+class beats shared.css `button[class] { background: transparent }`. */
-  button.toolbar-btn {
-    height: var(--hit-step);
-    min-height: var(--hit-step);
-    padding: 0 16px;
-    border: none;
-    border-radius: 8px;
-    background: var(--surface-base);
-    color: var(--text);
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-
-  button.toolbar-btn:hover {
-    background: var(--surface1);
-  }
-
-  button.toolbar-btn:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: 1px;
-  }
-
-  button.toolbar-btn.toolbar-nav {
-    min-width: var(--hit-step);
-    min-height: var(--hit-step);
-    width: var(--hit-step);
-    height: var(--hit-step);
-    padding: 0;
-    /* Track button hit size (30→16 fine, 44→~23 coarse). */
-    font-size: calc(var(--hit-step) * 16 / 30);
-    line-height: 1;
-  }
-
-  .schedule-date {
-    margin-left: 10px;
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .settings-wrap {
-    position: relative;
-  }
-
-  .overflow-wrap {
-    display: none;
-    position: relative;
-  }
-
-  .overflow-pop {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    z-index: 20;
-    min-width: 200px;
-    padding: 6px;
-    background: var(--base);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-    transform-origin: top right;
-  }
-
-  .overflow-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    margin: 0;
-    padding: 10px 12px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text);
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .overflow-item:hover,
-  .overflow-item:focus-visible {
-    background: var(--surface-hover);
-  }
-
-  .overflow-item:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: -2px;
-  }
-
-  .overflow-item.active {
-    color: var(--accent-strong);
-  }
-
-  .overflow-item.spinning > :global(.fsp-icon) {
-    animation: refresh-spin 2.2s linear infinite;
-  }
-
-  .overflow-count {
-    margin-left: auto;
-    min-width: 18px;
-    padding: 0 5px;
-    border-radius: var(--radius-control);
-    background: var(--red);
-    color: var(--mantle);
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 18px;
-    text-align: center;
-  }
-
   .settings-layer {
     display: contents;
   }
@@ -2037,7 +1507,8 @@
     padding: 16px 20px;
   }
 
-  .shell.chrome-floating .header {
+  /* Header lives in ShellHeader — :global so floating chrome still reaches it. */
+  .shell.chrome-floating :global(.header) {
     background: var(--mantle);
     border-bottom: none;
     border-radius: var(--radius-surface);
@@ -2077,10 +1548,10 @@
       padding: 0;
     }
 
-    .header,
+    :global(.header),
     .main,
     .sidebar,
-    .shell.chrome-floating .header,
+    .shell.chrome-floating :global(.header),
     .shell.chrome-floating .main,
     .shell.chrome-floating .sidebar {
       border-radius: 0;
@@ -2096,20 +1567,12 @@
       gap: 0;
     }
 
-    .header,
-    .shell.chrome-floating .header {
+    :global(.header),
+    .shell.chrome-floating :global(.header) {
       padding: 10px 16px;
     }
 
-    .header-action {
-      display: none;
-    }
-
-    .overflow-wrap {
-      display: block;
-    }
-
-    .shell.chrome-floating .header {
+    .shell.chrome-floating :global(.header) {
       border-bottom: 1px solid var(--border-subtle);
     }
 
@@ -2174,25 +1637,6 @@
       opacity: 1;
       pointer-events: none;
       box-shadow: none;
-    }
-
-    .header-nav {
-      margin-left: 8px;
-      gap: 6px;
-    }
-
-    button.toolbar-btn {
-      padding: 0 12px;
-      font-size: 12px;
-    }
-
-    button.toolbar-btn.toolbar-nav {
-      padding: 0;
-    }
-
-    .schedule-date {
-      font-size: 13px;
-      margin-left: 2px;
     }
 
     .settings-layer.as-modal {
