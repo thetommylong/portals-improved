@@ -49,11 +49,11 @@ This is where the project started. The shell was built against FSP's internal AP
 <summary>Adding a portal</summary>
 
 1. Implement `PortalAdapter` from `src/sdk/adapter.ts` — that method set is the contract.
-2. Put the hosts you serve on the adapter's `hosts` field.
+2. Add a folder under `src/adapters/<name>/` with `index.ts` (default-export the class) and `hosts.ts` (export the host fragments). Discovery globs these; no hand-maintained live list.
 3. Set `features` honestly. The shell hides what you mark `false`; it does not validate the claim.
-4. Register the class in `LIVE_ADAPTERS` in `src/adapters/runtime.svelte.ts`. That list is the only registry.
+4. Mock stays the force/fallback adapter (`adapters/mock/`) — it claims no hosts and is not matched live.
 
-Copy `src/adapters/mock.ts` for a fake-data twin so the portal is previewable from day one.
+See ADR 004 for folder discovery details.
 
 </details>
 
