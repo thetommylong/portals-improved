@@ -21,12 +21,14 @@
   import { runtime } from "../../adapters/runtime.svelte";
   import { notify } from "../../notifications";
   import ChatMessage from "./ChatMessage.svelte";
+  import ToolCallAccordion from "./ToolCallAccordion.svelte";
   import ConfirmCard from "./ConfirmCard.svelte";
   import ModelPicker from "./ModelPicker.svelte";
   import Icon from "../Icon.svelte";
   import { t } from "../../i18n.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { echoUserMessage, isClearCommand } from "./chatEcho";
+  import { groupChatEvents } from "./chatEventGroups";
   import { modalScale } from "./popTransition";
 
   let {
@@ -39,6 +41,7 @@
 
   const agent = $derived(createAgent(agentContext, runtime.adapter));
   let messages = $state<AgentEvent[]>([]);
+  const renderItems = $derived(groupChatEvents(messages));
   let input = $state("");
   let sending = $state(false);
   let modelPickerOpen = $state(false);
@@ -331,11 +334,13 @@
       </div>
     {/if}
 
-    {#each messages as event, i (i)}
-      {#if event.type === "confirm" && event.confirmRequest}
-        <ConfirmCard request={event.confirmRequest} />
+    {#each renderItems as item, i (i)}
+      {#if item.kind === "tool"}
+        <ToolCallAccordion call={item.call} result={item.result} />
+      {:else if item.event.type === "confirm" && item.event.confirmRequest}
+        <ConfirmCard request={item.event.confirmRequest} />
       {:else}
-        <ChatMessage {event} />
+        <ChatMessage event={item.event} />
       {/if}
     {/each}
 
@@ -373,32 +378,38 @@
     {/if}
   </div>
 
-  <div class="chat-chips" role="group" aria-label={t("chat.helpChipsAria")}>
-    {#each HELP_CHIPS as chip (chip)}
-      <button type="button" class="chat-chip" onclick={() => insertChip(chip)}>
-        {chip}
-      </button>
-    {/each}
-  </div>
+  <div class="chat-footer">
+    <div class="chat-chips" role="group" aria-label={t("chat.helpChipsAria")}>
+      {#each HELP_CHIPS as chip (chip)}
+        <button
+          type="button"
+          class="chat-chip"
+          onclick={() => insertChip(chip)}
+        >
+          {chip}
+        </button>
+      {/each}
+    </div>
 
-  <div class="chat-input">
-    <textarea
-      bind:this={textareaEl}
-      aria-label={t("chat.placeholder")}
-      placeholder={t("chat.placeholder")}
-      bind:value={input}
-      onkeydown={handleKeydown}
-      rows={1}
-      disabled={sending}></textarea>
-    <button
-      type="button"
-      class="send-btn"
-      aria-label={t("chat.send")}
-      onclick={send}
-      disabled={sending || !input.trim()}
-    >
-      <Icon name="arrow_upward" size={22} />
-    </button>
+    <div class="chat-input">
+      <textarea
+        bind:this={textareaEl}
+        aria-label={t("chat.placeholder")}
+        placeholder={t("chat.placeholder")}
+        bind:value={input}
+        onkeydown={handleKeydown}
+        rows={1}
+        disabled={sending}></textarea>
+      <button
+        type="button"
+        class="send-btn"
+        aria-label={t("chat.send")}
+        onclick={send}
+        disabled={sending || !input.trim()}
+      >
+        <Icon name="arrow_upward" size={22} />
+      </button>
+    </div>
   </div>
 </div>
 
@@ -409,6 +420,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0;
     font-family: "Google Sans Flex", system-ui, sans-serif;
     font-size: 14px;
   }
@@ -594,6 +606,13 @@
   .chat-clear-no {
     background: var(--surface-base);
     color: var(--text);
+  }
+
+  .chat-footer {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    margin-top: auto;
   }
 
   .chat-chips {

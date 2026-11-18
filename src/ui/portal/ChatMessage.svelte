@@ -5,16 +5,8 @@
   import type { AgentEvent } from "../../sdk";
   import { marked } from "marked";
   import DOMPurify from "dompurify";
-  import Icon from "../Icon.svelte";
-  import { t } from "../../i18n.svelte";
 
   let { event }: { event: AgentEvent } = $props();
-
-  let expanded = $state(false);
-
-  function toggleExpanded(): void {
-    expanded = !expanded;
-  }
 
   function getSanitizedHTML(content: string): string {
     const html = marked.parse(content) as string;
@@ -38,54 +30,6 @@
       <div class="bubble">{@html getSanitizedHTML(event.content ?? "")}</div>
     </div>
   {/if}
-{:else if event.type === "tool_call"}
-  <div class="msg system">
-    <button
-      type="button"
-      class="bubble tool-call"
-      aria-expanded={expanded}
-      aria-label={t("chat.toolCall", { name: event.toolName ?? "" })}
-      onclick={toggleExpanded}
-    >
-      <Icon name="build" size={18} />
-      <span class="tc-name">{event.toolName}</span>
-      {#if event.toolArgs}
-        {#if expanded}
-          <span class="tc-args">{JSON.stringify(event.toolArgs)}</span>
-        {:else}
-          <span class="tc-args"
-            >{JSON.stringify(event.toolArgs).slice(0, 80)}{event.toolArgs &&
-            JSON.stringify(event.toolArgs).length > 80
-              ? "..."
-              : ""}</span
-          >
-        {/if}
-      {/if}
-    </button>
-  </div>
-{:else if event.type === "tool_result"}
-  <div class="msg system">
-    <button
-      type="button"
-      class="bubble tool-result"
-      class:error={event.error}
-      aria-expanded={expanded}
-      aria-label={t("chat.toolResult", { name: event.toolName ?? "" })}
-      onclick={toggleExpanded}
-    >
-      <Icon name={event.error ? "error" : "check_circle"} size={18} />
-      <span class="tr-text">
-        {#if expanded}
-          {event.content ?? ""}
-        {:else}
-          {(event.content ?? "").slice(0, 200)}{(event.content ?? "").length >
-          200
-            ? "..."
-            : ""}
-        {/if}
-      </span>
-    </button>
-  </div>
 {:else if event.type === "error"}
   <div class="msg system">
     <div class="bubble error-msg">{event.content}</div>
@@ -129,85 +73,6 @@
     border: 1px solid var(--border-subtle);
     color: var(--text);
     border-bottom-left-radius: 4px;
-  }
-
-  button.bubble {
-    font: inherit;
-    text-align: left;
-    appearance: none;
-    cursor: pointer;
-    color: inherit;
-  }
-
-  button.bubble:focus-visible {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: 1px;
-  }
-
-  .msg.system .bubble.tool-call,
-  .msg.system .bubble.tool-result {
-    cursor: pointer;
-  }
-
-  .tool-call {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface-base);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-    border-bottom-left-radius: 4px;
-    font-size: 12px;
-  }
-
-  .tool-call span:first-child {
-    font-size: 14px;
-    flex-shrink: 0;
-    color: var(--text-secondary);
-  }
-
-  .tc-name {
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .tc-args {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 160px;
-    color: var(--text-secondary);
-  }
-
-  .tool-result {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    background: var(--surface-base);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-    border-bottom-left-radius: 4px;
-    font-size: 12px;
-  }
-
-  .tool-result span:first-child {
-    font-size: 14px;
-    flex-shrink: 0;
-    color: var(--info-ink);
-  }
-
-  .tool-result.error {
-    border-left: 2px solid var(--red);
-  }
-
-  .tool-result.error span:first-child {
-    color: var(--danger-ink);
-  }
-
-  .tr-text {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .error-msg {
