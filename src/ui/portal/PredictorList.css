@@ -210,8 +210,10 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.drawer-apply,
-.drawer-cancel {
+/* Beat shared.css `:where(#fsp-qol-root) button[class] { background: transparent }`
+ * (source-order ties with tag+class). Id+tag+class wins regardless of import order. */
+#fsp-qol-root button.drawer-apply,
+#fsp-qol-root button.drawer-cancel {
   flex: 1;
   padding: 8px 16px;
   border: none;
@@ -222,26 +224,26 @@
   cursor: pointer;
 }
 
-.drawer-apply {
-  background: var(--accent);
+#fsp-qol-root button.drawer-apply {
+  background: var(--accent-strong);
   color: var(--base);
 }
 
-.drawer-apply:hover {
+#fsp-qol-root button.drawer-apply:hover {
   opacity: 0.9;
 }
 
-.drawer-cancel {
-  background: color-mix(in srgb, var(--surface0) 70%, transparent);
+#fsp-qol-root button.drawer-cancel {
+  background: color-mix(in srgb, var(--surface1) 85%, var(--text) 8%);
   color: var(--text);
 }
 
-.drawer-cancel:hover {
-  background: color-mix(in srgb, var(--surface0) 85%, transparent);
+#fsp-qol-root button.drawer-cancel:hover {
+  background: var(--surface1);
 }
 
-.drawer-apply:focus-visible,
-.drawer-cancel:focus-visible {
+#fsp-qol-root button.drawer-apply:focus-visible,
+#fsp-qol-root button.drawer-cancel:focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 1px;
 }

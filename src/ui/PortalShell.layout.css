@@ -82,8 +82,12 @@
 }
 
 .chat-rail {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
   flex-shrink: 0;
   width: 0;
+  min-height: 0;
   overflow: hidden;
   transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -94,9 +98,11 @@
 
 .chat-panel {
   box-sizing: border-box;
-  width: 340px;
+  flex: 1 1 auto;
+  width: var(--chat-w, 340px);
   min-width: var(--chat-w, 340px);
-  height: 100%;
+  min-height: 0;
+  height: auto;
   background: var(--surface-raised);
   border: none;
   border-left: 1px solid var(--border-subtle);
@@ -104,13 +110,18 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 0;
   position: relative;
   opacity: 0;
   transform: translateX(16px);
   transition:
     opacity 0.22s ease,
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ChatSidebar root must fill the rail so the composer stays bottom-anchored. */
+.chat-panel > :not(.chat-resize-handle) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chat-rail.open .chat-panel {
