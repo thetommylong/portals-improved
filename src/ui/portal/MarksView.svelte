@@ -13,6 +13,7 @@
     writeTerms,
   } from "../../marksCache";
   import { exportGradesToCSV } from "./csvExport";
+  import { extractMilestones } from "./marksHelpers";
   import MarksGridSkeleton from "./MarksGridSkeleton.svelte";
   import PredictorDrawer from "./PredictorDrawer.svelte";
   import { pageLoading } from "./pageLoading.svelte";
@@ -89,17 +90,18 @@
   function classify(m: MarkCommon): MarkGroups {
     const tx: [string, string][] = [];
     const skills: [string, string][] = [];
-    const milestones: [string, string][] = [];
     const other: [string, string][] = [];
+    const dto = m.markDTO ?? {};
+    const milestones = extractMilestones(dto);
+    const milestoneKeys = new Set(milestones.map(([key]) => key));
 
-    for (const pair of Object.entries(m.markDTO ?? {})) {
+    for (const pair of Object.entries(dto)) {
       const [key, raw] = pair;
       if (raw === undefined || raw === null || raw === "") continue;
       const value = String(raw);
       if (/^Đánh giá thường xuyên/i.test(key)) tx.push([key, value]);
       else if (key.startsWith("- ")) skills.push([key.slice(2), value]);
-      else if (/giữa kỳ|cuối kỳ|cuối kì|TB cuối kỳ/i.test(key))
-        milestones.push([key, value]);
+      else if (milestoneKeys.has(key)) continue;
       else other.push([key, value]);
     }
 

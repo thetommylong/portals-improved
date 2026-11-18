@@ -1,0 +1,97 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 thetommylong */
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--mantle) 70%, transparent);
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  width: 480px;
+  max-width: 100%;
+  height: 100%;
+  background: var(--base);
+  border-left: 1px solid var(--border-subtle);
+  font-family: "Google Sans Flex", system-ui, sans-serif;
+  transform-origin: center right;
+}
+
+.drawer:focus-visible {
+  outline: none;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.drawer-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.drawer-close {
+  display: inline-grid;
+  place-items: center;
+  width: var(--hit-close);
+  height: var(--hit-close);
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.drawer-close > .fsp-icon,
+.drawer-close > .drawer-close-icon {
+  display: block;
+  translate: 0 -0.5px;
+}
+
+.drawer-close:hover {
+  color: var(--text);
+  background: var(--surface-base);
+}
+
+.drawer-close:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 1px;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.drawer-close-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .drawer {
+    width: 100%;
+  }
+}

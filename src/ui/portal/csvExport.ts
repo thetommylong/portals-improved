@@ -4,7 +4,7 @@
 import type { MarkCommon } from "../../types/portal";
 import { t } from "../../i18n.svelte";
 import { escapeCsvCell } from "./csvCell";
-import { getCKValue, getGKValue } from "./marksHelpers";
+import { extractMilestones, getCKValue, getGKValue } from "./marksHelpers";
 
 export { escapeCsvCell, neutralizeCsvFormula } from "./csvCell";
 
@@ -18,23 +18,6 @@ function hasNumericScore(m: MarkCommon): boolean {
     }
   }
   return false;
-}
-
-function extractMilestones(
-  markDTO: Record<string, unknown>,
-): [string, string][] {
-  const milestones: [string, string][] = [];
-  if (!markDTO) return milestones;
-  for (const [key, raw] of Object.entries(markDTO)) {
-    if (raw === undefined || raw === null || raw === "") continue;
-    const value = String(raw);
-    if (
-      /giữa Kỳ|giữa kì|giữa kỳ|Cuối Kỳ|cuối kì|cuối kỳ|TB cuối kỳ/i.test(key)
-    ) {
-      milestones.push([key, value]);
-    }
-  }
-  return milestones;
 }
 
 export function exportGradesToCSV(

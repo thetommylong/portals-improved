@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  extractMilestones,
   getCKValue,
   getGKValue,
   parseScore,
@@ -30,6 +31,30 @@ describe("milestone helpers", () => {
   it("reads GK / CK", () => {
     expect(getGKValue(milestones)).toBe(7);
     expect(getCKValue(milestones)).toBe(8);
+  });
+});
+
+describe("extractMilestones", () => {
+  it("returns empty for missing dto", () => {
+    expect(extractMilestones(undefined)).toEqual([]);
+    expect(extractMilestones({})).toEqual([]);
+  });
+
+  it("keeps GK / CK / TB cuối pairs and skips empty", () => {
+    expect(
+      extractMilestones({
+        "Điểm giữa kỳ": "7",
+        "Điểm cuối kì": "8",
+        "TB cuối kỳ": "7.5",
+        "Đánh giá thường xuyên 1": "9",
+        skip: "",
+        also: null,
+      }),
+    ).toEqual([
+      ["Điểm giữa kỳ", "7"],
+      ["Điểm cuối kì", "8"],
+      ["TB cuối kỳ", "7.5"],
+    ]);
   });
 });
 

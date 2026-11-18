@@ -23,6 +23,21 @@ export function getMilestoneValue(
 const GK_REGEX = /giữa\s*k[ìiỳ]/i;
 const CK_REGEX = /cuối\s*k[ìiỳ]/i;
 const TX_REGEX = /^Đánh giá thường xuyên/i;
+/** Keys that belong in the milestone column (GK / CK / TB cuối). */
+const MILESTONE_KEY_REGEX = /giữa\s*k[ìiỳ]|cuối\s*k[ìiỳ]|TB\s*cuối/i;
+
+export function extractMilestones(
+  markDTO: Record<string, unknown> | undefined | null,
+): [string, string][] {
+  const milestones: [string, string][] = [];
+  if (!markDTO) return milestones;
+  for (const [key, raw] of Object.entries(markDTO)) {
+    if (raw === undefined || raw === null || raw === "") continue;
+    if (!MILESTONE_KEY_REGEX.test(key)) continue;
+    milestones.push([key, String(raw)]);
+  }
+  return milestones;
+}
 
 export function getGKValue(milestones: [string, string][]): number | null {
   return getMilestoneValue(milestones, GK_REGEX);
@@ -31,7 +46,6 @@ export function getGKValue(milestones: [string, string][]): number | null {
 export function getCKValue(milestones: [string, string][]): number | null {
   return getMilestoneValue(milestones, CK_REGEX);
 }
-
 export function getTXNumbers(
   dto: Record<string, unknown> | undefined,
 ): number[] {

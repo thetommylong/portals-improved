@@ -27,6 +27,8 @@
   import { pointer } from "../pointer.svelte";
   import { pageLoading } from "./portal/pageLoading.svelte";
   import ViewChunkSkeleton from "./portal/ViewChunkSkeleton.svelte";
+  import ShellChatRail from "./portal/ShellChatRail.svelte";
+  import { ShellViewRegistry } from "./portal/shellViewRegistry.svelte";
   import "./PortalShell.layout.css";
   // Nav views + ChatSidebar load lazily per activeNav / chatOpen so heavy
   // modules (Marks predictor, standing, feedback, marked/DOMPurify) stay out
@@ -87,29 +89,7 @@
   let ChatSidebarComp = $state<
     typeof import("./portal/ChatSidebar.svelte").default | null
   >(null);
-  let ScheduleViewComp = $state<
-    typeof import("./portal/ScheduleView.svelte").default | null
-  >(null);
-  let MarksViewComp = $state<
-    typeof import("./portal/MarksView.svelte").default | null
-  >(null);
-  let FeedbackViewComp = $state<
-    typeof import("./portal/FeedbackView.svelte").default | null
-  >(null);
-  let HomeworksViewComp = $state<
-    typeof import("./portal/HomeworksView.svelte").default | null
-  >(null);
-  let EventsViewComp = $state<
-    typeof import("./portal/EventsView.svelte").default | null
-  >(null);
-  let StandingViewComp = $state<
-    typeof import("./portal/StandingView.svelte").default | null
-  >(null);
-  let ClubsViewComp = $state<
-    typeof import("./portal/ClubsView.svelte").default | null
-  >(null);
-  const CHAT_WIDTH_MIN = 280;
-  const CHAT_WIDTH_MAX = 640;
+  const views = new ShellViewRegistry();
   let chatWidth = $state(340);
 
   $effect(() => {
@@ -121,89 +101,8 @@
 
   $effect(() => {
     const nav = activeNav;
-    switch (nav) {
-      case "home":
-        if (!ScheduleViewComp) {
-          void import("./portal/ScheduleView.svelte").then((m) => {
-            if (activeNav !== nav) return;
-            ScheduleViewComp = m.default;
-          });
-        }
-        break;
-      case "marks":
-        if (!MarksViewComp) {
-          void import("./portal/MarksView.svelte").then((m) => {
-            if (activeNav !== nav) return;
-            MarksViewComp = m.default;
-          });
-        }
-        break;
-      case "feedback":
-        if (!FeedbackViewComp) {
-          void import("./portal/FeedbackView.svelte").then((m) => {
-            if (activeNav !== nav) return;
-            FeedbackViewComp = m.default;
-          });
-        }
-        break;
-      case "homeworks":
-        if (!HomeworksViewComp) {
-          void import("./portal/HomeworksView.svelte").then((m) => {
-            if (activeNav !== nav) return;
-            HomeworksViewComp = m.default;
-          });
-        }
-        break;
-      case "events":
-        if (!EventsViewComp) {
-          void import("./portal/EventsView.svelte").then((m) => {
-            if (activeNav !== nav) return;
-            EventsViewComp = m.default;
-          });
-        }
-        break;
-      case "standing":
-        if (!StandingViewComp) {
-          void import("./portal/StandingView.svelte").then((m) => {
-            if (activeNav !== nav) return;
-            StandingViewComp = m.default;
-          });
-        }
-        break;
-      case "clubs":
-        if (!ClubsViewComp) {
-          void import("./portal/ClubsView.svelte").then((m) => {
-            if (activeNav !== nav) return;
-            ClubsViewComp = m.default;
-          });
-        }
-        break;
-    }
+    views.ensureLoaded(nav, () => activeNav === nav);
   });
-
-  function onChatResizeStart(e: PointerEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = chatWidth;
-    const onMove = (ev: PointerEvent) => {
-      const delta = startX - ev.clientX;
-      const next = Math.min(
-        CHAT_WIDTH_MAX,
-        Math.max(CHAT_WIDTH_MIN, startWidth + delta),
-      );
-      chatWidth = next;
-    };
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }
 
   interface PageRef {
     refresh(): void;
@@ -393,27 +292,9 @@
     pages[activeNav]?.refresh();
   }
 
-  const viewChunkPending = $derived.by(() => {
-    const f = runtime.adapter.features;
-    switch (activeNav) {
-      case "home":
-        return f.schedule && !ScheduleViewComp;
-      case "marks":
-        return f.marks && !MarksViewComp;
-      case "feedback":
-        return f.feedback && !FeedbackViewComp;
-      case "homeworks":
-        return f.homeworks && !HomeworksViewComp;
-      case "events":
-        return f.events && !EventsViewComp;
-      case "standing":
-        return f.standing && !StandingViewComp;
-      case "clubs":
-        return f.clubs && !ClubsViewComp;
-    }
-  });
-
-  const contentRefreshing = $derived(pageLoading.active || viewChunkPending);
+  const contentRefreshing = $derived(
+    pageLoading.active || views.isPending(activeNav, runtime.adapter.features),
+  );
 
   function onNotifications() {
     if (notifOpen) {
@@ -449,32 +330,6 @@
       return;
     }
     if (narrow && chatOpen) closeChat();
-  }
-
-  function onChatRailTransitionEnd(e: TransitionEvent) {
-    if (e.target !== e.currentTarget) return;
-    // Desktop animates width; mobile animates transform.
-    if (e.propertyName !== "width" && e.propertyName !== "transform") return;
-    if (chatOpen) return;
-    chatPresent = false;
-    restoreFocus();
-  }
-
-  function onChatResizeKeydown(e: KeyboardEvent) {
-    const step = e.shiftKey ? 32 : 16;
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      chatWidth = Math.min(CHAT_WIDTH_MAX, chatWidth + step);
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      chatWidth = Math.max(CHAT_WIDTH_MIN, chatWidth - step);
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      chatWidth = CHAT_WIDTH_MIN;
-    } else if (e.key === "End") {
-      e.preventDefault();
-      chatWidth = CHAT_WIDTH_MAX;
-    }
   }
 </script>
 
@@ -545,6 +400,7 @@
     <main id="fsp-main" class="main" tabindex="-1">
       {#if activeNav === "homeworks"}
         {#if runtime.adapter.features.homeworks}
+          {@const HomeworksViewComp = views.HomeworksViewComp}
           {#if HomeworksViewComp}
             <HomeworksViewComp studentId={userId} bind:this={pages.homeworks} />
           {:else}
@@ -555,6 +411,7 @@
         {/if}
       {:else if activeNav === "feedback"}
         {#if runtime.adapter.features.feedback}
+          {@const FeedbackViewComp = views.FeedbackViewComp}
           {#if FeedbackViewComp}
             <FeedbackViewComp studentId={userId} bind:this={pages.feedback} />
           {:else}
@@ -565,6 +422,7 @@
         {/if}
       {:else if activeNav === "marks"}
         {#if runtime.adapter.features.marks}
+          {@const MarksViewComp = views.MarksViewComp}
           {#if MarksViewComp}
             <MarksViewComp studentId={userId} bind:this={pages.marks} />
           {:else}
@@ -575,6 +433,7 @@
         {/if}
       {:else if activeNav === "events"}
         {#if runtime.adapter.features.events}
+          {@const EventsViewComp = views.EventsViewComp}
           {#if EventsViewComp}
             <EventsViewComp studentId={userId} bind:this={pages.events} />
           {:else}
@@ -585,6 +444,7 @@
         {/if}
       {:else if activeNav === "standing"}
         {#if runtime.adapter.features.standing}
+          {@const StandingViewComp = views.StandingViewComp}
           {#if StandingViewComp}
             <StandingViewComp studentId={userId} bind:this={pages.standing} />
           {:else}
@@ -595,6 +455,7 @@
         {/if}
       {:else if activeNav === "clubs"}
         {#if runtime.adapter.features.clubs}
+          {@const ClubsViewComp = views.ClubsViewComp}
           {#if ClubsViewComp}
             <ClubsViewComp studentId={userId} bind:this={pages.clubs} />
           {:else}
@@ -605,6 +466,7 @@
         {/if}
       {:else if activeNav === "home"}
         {#if runtime.adapter.features.schedule}
+          {@const ScheduleViewComp = views.ScheduleViewComp}
           {#if ScheduleViewComp}
             <ScheduleViewComp
               studentId={userId}
@@ -620,42 +482,16 @@
       {/if}
     </main>
 
-    {#if chatPresent && runtime.adapter.features.session}
-      <div
-        class="chat-rail"
-        class:open={chatOpen}
-        style={`--chat-w: ${chatWidth}px`}
-        ontransitionend={onChatRailTransitionEnd}
-      >
-        <aside
-          class="chat-panel"
-          style={`width: ${chatWidth}px;`}
-          aria-label={t("aria.assistant")}
-          aria-hidden={!chatOpen}
-          inert={!chatOpen}
-        >
-          <!-- splitter: APG uses role=separator + tabindex; svelte a11y disagrees with that combo -->
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <div
-            class="chat-resize-handle"
-            role="separator"
-            tabindex="0"
-            aria-orientation="vertical"
-            aria-valuenow={chatWidth}
-            aria-valuemin={CHAT_WIDTH_MIN}
-            aria-valuemax={CHAT_WIDTH_MAX}
-            aria-label={t("aria.resizeAssistant")}
-            onpointerdown={onChatResizeStart}
-            onkeydown={onChatResizeKeydown}
-          ></div>
-          {#if agentContext && ChatSidebarComp}
-            <ChatSidebarComp {agentContext} onclose={closeChat} />
-          {:else}
-            <div class="chat-loading">{t("chat.loadingContext")}</div>
-          {/if}
-        </aside>
-      </div>
+    {#if runtime.adapter.features.session}
+      <ShellChatRail
+        bind:open={chatOpen}
+        bind:present={chatPresent}
+        bind:width={chatWidth}
+        {agentContext}
+        {ChatSidebarComp}
+        onClose={closeChat}
+        onClosed={restoreFocus}
+      />
     {/if}
   </div>
 
