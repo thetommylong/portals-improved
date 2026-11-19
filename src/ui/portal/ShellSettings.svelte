@@ -541,41 +541,48 @@
     }
   }
 
+  /* Tab row mirrors sidebar nav selection (accent tint), not a segmented track. */
   .settings-segs {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 4px;
-    padding: 4px;
     margin: 0 0 12px;
-    border-radius: 10px;
-    background: var(--mantle);
   }
 
   .settings-seg {
     border: 0;
     border-radius: 8px;
     min-height: var(--hit-step);
+    padding: 6px 12px;
     background: transparent;
     color: var(--text-secondary);
     font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
+    transition:
+      background 0.14s ease,
+      color 0.14s ease;
+  }
+
+  .settings-seg:hover:not(.on):not(.locked) {
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    color: var(--text);
   }
 
   .settings-seg.on {
-    background: var(--surface-base);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
     color: var(--text);
   }
 
   .settings-seg.locked {
-    opacity: 0.45;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
   .settings-seg:focus-visible {
     outline: 2px solid var(--accent-strong);
-    outline-offset: 1px;
+    outline-offset: 2px;
   }
 
   .settings-body {
