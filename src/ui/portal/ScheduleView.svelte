@@ -19,7 +19,8 @@
     ondatelabel,
   }: {
     studentId: string;
-    ondatelabel?: (label: string) => void;
+    /** ISO value for the picker + display label (week range on desktop). */
+    ondatelabel?: (info: { iso: string; label: string; week: boolean }) => void;
   } = $props();
 
   const HOUR_PX = 96;
@@ -222,24 +223,28 @@
     weekDays.some((day) => day.toString() === todayIso),
   );
 
-  const computedLabel = $derived(
-    isDesktop
-      ? (() => {
-          const mon = weekDays[0];
-          const sun = weekDays[6];
-          const fmt = (d: Temporal.PlainDate) =>
-            d.toLocaleString(i18n.locale, { month: "short", day: "numeric" });
-          return `${fmt(mon)} – ${fmt(sun)}`;
-        })()
-      : selectedDate.toLocaleString(i18n.locale, {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-        }),
-  );
-
   $effect(() => {
-    ondatelabel?.(computedLabel);
+    if (isDesktop) {
+      const mon = weekDays[0]!;
+      const sun = weekDays[6]!;
+      const fmt = (d: Temporal.PlainDate) =>
+        d.toLocaleString(i18n.locale, { month: "short", day: "numeric" });
+      ondatelabel?.({
+        iso: mon.toString(),
+        label: `${fmt(mon)} – ${fmt(sun)}`,
+        week: true,
+      });
+      return;
+    }
+    ondatelabel?.({
+      iso: selectedDate.toString(),
+      label: selectedDate.toLocaleString(i18n.locale, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      week: false,
+    });
   });
 
   export function goTo(delta: number) {
@@ -250,6 +255,16 @@
 
   export function goToday() {
     selectedDate = Temporal.Now.plainDateISO();
+  }
+
+  export function setDate(iso: string) {
+    try {
+      const picked = Temporal.PlainDate.from(iso);
+      // Desktop week grid: land on Monday so the picker value matches the label.
+      selectedDate = isDesktop ? getWeek(picked)[0]! : picked;
+    } catch {
+      /* ignore malformed picker values */
+    }
   }
 
   export function refresh() {
