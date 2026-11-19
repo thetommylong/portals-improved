@@ -3,7 +3,16 @@
 
 import { describe, expect, it } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
-import { getWeek, monthGrid, sameDay, sameWeek } from "./dateHelper";
+import {
+  centuryDecades,
+  centuryStart,
+  decadeStart,
+  decadeYears,
+  getWeek,
+  monthGrid,
+  sameDay,
+  sameWeek,
+} from "./dateHelper";
 
 describe("getWeek", () => {
   it("returns Mon–Sun containing the day", () => {
@@ -34,5 +43,18 @@ describe("sameWeek", () => {
     expect(sameWeek(mon, fri)).toBe(true);
     expect(sameWeek(mon, next)).toBe(false);
     expect(sameDay(mon, mon)).toBe(true);
+  });
+});
+
+describe("decade/century helpers", () => {
+  it("aligns decade and century starts", () => {
+    expect(decadeStart(2026)).toBe(2020);
+    expect(centuryStart(2026)).toBe(2000);
+    expect(decadeYears(2026)).toEqual([
+      2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029,
+    ]);
+    expect(centuryDecades(2026)).toEqual([
+      2000, 2010, 2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090,
+    ]);
   });
 });

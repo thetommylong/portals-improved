@@ -3,11 +3,23 @@
   // Copyright (C) 2026 thetommylong
 
   import { Temporal } from "@js-temporal/polyfill";
+  import { untrack } from "svelte";
   import { scale } from "svelte/transition";
   import { i18n, t } from "../../i18n.svelte";
-  import { getWeek, monthGrid, sameDay, sameWeek } from "./dateHelper";
+  import {
+    centuryDecades,
+    centuryStart,
+    decadeStart,
+    decadeYears,
+    getWeek,
+    monthGrid,
+    sameDay,
+    sameWeek,
+  } from "./dateHelper";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { popScale } from "./popTransition";
+
+  type ViewLevel = "day" | "month" | "year" | "century";
 
   let {
     open = false,
@@ -27,6 +39,7 @@
 
   let panelEl = $state<HTMLDivElement>();
   let viewMonth = $state(Temporal.Now.plainDateISO().with({ day: 1 }));
+  let viewLevel = $state<ViewLevel>("day");
   let hoverDay = $state<Temporal.PlainDate | null>(null);
 
   const selected = $derived.by(() => {
@@ -39,7 +52,7 @@
 
   const today = Temporal.Now.plainDateISO();
 
-  const cells = $derived(monthGrid(viewMonth));
+  const dayCells = $derived(monthGrid(viewMonth));
 
   const weekdayLabels = $derived.by(() => {
     const mon = Temporal.PlainDate.from("2026-03-16"); // known Monday
@@ -48,17 +61,63 @@
     );
   });
 
-  const monthTitle = $derived(
-    viewMonth.toLocaleString(i18n.locale, {
-      month: "long",
-      year: "numeric",
-    }),
+  const monthLabels = $derived.by(() => {
+    const jan = Temporal.PlainDate.from(`${viewMonth.year}-01-01`);
+    return Array.from({ length: 12 }, (_, i) =>
+      jan.add({ months: i }).toLocaleString(i18n.locale, { month: "short" }),
+    );
+  });
+
+  const yearCells = $derived(decadeYears(viewMonth.year));
+  const decadeCells = $derived(centuryDecades(viewMonth.year));
+
+  const headTitle = $derived.by(() => {
+    if (viewLevel === "day") {
+      return viewMonth.toLocaleString(i18n.locale, {
+        month: "long",
+        year: "numeric",
+      });
+    }
+    if (viewLevel === "month") {
+      return String(viewMonth.year);
+    }
+    if (viewLevel === "year") {
+      const start = decadeStart(viewMonth.year);
+      return `${start} – ${start + 9}`;
+    }
+    const start = centuryStart(viewMonth.year);
+    return `${start} – ${start + 90}`;
+  });
+
+  const prevAria = $derived(
+    viewLevel === "day"
+      ? t("header.datePicker.prevMonth")
+      : viewLevel === "month"
+        ? t("header.datePicker.prevYear")
+        : viewLevel === "year"
+          ? t("header.datePicker.prevDecade")
+          : t("header.datePicker.prevCentury"),
   );
 
+  const nextAria = $derived(
+    viewLevel === "day"
+      ? t("header.datePicker.nextMonth")
+      : viewLevel === "month"
+        ? t("header.datePicker.nextYear")
+        : viewLevel === "year"
+          ? t("header.datePicker.nextDecade")
+          : t("header.datePicker.nextCentury"),
+  );
+
+  // Reset drill only when the popover opens — not on every viewMonth write
+  // (that was snapping century → day).
   $effect(() => {
     if (!open) return;
-    viewMonth = selected.with({ day: 1 });
+    viewLevel = "day";
     hoverDay = null;
+    untrack(() => {
+      viewMonth = selected.with({ day: 1 });
+    });
   });
 
   $effect(() => {
@@ -77,14 +136,48 @@
     };
   });
 
-  function shiftMonth(delta: number) {
-    viewMonth = viewMonth.add({ months: delta });
+  function shift(delta: number) {
+    if (viewLevel === "day") {
+      viewMonth = viewMonth.add({ months: delta });
+      return;
+    }
+    if (viewLevel === "month") {
+      viewMonth = viewMonth.add({ years: delta });
+      return;
+    }
+    if (viewLevel === "year") {
+      viewMonth = viewMonth.add({ years: delta * 10 });
+      return;
+    }
+    viewMonth = viewMonth.add({ years: delta * 100 });
   }
 
-  function pick(day: Temporal.PlainDate) {
+  function zoomOut() {
+    if (viewLevel === "day") viewLevel = "month";
+    else if (viewLevel === "month") viewLevel = "year";
+    else if (viewLevel === "year") viewLevel = "century";
+    else viewLevel = "day"; // century title → back to days
+  }
+
+  function pickDay(day: Temporal.PlainDate) {
     const chosen = weekMode ? getWeek(day)[0]! : day;
     onpick(chosen.toString());
     onclose();
+  }
+
+  function pickMonth(month: number) {
+    viewMonth = viewMonth.with({ month, day: 1 });
+    viewLevel = "day";
+  }
+
+  function pickYear(year: number) {
+    viewMonth = viewMonth.with({ year, day: 1 });
+    viewLevel = "month";
+  }
+
+  function pickDecade(decade: number) {
+    viewMonth = viewMonth.with({ year: decade, day: 1 });
+    viewLevel = "year";
   }
 
   function dayClasses(day: Temporal.PlainDate) {
@@ -98,8 +191,6 @@
         today: isToday,
         selected: inSelectedWeek,
         hover: inHoverWeek && !inSelectedWeek,
-        "week-start": day.dayOfWeek === 1,
-        "week-end": day.dayOfWeek === 7,
       };
     }
     return {
@@ -128,65 +219,140 @@
       <button
         type="button"
         class="date-picker-nav"
-        aria-label={t("header.datePicker.prevMonth")}
-        onclick={() => shiftMonth(-1)}
+        aria-label={prevAria}
+        onclick={() => shift(-1)}
       >
         ‹
       </button>
-      <span class="date-picker-title">{monthTitle}</span>
+      <button
+        type="button"
+        class="date-picker-title zoom"
+        aria-label={viewLevel === "century"
+          ? t("header.datePicker.zoomToDays")
+          : t("header.datePicker.zoomOut")}
+        onclick={zoomOut}
+      >
+        {headTitle}
+      </button>
       <button
         type="button"
         class="date-picker-nav"
-        aria-label={t("header.datePicker.nextMonth")}
-        onclick={() => shiftMonth(1)}
+        aria-label={nextAria}
+        onclick={() => shift(1)}
       >
         ›
       </button>
     </div>
 
-    <div class="date-picker-weekdays" aria-hidden="true">
-      {#each weekdayLabels as label, i (i)}
-        <span>{label}</span>
-      {/each}
-    </div>
+    {#if viewLevel === "day"}
+      <div class="date-picker-weekdays" aria-hidden="true">
+        {#each weekdayLabels as label, i (i)}
+          <span>{label}</span>
+        {/each}
+      </div>
 
-    <div
-      class="date-picker-grid"
-      role="grid"
-      tabindex="0"
-      aria-label={monthTitle}
-      onmouseleave={() => (hoverDay = null)}
-    >
-      {#each cells as day (day.toString())}
-        <button
-          type="button"
-          class="date-picker-day"
-          class:outside={dayClasses(day).outside}
-          class:today={dayClasses(day).today}
-          class:selected={dayClasses(day).selected}
-          class:hover={dayClasses(day).hover}
-          class:week-start={weekMode && day.dayOfWeek === 1}
-          class:week-end={weekMode && day.dayOfWeek === 7}
-          aria-label={day.toLocaleString(i18n.locale, {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}
-          aria-current={sameDay(day, today) ? "date" : undefined}
-          aria-pressed={weekMode
-            ? sameWeek(day, selected)
-            : sameDay(day, selected)}
-          onmouseenter={() => (hoverDay = day)}
-          onclick={() => pick(day)}
-        >
-          {day.day}
-        </button>
-      {/each}
-    </div>
+      <div
+        class="date-picker-grid days"
+        role="grid"
+        tabindex="0"
+        aria-label={headTitle}
+        onmouseleave={() => (hoverDay = null)}
+      >
+        {#each dayCells as day (day.toString())}
+          {@const cls = dayClasses(day)}
+          <button
+            type="button"
+            class="date-picker-day"
+            class:outside={cls.outside}
+            class:today={cls.today}
+            class:selected={cls.selected}
+            class:hover={cls.hover}
+            class:week-start={weekMode && day.dayOfWeek === 1}
+            class:week-end={weekMode && day.dayOfWeek === 7}
+            aria-label={day.toLocaleString(i18n.locale, {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+            aria-current={sameDay(day, today) ? "date" : undefined}
+            aria-pressed={weekMode
+              ? sameWeek(day, selected)
+              : sameDay(day, selected)}
+            onmouseenter={() => (hoverDay = day)}
+            onclick={() => pickDay(day)}
+          >
+            {day.day}
+          </button>
+        {/each}
+      </div>
 
-    {#if weekMode}
-      <p class="date-picker-hint">{t("header.datePicker.weekHint")}</p>
+      {#if weekMode}
+        <p class="date-picker-hint">{t("header.datePicker.weekHint")}</p>
+      {/if}
+    {:else if viewLevel === "month"}
+      <div
+        class="date-picker-grid coarse"
+        role="grid"
+        tabindex="0"
+        aria-label={headTitle}
+      >
+        {#each monthLabels as label, monthIndex (monthIndex)}
+          {@const month = monthIndex + 1}
+          <button
+            type="button"
+            class="date-picker-cell"
+            class:selected={selected.year === viewMonth.year &&
+              selected.month === month}
+            class:today={today.year === viewMonth.year && today.month === month}
+            aria-pressed={selected.year === viewMonth.year &&
+              selected.month === month}
+            onclick={() => pickMonth(month)}
+          >
+            {label}
+          </button>
+        {/each}
+      </div>
+    {:else if viewLevel === "year"}
+      <div
+        class="date-picker-grid coarse decade"
+        role="grid"
+        tabindex="0"
+        aria-label={headTitle}
+      >
+        {#each yearCells as year (year)}
+          <button
+            type="button"
+            class="date-picker-cell"
+            class:selected={selected.year === year}
+            class:today={today.year === year}
+            aria-pressed={selected.year === year}
+            onclick={() => pickYear(year)}
+          >
+            {year}
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <div
+        class="date-picker-grid coarse decade"
+        role="grid"
+        tabindex="0"
+        aria-label={headTitle}
+      >
+        {#each decadeCells as decade (decade)}
+          <button
+            type="button"
+            class="date-picker-cell"
+            class:selected={decadeStart(selected.year) === decade}
+            class:today={decadeStart(today.year) === decade}
+            aria-pressed={decadeStart(selected.year) === decade}
+            onclick={() => pickDecade(decade)}
+          >
+            {decade}–{decade + 9}
+          </button>
+        {/each}
+      </div>
     {/if}
   </div>
 {/if}
@@ -221,9 +387,30 @@
 
   .date-picker-title {
     flex: 1;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
     text-align: center;
+    font-family: inherit;
     font-size: 13px;
     font-weight: 700;
+    color: var(--text);
+    line-height: var(--hit-step);
+  }
+
+  button.date-picker-title.zoom {
+    cursor: pointer;
+  }
+
+  button.date-picker-title.zoom:hover {
+    background: var(--surface-hover);
+  }
+
+  button.date-picker-title.zoom:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 
   .date-picker-nav {
@@ -266,23 +453,44 @@
 
   .date-picker-grid {
     display: grid;
+  }
+
+  .date-picker-grid.days {
     grid-template-columns: repeat(7, 1fr);
     gap: 2px 0;
   }
 
-  .date-picker-day {
+  .date-picker-grid.coarse {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .date-picker-grid.coarse.decade {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .date-picker-day,
+  .date-picker-cell {
     position: relative;
     z-index: 0;
-    height: 34px;
     border: none;
     border-radius: 8px;
     background: transparent;
     color: var(--text);
     font-family: inherit;
-    font-size: 12px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
+  }
+
+  .date-picker-day {
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .date-picker-cell {
+    min-height: 44px;
+    font-size: 13px;
   }
 
   .date-picker-day.outside {
@@ -291,7 +499,8 @@
   }
 
   /* Dot marker — survives week-strip border-radius: 0 on hover/select. */
-  .date-picker-day.today::after {
+  .date-picker-day.today::after,
+  .date-picker-cell.today:not(.selected)::after {
     content: "";
     position: absolute;
     left: 50%;
@@ -307,11 +516,13 @@
     background: var(--base);
   }
 
-  .date-picker-day.hover {
+  .date-picker-day.hover,
+  .date-picker-cell:hover {
     background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
 
-  .date-picker-day.selected {
+  .date-picker-day.selected,
+  .date-picker-cell.selected {
     background: var(--accent-strong);
     color: var(--base);
   }
@@ -331,7 +542,8 @@
     border-radius: 0 8px 8px 0;
   }
 
-  .date-picker-day:focus-visible {
+  .date-picker-day:focus-visible,
+  .date-picker-cell:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 1px;
     z-index: 1;
