@@ -114,6 +114,7 @@ export type AgentEventType =
   | "message"
   | "confirm"
   | "error"
+  | "retry"
   | "done";
 
 export interface AgentEvent {
@@ -126,6 +127,12 @@ export interface AgentEvent {
   httpStatus?: number;
   /** Provider error code when known (e.g. rate_limit_exceeded). */
   apiCode?: string | null;
+  /** 1-based retry count while waiting out a 429 (type: "retry"). */
+  attempt?: number;
+  /** Milliseconds until the next attempt (type: "retry"). */
+  delayMs?: number;
+  /** Max chat/completions attempts including the first (type: "retry"). */
+  maxAttempts?: number;
   confirmRequest?: ConfirmRequest;
   role?: "user" | "assistant";
 }

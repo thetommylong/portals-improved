@@ -136,13 +136,12 @@
 
   .error-status {
     flex-shrink: 0;
-    padding: 1px 7px;
+    padding: 2px 8px;
     border-radius: var(--radius-control);
     background: color-mix(in srgb, var(--red) 22%, transparent);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
   }
 
   .error-title {
