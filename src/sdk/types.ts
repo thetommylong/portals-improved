@@ -122,6 +122,10 @@ export interface AgentEvent {
   toolName?: string;
   toolArgs?: Record<string, unknown>;
   error?: boolean;
+  /** Present on `type: "error"` when the failure was an HTTP response. */
+  httpStatus?: number;
+  /** Provider error code when known (e.g. rate_limit_exceeded). */
+  apiCode?: string | null;
   confirmRequest?: ConfirmRequest;
   role?: "user" | "assistant";
 }

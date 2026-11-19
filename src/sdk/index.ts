@@ -8,7 +8,13 @@ import type {
   OpenAIMessage,
   ToolCall,
 } from "./types";
-import { gmOpenAI, gmOpenAIStream, getModel, isConfigured } from "./openai";
+import {
+  ApiHttpError,
+  gmOpenAI,
+  gmOpenAIStream,
+  getModel,
+  isConfigured,
+} from "./openai";
 import { buildSystemPrompt } from "./system";
 import { t } from "../i18n.svelte";
 import {
@@ -141,6 +147,19 @@ export function createAgent(
           temperature: 0.2,
         });
       } catch (err) {
+        if (err instanceof ApiHttpError) {
+          onEvent({
+            type: "error",
+            content: err.apiMessage || err.message,
+            httpStatus: err.status,
+            apiCode: err.apiCode,
+          });
+          history.push({
+            role: "assistant",
+            content: `[System error: ${err.message}]`,
+          });
+          return;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         onEvent({ type: "error", content: msg });
         history.push({
