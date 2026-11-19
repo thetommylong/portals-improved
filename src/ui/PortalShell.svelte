@@ -80,7 +80,17 @@
   let onboardingTourOpen = $state(false);
   let notifOpen = $state(false);
   let unreadCount = $state(0);
-  let scheduleDate = $state("");
+  // Local calendar day — not UTC (toISOString drifts near midnight).
+  let scheduleDate = $state(
+    ((d) =>
+      [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0"),
+      ].join("-"))(new Date()),
+  );
+  let scheduleLabel = $state("");
+  let scheduleWeekMode = $state(false);
   let lastTrigger = $state<HTMLElement>();
   let chatOpen = $state(false);
   /** Stays true during the close animation so the chat rail can slide out. */
@@ -108,8 +118,8 @@
     refresh(): void;
   }
   interface SchedulePageRef extends PageRef {
-    goTo(delta: number): void;
     goToday(): void;
+    setDate(iso: string): void;
   }
   let pages = $state<
     Partial<Record<PageId, PageRef>> & {
@@ -340,6 +350,8 @@
   <ShellHeader
     {activeNav}
     {scheduleDate}
+    {scheduleLabel}
+    {scheduleWeekMode}
     {chatOpen}
     {settingsOpen}
     {unreadCount}
@@ -351,8 +363,7 @@
     bind:overflowBtn
     onToggleSidebar={toggleSidebar}
     onGoToday={() => pages.home?.goToday()}
-    onGoPrev={() => pages.home?.goTo(-1)}
-    onGoNext={() => pages.home?.goTo(1)}
+    onDateChange={(iso) => pages.home?.setDate(iso)}
     onToggleChat={toggleChat}
     onToggleSettings={() => {
       if (settingsOpen) closeSettings();
@@ -470,7 +481,11 @@
           {#if ScheduleViewComp}
             <ScheduleViewComp
               studentId={userId}
-              ondatelabel={(label) => (scheduleDate = label)}
+              ondatelabel={(info) => {
+                scheduleDate = info.iso;
+                scheduleLabel = info.label;
+                scheduleWeekMode = info.week;
+              }}
               bind:this={pages.home}
             />
           {:else}

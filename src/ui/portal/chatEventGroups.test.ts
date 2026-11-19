@@ -52,4 +52,16 @@ describe("groupChatEvents", () => {
       result: { toolName: "b" },
     });
   });
+
+  it("skips ephemeral thinking/retry/done events", () => {
+    const events: AgentEvent[] = [
+      { type: "thinking" },
+      { type: "retry", attempt: 1, delayMs: 1000, maxAttempts: 6 },
+      { type: "message", role: "assistant", content: "ok" },
+      { type: "done" },
+    ];
+    expect(groupChatEvents(events)).toEqual([
+      { kind: "event", event: events[2] },
+    ]);
+  });
 });

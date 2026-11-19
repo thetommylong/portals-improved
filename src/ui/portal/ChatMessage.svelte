@@ -3,8 +3,11 @@
   // Copyright (C) 2026 thetommylong
 
   import type { AgentEvent } from "../../sdk";
+  import { apiErrorTitleKey } from "../../sdk/openai";
   import { marked } from "marked";
   import DOMPurify from "dompurify";
+  import Icon from "../Icon.svelte";
+  import { t, type MessageKey } from "../../i18n.svelte";
 
   let { event }: { event: AgentEvent } = $props();
 
@@ -18,6 +21,12 @@
         /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
     });
   }
+
+  const errorTitle = $derived(
+    event.type === "error" && event.httpStatus != null
+      ? t(apiErrorTitleKey(event.httpStatus) as MessageKey)
+      : null,
+  );
 </script>
 
 {#if event.type === "message"}
@@ -32,7 +41,34 @@
   {/if}
 {:else if event.type === "error"}
   <div class="msg system">
-    <div class="bubble error-msg">{event.content}</div>
+    <div class="bubble error-msg" role="alert">
+      <div class="error-head">
+        <Icon name="error" size={16} />
+        {#if event.httpStatus != null}
+          <span class="error-status">{event.httpStatus}</span>
+        {/if}
+        <span class="error-title"
+          >{errorTitle ?? t("chat.apiErrorTitle.other")}</span
+        >
+      </div>
+      {#if event.content}
+        <p class="error-detail">{event.content}</p>
+      {/if}
+      {#if event.apiCode}
+        <p class="error-code">
+          {t("chat.apiErrorCode", { code: event.apiCode })}
+        </p>
+      {/if}
+      {#if event.httpStatus === 429}
+        <p class="error-hint">{t("chat.apiErrorHint.rateLimit")}</p>
+      {:else if event.httpStatus === 401}
+        <p class="error-hint">{t("chat.apiErrorHint.auth")}</p>
+      {:else if event.httpStatus === 403}
+        <p class="error-hint">{t("chat.apiErrorHint.forbidden")}</p>
+      {:else if event.httpStatus === 418}
+        <p class="error-hint">{t("chat.apiErrorHint.teapot")}</p>
+      {/if}
+    </div>
   </div>
 {/if}
 
@@ -75,11 +111,64 @@
     border-bottom-left-radius: 4px;
   }
 
-  .error-msg {
-    background: color-mix(in srgb, var(--red) 12%, var(--surface0));
-    border: 1px solid color-mix(in srgb, var(--red) 25%, transparent);
+  /* Beat `.msg.system .bubble` so errors actually paint danger colors. */
+  .msg.system .bubble.error-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: color-mix(in srgb, var(--red) 16%, var(--surface-base));
+    border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
     color: var(--danger-ink);
-    border-bottom-left-radius: 4px;
+    white-space: normal;
+  }
+
+  .error-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .error-head > :global(.fsp-icon) {
+    flex-shrink: 0;
+    color: var(--danger-ink);
+  }
+
+  .error-status {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--red) 22%, transparent);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .error-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--danger-ink);
+    min-width: 0;
+  }
+
+  .error-detail,
+  .error-code,
+  .error-hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--danger-ink);
+  }
+
+  .error-code {
+    opacity: 0.85;
+    font-family:
+      "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11px;
+  }
+
+  .error-hint {
+    opacity: 0.9;
   }
 
   :global(.bubble :is(p, ul, ol, pre, blockquote, table)) {

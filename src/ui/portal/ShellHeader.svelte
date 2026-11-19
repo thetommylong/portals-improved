@@ -8,10 +8,13 @@
   import Icon from "../Icon.svelte";
   import { attachOverlayFocus, type OverlayFocusHandle } from "./overlayFocus";
   import { popScale } from "./popTransition";
+  import ScheduleDatePicker from "./ScheduleDatePicker.svelte";
 
   let {
     activeNav,
     scheduleDate,
+    scheduleLabel,
+    scheduleWeekMode,
     chatOpen,
     settingsOpen,
     unreadCount,
@@ -24,8 +27,7 @@
     settingsPanel,
     onToggleSidebar,
     onGoToday,
-    onGoPrev,
-    onGoNext,
+    onDateChange,
     onToggleChat,
     onToggleSettings,
     onOpenSettings,
@@ -36,6 +38,8 @@
   }: {
     activeNav: string;
     scheduleDate: string;
+    scheduleLabel: string;
+    scheduleWeekMode: boolean;
     chatOpen: boolean;
     settingsOpen: boolean;
     unreadCount: number;
@@ -48,8 +52,7 @@
     settingsPanel?: Snippet;
     onToggleSidebar: () => void;
     onGoToday: () => void;
-    onGoPrev: () => void;
-    onGoNext: () => void;
+    onDateChange: (iso: string) => void;
     onToggleChat: () => void;
     onToggleSettings: () => void;
     onOpenSettings: () => void;
@@ -62,6 +65,20 @@
   let overflowOpen = $state(false);
   let overflowPop: HTMLDivElement | undefined = $state();
   let refreshBtn: HTMLButtonElement | undefined = $state();
+  let datePickerOpen = $state(false);
+  let datePickerBtn = $state<HTMLButtonElement>();
+
+  function closeDatePicker() {
+    datePickerOpen = false;
+  }
+
+  function toggleDatePicker() {
+    datePickerOpen = !datePickerOpen;
+    if (datePickerOpen) {
+      onCloseSettings();
+      closeOverflow();
+    }
+  }
 
   function closeOverflow() {
     if (!overflowOpen) return;
@@ -99,6 +116,12 @@
 
   $effect(() => {
     if (!narrow) closeOverflow();
+  });
+
+  $effect(() => {
+    if (activeNav !== "home" || settingsOpen || overflowOpen) {
+      datePickerOpen = false;
+    }
   });
 
   /**
@@ -236,21 +259,30 @@
         <button class="toolbar-btn" onclick={onGoToday}>
           {t("header.today")}
         </button>
-        <button
-          class="toolbar-btn toolbar-nav"
-          aria-label={t("header.aria.previous")}
-          onclick={onGoPrev}
-        >
-          ‹
-        </button>
-        <button
-          class="toolbar-btn toolbar-nav"
-          aria-label={t("header.aria.next")}
-          onclick={onGoNext}
-        >
-          ›
-        </button>
-        <span class="schedule-date">{scheduleDate}</span>
+        <div class="schedule-date-wrap">
+          <button
+            type="button"
+            class="toolbar-btn schedule-date-btn"
+            bind:this={datePickerBtn}
+            aria-label={t("header.aria.pickDate")}
+            aria-expanded={datePickerOpen}
+            aria-haspopup="dialog"
+            onclick={toggleDatePicker}
+          >
+            <span class="schedule-date-label">
+              {scheduleLabel || scheduleDate}
+            </span>
+            <Icon name="event" size={18} />
+          </button>
+          <ScheduleDatePicker
+            open={datePickerOpen}
+            valueIso={scheduleDate}
+            weekMode={scheduleWeekMode}
+            trigger={datePickerBtn}
+            onclose={closeDatePicker}
+            onpick={onDateChange}
+          />
+        </div>
       {/if}
     </div>
   </div>
@@ -530,26 +562,31 @@
     outline-offset: 1px;
   }
 
-  button.toolbar-btn.toolbar-nav {
-    min-width: var(--hit-step);
-    min-height: var(--hit-step);
-    width: var(--hit-step);
-    height: var(--hit-step);
-    padding: 0;
-    /* Track button hit size (30→16 fine, 44→~23 coarse). */
-    font-size: calc(var(--hit-step) * 16 / 30);
+  .schedule-date-wrap {
+    position: relative;
+    display: inline-flex;
+    min-width: 0;
+  }
+
+  button.toolbar-btn.schedule-date-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(280px, 46vw);
+    padding: 0 12px;
+  }
+
+  .schedule-date-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     line-height: 1;
   }
 
-  .schedule-date {
-    margin-left: 10px;
-    font-family: "Google Sans Flex", system-ui, sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  button.toolbar-btn.schedule-date-btn > :global(.fsp-icon) {
+    flex-shrink: 0;
+    color: var(--text-secondary);
   }
 
   .settings-wrap {
@@ -647,13 +684,11 @@
       font-size: 12px;
     }
 
-    button.toolbar-btn.toolbar-nav {
-      padding: 0;
-    }
-
-    .schedule-date {
-      font-size: 13px;
-      margin-left: 2px;
+    button.toolbar-btn.schedule-date-btn {
+      padding: 0 10px;
+      gap: 6px;
+      max-width: 48vw;
+      font-size: 12px;
     }
   }
 </style>

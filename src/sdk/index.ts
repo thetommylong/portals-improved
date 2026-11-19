@@ -8,7 +8,13 @@ import type {
   OpenAIMessage,
   ToolCall,
 } from "./types";
-import { gmOpenAI, gmOpenAIStream, getModel, isConfigured } from "./openai";
+import {
+  ApiHttpError,
+  gmOpenAI,
+  gmOpenAIStream,
+  getModel,
+  isConfigured,
+} from "./openai";
 import { buildSystemPrompt } from "./system";
 import { t } from "../i18n.svelte";
 import {
@@ -20,6 +26,12 @@ import {
 import { executeFunction, MAX_TOOL_TURNS } from "./executor";
 import { handleCommand } from "./commands";
 import type { PortalAdapter } from "./adapter";
+import {
+  RATE_LIMIT_MAX_ATTEMPTS,
+  backoffDelayMs,
+  isAbortError,
+  sleep,
+} from "./retryBackoff";
 
 export type { AgentEvent, AgentContext, ConfirmRequest };
 
@@ -50,6 +62,7 @@ export interface AgentInstance {
     onEvent: (event: AgentEvent) => void,
     requestConfirmation?: (req: ConfirmRequest) => Promise<boolean>,
     onDelta?: (chunk: string) => void,
+    signal?: AbortSignal,
   ): Promise<void>;
   clear(): void;
 }
@@ -70,6 +83,7 @@ export function createAgent(
     onEvent: (event: AgentEvent) => void,
     requestConfirmation?: (req: ConfirmRequest) => Promise<boolean>,
     onDelta?: (chunk: string) => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     const cmdResult = await handleCommand(message);
     if (cmdResult.handled) {
@@ -110,37 +124,67 @@ export function createAgent(
           onEvent(streamedEvent);
 
           let accumulated = "";
-          await gmOpenAIStream(
-            {
-              model: getModel(),
-              messages: [{ role: "system", content: systemPrompt }, ...history],
-              temperature: 0.2,
-            },
-            (chunk) => {
-              accumulated += chunk;
-              streamedEvent.content = accumulated;
-              onDelta?.(chunk);
-            },
-          );
+          await withRateLimitRetry(onEvent, signal, async () => {
+            accumulated = "";
+            await gmOpenAIStream(
+              {
+                model: getModel(),
+                messages: [
+                  { role: "system", content: systemPrompt },
+                  ...history,
+                ],
+                temperature: 0.2,
+              },
+              (chunk) => {
+                accumulated += chunk;
+                streamedEvent.content = accumulated;
+                onDelta?.(chunk);
+              },
+            );
+          });
 
           history.push({ role: "assistant", content: accumulated });
           onEvent({ type: "done" });
           return;
         }
 
-        response = await gmOpenAI({
-          model: getModel(),
-          messages: [{ role: "system", content: systemPrompt }, ...history],
-          tools:
-            toolTurns < MAX_TOOL_TURNS - 1
-              ? [
-                  SEARCH_TOOL_DEFINITION,
-                  ...getToolDefinitions(getAvailableToolNames()),
-                ]
-              : undefined,
-          temperature: 0.2,
-        });
+        response = await withRateLimitRetry(onEvent, signal, () =>
+          gmOpenAI({
+            model: getModel(),
+            messages: [{ role: "system", content: systemPrompt }, ...history],
+            tools:
+              toolTurns < MAX_TOOL_TURNS - 1
+                ? [
+                    SEARCH_TOOL_DEFINITION,
+                    ...getToolDefinitions(getAvailableToolNames()),
+                  ]
+                : undefined,
+            temperature: 0.2,
+          }),
+        );
       } catch (err) {
+        if (isAbortError(err)) {
+          onEvent({
+            type: "message",
+            role: "assistant",
+            content: t("chat.retryCancelled"),
+          });
+          onEvent({ type: "done" });
+          return;
+        }
+        if (err instanceof ApiHttpError) {
+          onEvent({
+            type: "error",
+            content: err.apiMessage || err.message,
+            httpStatus: err.status,
+            apiCode: err.apiCode,
+          });
+          history.push({
+            role: "assistant",
+            content: `[System error: ${err.message}]`,
+          });
+          return;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         onEvent({ type: "error", content: msg });
         history.push({
@@ -220,6 +264,36 @@ export function createAgent(
   }
 
   return { send, clear };
+}
+
+/** Retry chat/completions on 429 with full-jitter backoff until attempts or abort. */
+async function withRateLimitRetry<T>(
+  onEvent: (event: AgentEvent) => void,
+  signal: AbortSignal | undefined,
+  run: () => Promise<T>,
+): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+    try {
+      return await run();
+    } catch (err) {
+      if (!(err instanceof ApiHttpError) || err.status !== 429) throw err;
+      if (attempt >= RATE_LIMIT_MAX_ATTEMPTS) throw err;
+      const delayMs = backoffDelayMs(attempt - 1);
+      onEvent({
+        type: "retry",
+        attempt,
+        delayMs,
+        maxAttempts: RATE_LIMIT_MAX_ATTEMPTS,
+        httpStatus: 429,
+        apiCode: err.apiCode,
+        content: err.apiMessage || err.message,
+      });
+      await sleep(delayMs, signal);
+    }
+  }
 }
 
 const SEARCH_TOOL_DEFINITION = SEARCH_DEFINITION;

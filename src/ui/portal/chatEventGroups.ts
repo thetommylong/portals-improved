@@ -12,6 +12,10 @@ export function groupChatEvents(events: AgentEvent[]): ChatRenderItem[] {
   const out: ChatRenderItem[] = [];
   for (let i = 0; i < events.length; i++) {
     const e = events[i]!;
+    // Ephemeral agent signals — not transcript rows.
+    if (e.type === "retry" || e.type === "thinking" || e.type === "done") {
+      continue;
+    }
     if (e.type === "tool_call") {
       const next = events[i + 1];
       if (next?.type === "tool_result" && next.toolName === e.toolName) {

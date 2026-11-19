@@ -28,12 +28,29 @@ const callApiFunction = vi.hoisted(() =>
   })),
 );
 
-vi.mock("./openai", () => ({
-  gmOpenAI: (...args: unknown[]) => gmOpenAI(...args),
-  gmOpenAIStream: (...args: unknown[]) => gmOpenAIStream(...args),
-  getModel: () => "mock-model",
-  isConfigured: () => true,
-}));
+vi.mock("./openai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./openai")>();
+  return {
+    ...actual,
+    gmOpenAI: (...args: unknown[]) => gmOpenAI(...args),
+    gmOpenAIStream: (...args: unknown[]) => gmOpenAIStream(...args),
+    getModel: () => "mock-model",
+    isConfigured: () => true,
+  };
+});
+
+vi.mock("./retryBackoff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./retryBackoff")>();
+  return {
+    ...actual,
+    backoffDelayMs: () => 0,
+    sleep: vi.fn(async (_ms: number, signal?: AbortSignal) => {
+      if (signal?.aborted) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+    }),
+  };
+});
 
 vi.mock("./registry", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./registry")>();
@@ -220,5 +237,105 @@ describe("createAgent MAX_TOOL_TURNS batch cap", () => {
     expect(toolCalls).toEqual(["getCampus"]);
     expect(done).toBe(true);
     expect(gmOpenAI).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("createAgent rate-limit retry", () => {
+  let createAgent: typeof import("./index").createAgent;
+  let ApiHttpError: typeof import("./apiHttpError").ApiHttpError;
+  let RATE_LIMIT_MAX_ATTEMPTS: typeof import("./retryBackoff").RATE_LIMIT_MAX_ATTEMPTS;
+  let MockAdapter: typeof import("../adapters/mock").MockAdapter;
+
+  const ctx = {
+    studentId: "s1",
+    userId: "u1",
+    campusId: "c1",
+    campusCode: "HN",
+    termId: "t1",
+    termName: "Fall",
+    termOrder: 1,
+    academicYear: "2026",
+  };
+
+  beforeAll(async () => {
+    ({ createAgent } = await import("./index"));
+    ({ ApiHttpError } = await import("./apiHttpError"));
+    ({ RATE_LIMIT_MAX_ATTEMPTS } = await import("./retryBackoff"));
+    ({ MockAdapter } = await import("../adapters/mock"));
+  });
+
+  beforeEach(() => {
+    gmOpenAI.mockReset();
+    gmOpenAIStream.mockReset();
+  });
+
+  it("retries on 429 then succeeds", async () => {
+    gmOpenAI
+      .mockRejectedValueOnce(
+        new ApiHttpError(429, {
+          error: { message: "slow down", code: "rate_limit_exceeded" },
+        }),
+      )
+      .mockResolvedValueOnce(finalResponse());
+
+    const agent = createAgent(ctx, new MockAdapter());
+    const types: string[] = [];
+    await agent.send("hi", (event) => {
+      types.push(event.type);
+    });
+
+    expect(types.filter((t) => t === "retry")).toHaveLength(1);
+    expect(types).toContain("message");
+    expect(types[types.length - 1]).toBe("done");
+    expect(gmOpenAI).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops when AbortSignal fires during backoff", async () => {
+    gmOpenAI.mockRejectedValue(
+      new ApiHttpError(429, {
+        error: { message: "slow down", code: "rate_limit_exceeded" },
+      }),
+    );
+
+    const agent = createAgent(ctx, new MockAdapter());
+    const ac = new AbortController();
+    const types: string[] = [];
+    await agent.send(
+      "hi",
+      (event) => {
+        types.push(event.type);
+        if (event.type === "retry") ac.abort();
+      },
+      undefined,
+      undefined,
+      ac.signal,
+    );
+
+    expect(types).toContain("retry");
+    expect(types).toContain("message");
+    expect(types).toContain("done");
+    expect(gmOpenAI).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after RATE_LIMIT_MAX_ATTEMPTS", async () => {
+    gmOpenAI.mockRejectedValue(
+      new ApiHttpError(429, {
+        error: { message: "slow down", code: "rate_limit_exceeded" },
+      }),
+    );
+
+    const agent = createAgent(ctx, new MockAdapter());
+    const retries: number[] = [];
+    let errorStatus: number | undefined;
+    await agent.send("hi", (event) => {
+      if (event.type === "retry" && event.attempt != null) {
+        retries.push(event.attempt);
+      }
+      if (event.type === "error") errorStatus = event.httpStatus;
+    });
+
+    expect(retries).toHaveLength(RATE_LIMIT_MAX_ATTEMPTS - 1);
+    expect(errorStatus).toBe(429);
+    expect(gmOpenAI).toHaveBeenCalledTimes(RATE_LIMIT_MAX_ATTEMPTS);
   });
 });

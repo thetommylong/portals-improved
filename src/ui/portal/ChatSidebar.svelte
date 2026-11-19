@@ -44,6 +44,14 @@
   const renderItems = $derived(groupChatEvents(messages));
   let input = $state("");
   let sending = $state(false);
+  let sendAbort: AbortController | null = null;
+  let retryStatus = $state<{
+    attempt: number;
+    maxAttempts: number;
+    seconds: number;
+    content: string | null;
+    apiCode: string | null;
+  } | null>(null);
   let modelPickerOpen = $state(false);
   let confirmRequest = $state<ConfirmRequest | null>(null);
   let scrollEl: HTMLDivElement | undefined = $state();
@@ -220,37 +228,63 @@
     }
 
     sending = true;
+    retryStatus = null;
+    const abort = new AbortController();
+    sendAbort = abort;
     // Never put /key secrets into light-DOM chat messages.
     messages = [
       ...messages,
       { type: "message", content: echoUserMessage(text), role: "user" },
     ];
 
-    await agent.send(
-      text,
-      (event) => {
-        if (event.type === "confirm" && event.confirmRequest) {
-          confirmRequest = event.confirmRequest;
-          return;
-        }
-        if (event.type === "done") {
-          sending = false;
-          return;
-        }
-        messages = [...messages, event];
-      },
-      (req) =>
-        new Promise<boolean>((resolve) => {
-          confirmRequest = { ...req, resolve };
-        }),
-      () => {
-        // Streaming deltas are applied to the shared message event object via deep reactivity.
-      },
-    );
+    try {
+      await agent.send(
+        text,
+        (event) => {
+          if (event.type === "retry") {
+            retryStatus = {
+              attempt: event.attempt ?? 1,
+              maxAttempts: event.maxAttempts ?? 1,
+              seconds: Math.max(1, Math.ceil((event.delayMs ?? 0) / 1000)),
+              content: event.content?.trim() || null,
+              apiCode: event.apiCode ?? null,
+            };
+            return;
+          }
+          if (event.type === "confirm" && event.confirmRequest) {
+            confirmRequest = event.confirmRequest;
+            return;
+          }
+          if (event.type === "done") {
+            retryStatus = null;
+            sending = false;
+            return;
+          }
+          if (event.type === "error") {
+            retryStatus = null;
+          }
+          messages = [...messages, event];
+        },
+        (req) =>
+          new Promise<boolean>((resolve) => {
+            confirmRequest = { ...req, resolve };
+          }),
+        () => {
+          // Streaming deltas are applied to the shared message event object via deep reactivity.
+        },
+        abort.signal,
+      );
+    } finally {
+      if (sendAbort === abort) sendAbort = null;
+      retryStatus = null;
+      sending = false;
+      confirmRequest = null;
+      configured = isConfigured();
+    }
+  }
 
-    sending = false;
-    confirmRequest = null;
-    configured = isConfigured();
+  function cancelRetry() {
+    sendAbort?.abort();
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -290,6 +324,33 @@
       </button>
     </div>
   </div>
+
+  {#if clearConfirm}
+    <div
+      class="chat-clear-confirm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="chat-clear-title"
+      aria-describedby="chat-clear-body"
+      transition:scale={modalScale()}
+    >
+      <p id="chat-clear-title" class="chat-clear-title">
+        {t("chat.clearConfirmTitle")}
+      </p>
+      <p id="chat-clear-body">{t("chat.clearConfirmBody")}</p>
+      <div class="chat-clear-actions">
+        <button type="button" class="chat-clear-yes" onclick={confirmClear}
+          >{t("chat.clearConfirmYes")}</button
+        >
+        <button
+          type="button"
+          class="chat-clear-no"
+          bind:this={clearCancelBtn}
+          onclick={cancelClear}>{t("chat.clearConfirmNo")}</button
+        >
+      </div>
+    </div>
+  {/if}
 
   <div
     class="chat-messages"
@@ -344,36 +405,41 @@
       {/if}
     {/each}
 
-    {#if clearConfirm}
-      <div
-        class="chat-clear-confirm"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="chat-clear-title"
-        aria-describedby="chat-clear-body"
-        transition:scale={modalScale()}
-      >
-        <p id="chat-clear-title" class="chat-clear-title">
-          {t("chat.clearConfirmTitle")}
-        </p>
-        <p id="chat-clear-body">{t("chat.clearConfirmBody")}</p>
-        <div class="chat-clear-actions">
-          <button type="button" class="chat-clear-yes" onclick={confirmClear}
-            >{t("chat.clearConfirmYes")}</button
-          >
-          <button
-            type="button"
-            class="chat-clear-no"
-            bind:this={clearCancelBtn}
-            onclick={cancelClear}>{t("chat.clearConfirmNo")}</button
-          >
-        </div>
-      </div>
-    {/if}
-
     {#if confirmRequest}
       <div class="confirm-inline">
         <ConfirmCard request={confirmRequest} />
+      </div>
+    {/if}
+
+    {#if retryStatus}
+      <div class="msg system">
+        <div class="bubble retry-msg" role="status" aria-live="polite">
+          <div class="retry-head">
+            <Icon name="warning" size={16} />
+            <span class="retry-status">429</span>
+            <span class="retry-title">{t("chat.apiErrorTitle.rateLimit")}</span>
+          </div>
+          {#if retryStatus.content}
+            <p class="retry-detail">{retryStatus.content}</p>
+          {/if}
+          {#if retryStatus.apiCode}
+            <p class="retry-code">
+              {t("chat.apiErrorCode", { code: retryStatus.apiCode })}
+            </p>
+          {/if}
+          <p class="retry-hint">
+            {t("chat.retryWaiting", {
+              attempt: retryStatus.attempt,
+              max: retryStatus.maxAttempts,
+              seconds: retryStatus.seconds,
+            })}
+          </p>
+          <div class="retry-actions">
+            <button type="button" class="retry-cancel" onclick={cancelRetry}>
+              {t("chat.retryCancel")}
+            </button>
+          </div>
+        </div>
       </div>
     {/if}
   </div>
@@ -560,8 +626,9 @@
   .chat-clear-confirm {
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     gap: 8px;
-    margin: 8px 0;
+    margin: 0 12px 8px;
     padding: 12px;
     border-radius: 12px;
     background: color-mix(in srgb, var(--red) 8%, var(--surface-base));
@@ -714,5 +781,114 @@
 
   .confirm-inline {
     margin-top: 4px;
+  }
+
+  .msg {
+    display: flex;
+    padding: 2px 0;
+  }
+
+  .msg.system {
+    justify-content: flex-start;
+  }
+
+  .bubble {
+    max-width: 88%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .bubble.retry-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: color-mix(in srgb, var(--yellow) 16%, var(--surface-base));
+    border: 1px solid color-mix(in srgb, var(--yellow) 40%, transparent);
+    color: var(--warning-ink);
+    border-bottom-left-radius: 4px;
+    white-space: normal;
+  }
+
+  .retry-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .retry-head > :global(.fsp-icon) {
+    flex-shrink: 0;
+    color: var(--warning-ink);
+  }
+
+  .retry-status {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--yellow) 22%, transparent);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .retry-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--warning-ink);
+    min-width: 0;
+  }
+
+  .retry-detail,
+  .retry-code,
+  .retry-hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--warning-ink);
+  }
+
+  .retry-code {
+    opacity: 0.85;
+    font-family:
+      "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11px;
+  }
+
+  .retry-hint {
+    opacity: 0.9;
+  }
+
+  .retry-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2px;
+  }
+
+  .retry-cancel {
+    min-height: var(--hit-nav);
+    padding: 7px 14px;
+    border: 1px solid color-mix(in srgb, var(--yellow) 35%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--yellow) 12%, var(--surface-base));
+    color: var(--warning-ink);
+    font-family: "Google Sans Flex", system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  .retry-cancel:hover {
+    background: color-mix(in srgb, var(--yellow) 22%, var(--surface-base));
+  }
+
+  .retry-cancel:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
   }
 </style>

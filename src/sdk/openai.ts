@@ -8,6 +8,7 @@ import type {
   ModelInfo,
 } from "./types";
 import { deleteSecret, getSecret, setSecret } from "../secrets";
+import { ApiHttpError } from "./apiHttpError";
 import { DEFAULT_LLM_BASE_URL, validateOutboundUrl } from "./outbound-url";
 
 export {
@@ -15,6 +16,7 @@ export {
   needsNonDefaultHostConfirm,
   validateOutboundUrl,
 } from "./outbound-url";
+export { ApiHttpError, apiErrorKind, apiErrorTitleKey } from "./apiHttpError";
 
 const SECRET_KEYS = {
   baseUrl: "sdk:base_url",
@@ -84,11 +86,7 @@ function gmRequest<T>(
         if (res.status >= 200 && res.status < 300) {
           resolve(res.response as T);
         } else {
-          const detail =
-            typeof res.response === "string"
-              ? res.response
-              : JSON.stringify(res.response);
-          reject(new Error(`API ${res.status}: ${detail}`));
+          reject(new ApiHttpError(res.status, res.response));
         }
       },
       onerror(err) {
@@ -154,8 +152,12 @@ export async function gmOpenAIStream(
       onprogress: (res) => {
         consume(res.responseText);
       },
-      onload: () => {
-        resolve();
+      onload: (res) => {
+        if (res.status >= 200 && res.status < 300) {
+          resolve();
+          return;
+        }
+        reject(new ApiHttpError(res.status, res.responseText));
       },
       onerror: (err) => {
         reject(new Error(`Network error: ${err.statusText || "unknown"}`));
