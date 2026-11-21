@@ -2,9 +2,8 @@
 // Copyright (C) 2026 thetommylong
 
 import type { MarkCommon, Term } from "./types/portal";
+import { getJson, pageCacheKey, removeJson, setJson } from "./pageCache";
 
-const MARKS_PREFIX = "fsp:marks:";
-const TERMS_PREFIX = "fsp:terms:";
 const MAX_TERMS_CACHED = 8;
 
 export interface TermMarksCache {
@@ -15,17 +14,27 @@ export interface TermMarksCache {
 /** Client-side TTL for marks/terms (24 hours). */
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+function marksKey(studentId: string, termId: string): string {
+  return pageCacheKey("marks", studentId, termId);
+}
+
+function marksIndexKey(studentId: string): string {
+  return pageCacheKey("marks", studentId, "index");
+}
+
+function termsKey(campusId: string): string {
+  return pageCacheKey("terms", campusId);
+}
+
 export function readTermMarks(
   studentId: string,
   termId: string,
 ): TermMarksCache | null {
-  const raw = GM_getValue<TermMarksCache | null>(
-    `${MARKS_PREFIX}${studentId}:${termId}`,
-    null,
-  );
+  const key = marksKey(studentId, termId);
+  const raw = getJson<TermMarksCache>(key, null);
   if (!raw) return null;
   if (Date.now() - raw.savedAt > CACHE_TTL_MS) {
-    GM_deleteValue(`${MARKS_PREFIX}${studentId}:${termId}`);
+    removeJson(key);
     return null;
   }
   return raw;
@@ -36,23 +45,21 @@ export function writeTermMarks(
   termId: string,
   marks: MarkCommon[],
 ): void {
-  GM_setValue(`${MARKS_PREFIX}${studentId}:${termId}`, {
+  setJson(marksKey(studentId, termId), {
     savedAt: Date.now(),
     marks,
   } satisfies TermMarksCache);
 
-  const indexKey = `${MARKS_PREFIX}${studentId}:index`;
-  const index: string[] = GM_getValue<string[]>(indexKey, []);
+  const idx = marksIndexKey(studentId);
+  const index: string[] = getJson<string[]>(idx, []) ?? [];
   if (!index.includes(termId)) {
     index.push(termId);
   }
   while (index.length > MAX_TERMS_CACHED) {
     const oldest = index.shift();
-    if (oldest) {
-      GM_deleteValue(`${MARKS_PREFIX}${studentId}:${oldest}`);
-    }
+    if (oldest) removeJson(marksKey(studentId, oldest));
   }
-  GM_setValue(indexKey, index);
+  setJson(idx, index);
 }
 
 export interface TermsCache {
@@ -62,13 +69,11 @@ export interface TermsCache {
 }
 
 export function readTerms(campusId: string): TermsCache | null {
-  const raw = GM_getValue<TermsCache | null>(
-    `${TERMS_PREFIX}${campusId}`,
-    null,
-  );
+  const key = termsKey(campusId);
+  const raw = getJson<TermsCache>(key, null);
   if (!raw) return null;
   if (Date.now() - raw.savedAt > CACHE_TTL_MS) {
-    GM_deleteValue(`${TERMS_PREFIX}${campusId}`);
+    removeJson(key);
     return null;
   }
   return raw;
@@ -79,7 +84,7 @@ export function writeTerms(
   terms: Term[],
   defaultTermId: string,
 ): void {
-  GM_setValue(`${TERMS_PREFIX}${campusId}`, {
+  setJson(termsKey(campusId), {
     savedAt: Date.now(),
     terms,
     defaultTermId,

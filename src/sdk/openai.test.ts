@@ -33,9 +33,17 @@ describe("getBaseUrl", () => {
   });
 
   it("clears stale evil URLs and falls back to default", async () => {
+    store.set("sdk:base_url", "http://evil.example/v1");
+    const { DEFAULT_BASE_URL, getBaseUrl } = await import("./openai");
+    expect(getBaseUrl()).toBe(DEFAULT_BASE_URL);
+    expect(store.has("sdk:base_url")).toBe(false);
+  });
+
+  it("migrates legacy fsp:sdk:base_url then clears evil", async () => {
     store.set("fsp:sdk:base_url", "http://evil.example/v1");
     const { DEFAULT_BASE_URL, getBaseUrl } = await import("./openai");
     expect(getBaseUrl()).toBe(DEFAULT_BASE_URL);
     expect(store.has("fsp:sdk:base_url")).toBe(false);
+    expect(store.has("sdk:base_url")).toBe(false);
   });
 });

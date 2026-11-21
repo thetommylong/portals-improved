@@ -52,23 +52,26 @@ describe("demo gm-shim API key storage", () => {
     Reflect.deleteProperty(globalThis, "GM_getValue");
     Reflect.deleteProperty(globalThis, "GM_setValue");
     Reflect.deleteProperty(globalThis, "GM_deleteValue");
+    Reflect.deleteProperty(globalThis, "GM_listValues");
     Reflect.deleteProperty(globalThis, "GM_xmlhttpRequest");
   });
 
-  it("keeps fsp:sdk:api_key in memory, not localStorage", async () => {
-    storage.setItem("fsp:sdk:api_key", JSON.stringify("sk-stale"));
+  it("keeps sdk:api_key in memory, not localStorage", async () => {
+    storage.setItem("sdk:api_key", JSON.stringify("sk-stale"));
+    storage.setItem("fsp:sdk:api_key", JSON.stringify("sk-legacy"));
     await import("./gm-shim");
 
+    expect(storage.getItem("sdk:api_key")).toBeNull();
     expect(storage.getItem("fsp:sdk:api_key")).toBeNull();
 
-    window.GM_setValue("fsp:sdk:api_key", "sk-demo-secret");
-    window.GM_setValue("fsp:flavor", "mocha");
+    window.GM_setValue("sdk:api_key", "sk-demo-secret");
+    window.GM_setValue("flavor", "mocha");
 
-    expect(storage.getItem("fsp:sdk:api_key")).toBeNull();
-    expect(storage.getItem("fsp:flavor")).toBe(JSON.stringify("mocha"));
-    expect(window.GM_getValue("fsp:sdk:api_key", null)).toBe("sk-demo-secret");
+    expect(storage.getItem("sdk:api_key")).toBeNull();
+    expect(storage.getItem("flavor")).toBe(JSON.stringify("mocha"));
+    expect(window.GM_getValue("sdk:api_key", null)).toBe("sk-demo-secret");
 
-    window.GM_deleteValue("fsp:sdk:api_key");
-    expect(window.GM_getValue("fsp:sdk:api_key", null)).toBeNull();
+    window.GM_deleteValue("sdk:api_key");
+    expect(window.GM_getValue("sdk:api_key", null)).toBeNull();
   });
 });

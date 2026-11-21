@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-const PREFIX = "fsp:";
+import { gmGetMigrate, gmSetMigrate } from "./gmPrefs";
+
+function oldKey(key: string): string {
+  return `fsp:${key}`;
+}
 
 export function setSecret(key: string, value: string): void {
-  GM_setValue(`${PREFIX}${key}`, value);
+  gmSetMigrate(key, oldKey(key), value);
 }
 
 export function getSecret(key: string): string | null {
-  const val = GM_getValue<string | null>(`${PREFIX}${key}`, null);
-  return val ?? null;
+  return gmGetMigrate<string | null>(key, oldKey(key), null);
 }
 
 export function deleteSecret(key: string): void {
-  GM_deleteValue(`${PREFIX}${key}`);
+  GM_deleteValue(key);
+  GM_deleteValue(oldKey(key));
 }

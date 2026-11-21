@@ -23,7 +23,7 @@ The userscript matches **every site** (`match: ['*://*/*']`) but stays a no-op o
 - `FspLiveAdapter` (`adapters/fsp/`) talks to https://api.fpt.edu.vn/fsp/api and claims `hosts: ["fsp"]` (auth token scraped at call time from localStorage / `<meta name="Authorization">` / cookie, DTOs in `src/types/portal.ts`). `MockAdapter` fakes it for previews and claims no hosts. UI and SDK only ever call through the abstract adapter, never the concrete classes. `compactToolResult` is adapter-owned (FSP helpers in `fsp-tool-compact.ts`) so LLM transcripts stay small without baking portal DTO shapes into the SDK executor.
 - Chat/agent tools in `src/sdk/registry.ts` expose many adapter methods that the UI never calls — that surface is intentional for the assistant, not dead code.
 - UI is Svelte 5 `mount()`ed into the host page; portal styles ship as a `?inline` CSS import. Soft target ~300 lines per whole `.svelte` file (over OK when reasonable). Shell chrome lives in `ShellHeader` / `ShellSettings` / `ShellSidebar` / `ShellChatRail` + `PortalShell.layout.css`; lazy nav chunks + `viewChunkPending` live in `shellViewRegistry`; marks predictor splits `PredictorList` / `PredictorDetail` (+ companion CSS) under a thin `PredictorDrawer`; `PortalShell.svelte` keeps orchestration.
-- Runtime secrets go through GM storage via `src/secrets.ts` (keys prefixed `fsp:`), not `.env`.
+- Runtime secrets and shell prefs go through GM storage via `src/secrets.ts` / `gmPrefs.ts` (short keys; legacy `fsp:` migrated once). Portal list/schedule/marks caches use page `localStorage` under `pi:cache:*` (`pageCache.ts`), not GM.
 
 ## Userscript quirks
 

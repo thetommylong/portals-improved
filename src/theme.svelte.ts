@@ -2,6 +2,7 @@
 // Copyright (C) 2026 thetommylong
 
 import { flavors, type FlavorName } from "@catppuccin/palette";
+import { gmGetMigrate, gmSetMigrate } from "./gmPrefs";
 import { inkTowardText } from "./themeTokens";
 
 export const FLAVOR_OPTIONS = [
@@ -34,22 +35,22 @@ export const ACCENTS = [
 ] as const;
 export type AccentChoice = (typeof ACCENTS)[number];
 
-const FLAVOR_KEY = "fsp:flavor";
-const ACCENT_KEY = "fsp:accent";
-const SYSTEM_DARK_KEY = "fsp:system-dark";
+const FLAVOR_KEY = "flavor";
+const ACCENT_KEY = "accent";
+const SYSTEM_DARK_KEY = "system-dark";
 
 function storedFlavor(): FlavorChoice {
-  const raw = GM_getValue<string>(FLAVOR_KEY, "system");
+  const raw = gmGetMigrate(FLAVOR_KEY, "fsp:flavor", "system");
   return (FLAVOR_OPTIONS as readonly string[]).includes(raw)
     ? (raw as FlavorChoice)
     : "system";
 }
 
 function storedAccent(): AccentChoice {
-  const raw = GM_getValue<string>(ACCENT_KEY, "teal");
+  const raw = gmGetMigrate<string>(ACCENT_KEY, "fsp:accent", "teal");
   // Migrate legacy / removed blue accent to the current default.
   if (raw === "blue") {
-    GM_setValue(ACCENT_KEY, "teal");
+    gmSetMigrate(ACCENT_KEY, "fsp:accent", "teal");
     return "teal";
   }
   return (ACCENTS as readonly string[]).includes(raw)
@@ -58,7 +59,7 @@ function storedAccent(): AccentChoice {
 }
 
 function storedSystemDark(): DarkFlavorChoice {
-  const raw = GM_getValue<string>(SYSTEM_DARK_KEY, "mocha");
+  const raw = gmGetMigrate(SYSTEM_DARK_KEY, "fsp:system-dark", "mocha");
   return (DARK_FLAVORS as readonly string[]).includes(raw)
     ? (raw as DarkFlavorChoice)
     : "mocha";
@@ -71,17 +72,17 @@ class ThemeStore {
 
   setFlavor(choice: FlavorChoice): void {
     this.flavor = choice;
-    GM_setValue(FLAVOR_KEY, choice);
+    gmSetMigrate(FLAVOR_KEY, "fsp:flavor", choice);
   }
 
   setAccent(choice: AccentChoice): void {
     this.accent = choice;
-    GM_setValue(ACCENT_KEY, choice);
+    gmSetMigrate(ACCENT_KEY, "fsp:accent", choice);
   }
 
   setSystemDark(choice: DarkFlavorChoice): void {
     this.systemDark = choice;
-    GM_setValue(SYSTEM_DARK_KEY, choice);
+    gmSetMigrate(SYSTEM_DARK_KEY, "fsp:system-dark", choice);
   }
 }
 
