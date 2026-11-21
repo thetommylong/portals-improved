@@ -216,6 +216,21 @@
       handle.release();
     };
   });
+
+  // Modal covers the shell; freeze background scrollers so their bars don't twin the dialog's.
+  $effect(() => {
+    if (!open || !narrow) return;
+    const locked: { el: HTMLElement; overflowY: string }[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>(
+      ".schedule-body, .marks-body, .feedback-body",
+    )) {
+      locked.push({ el, overflowY: el.style.overflowY });
+      el.style.overflowY = "hidden";
+    }
+    return () => {
+      for (const { el, overflowY } of locked) el.style.overflowY = overflowY;
+    };
+  });
 </script>
 
 {#if open}
@@ -544,7 +559,7 @@
   /* Tab row mirrors sidebar nav selection (accent tint), not a segmented track. */
   .settings-segs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
     margin: 0 0 12px;
   }
@@ -553,7 +568,11 @@
     border: 0;
     border-radius: 8px;
     min-height: var(--hit-step);
-    padding: 6px 12px;
+    padding: 6px 8px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     background: transparent;
     color: var(--text-secondary);
     font-family: "Google Sans Flex", system-ui, sans-serif;
@@ -590,6 +609,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
   }
 
@@ -709,10 +729,11 @@
 
   .settings-accents {
     display: grid;
-    grid-template-columns: repeat(7, var(--hit-dot));
+    grid-template-columns: repeat(auto-fill, var(--hit-dot));
     gap: 8px 10px;
-    justify-content: start;
+    justify-content: center;
     margin-bottom: 14px;
+    max-width: 100%;
   }
 
   .accent-dot {
@@ -1009,16 +1030,30 @@
       cursor: pointer;
     }
 
+    /* One scroller only: pop clips, body scrolls (pop+body both auto = twin bars). */
     .settings-layer.as-modal .settings-pop {
       position: relative;
       top: auto;
       right: auto;
       z-index: 1;
+      display: flex;
+      flex-direction: column;
       width: min(340px, 100%);
       max-height: 80vh;
-      overflow-y: auto;
+      overflow: hidden;
       transform-origin: center center;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .settings-layer.as-modal .settings-body {
+      height: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .settings-layer.as-modal .settings-segs,
+    .settings-layer.as-modal .save-row {
+      flex-shrink: 0;
     }
   }
 </style>
