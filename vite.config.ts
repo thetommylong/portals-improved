@@ -106,6 +106,7 @@ export default defineConfig({
           "GM_setValue",
           "GM_getValue",
           "GM_deleteValue",
+          "GM_listValues",
           "GM_xmlhttpRequest",
           "unsafeWindow",
         ],

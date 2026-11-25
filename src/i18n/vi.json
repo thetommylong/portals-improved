@@ -280,6 +280,7 @@
   "chat.send": "Gửi",
   "chat.placeholder": "Hỏi về lịch học, điểm…",
   "chat.loadingContext": "Đang tải ngữ cảnh…",
+  "chat.thinking": "Đang nghĩ…",
   "chat.setupTitle": "Thiết lập trợ lý",
   "chat.setupLead": "Thêm API key tương thích OpenAI và endpoint tùy chọn để bật trợ lý.",
   "chat.toolCall": "Gọi tool: {name}",

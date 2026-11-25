@@ -20,6 +20,9 @@ describe("onboarding version gate", () => {
     vi.stubGlobal("GM_setValue", (key: string, val: unknown) => {
       store.set(key, val);
     });
+    vi.stubGlobal("GM_deleteValue", (key: string) => {
+      store.delete(key);
+    });
   });
 
   it("treats empty storage as first run", () => {

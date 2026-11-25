@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
-/** Shared GM JSON cache for portal list views (events, homeworks, …). */
+import { getJson, pageCacheKey, removeJson, setJson } from "./pageCache";
+
+/** Shared page JSON cache for portal list views (events, homeworks, …). */
 
 export interface ListCacheEnvelope<T> {
   savedAt: number;
@@ -15,17 +17,17 @@ export function readListCache<T>(
   key: string,
   ttlMs: number = LIST_CACHE_TTL_MS,
 ): T | null {
-  const raw = GM_getValue<ListCacheEnvelope<T> | null>(key, null);
+  const raw = getJson<ListCacheEnvelope<T>>(key, null);
   if (!raw) return null;
   if (Date.now() - raw.savedAt > ttlMs) {
-    GM_deleteValue(key);
+    removeJson(key);
     return null;
   }
   return raw.data;
 }
 
 export function writeListCache<T>(key: string, data: T): void {
-  GM_setValue(key, {
+  setJson(key, {
     savedAt: Date.now(),
     data,
   } satisfies ListCacheEnvelope<T>);
@@ -37,6 +39,6 @@ export function cacheKey(
   extra = "",
 ): string {
   return extra
-    ? `fsp:${kind}:${studentOrUserId}:${extra}`
-    : `fsp:${kind}:${studentOrUserId}`;
+    ? pageCacheKey(kind, studentOrUserId, extra)
+    : pageCacheKey(kind, studentOrUserId);
 }

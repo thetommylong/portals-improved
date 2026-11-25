@@ -33,9 +33,47 @@ describe("getBaseUrl", () => {
   });
 
   it("clears stale evil URLs and falls back to default", async () => {
+    store.set("sdk:base_url", "http://evil.example/v1");
+    const { DEFAULT_BASE_URL, getBaseUrl } = await import("./openai");
+    expect(getBaseUrl()).toBe(DEFAULT_BASE_URL);
+    expect(store.has("sdk:base_url")).toBe(false);
+  });
+
+  it("migrates legacy fsp:sdk:base_url then clears evil", async () => {
     store.set("fsp:sdk:base_url", "http://evil.example/v1");
     const { DEFAULT_BASE_URL, getBaseUrl } = await import("./openai");
     expect(getBaseUrl()).toBe(DEFAULT_BASE_URL);
     expect(store.has("fsp:sdk:base_url")).toBe(false);
+    expect(store.has("sdk:base_url")).toBe(false);
+  });
+});
+
+describe("page fetch transport (no GM_info)", () => {
+  beforeEach(() => {
+    store.clear();
+    vi.resetModules();
+    vi.stubGlobal("fetch", vi.fn());
+    Reflect.deleteProperty(globalThis, "GM_info");
+  });
+
+  it("posts chat completions via fetch", async () => {
+    store.set("sdk:api_key", "sk-test");
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ choices: [] }), { status: 200 }),
+    );
+    const { gmOpenAI, setBaseUrl } = await import("./openai");
+    setBaseUrl("https://llm.example.com/v1");
+    await gmOpenAI({
+      model: "gpt-test",
+      messages: [{ role: "user", content: "hi" }],
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("https://llm.example.com/v1/chat/completions");
+    expect(init?.method).toBe("POST");
+    expect((init?.headers as Record<string, string>).Authorization).toBe(
+      "Bearer sk-test",
+    );
   });
 });

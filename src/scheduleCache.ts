@@ -2,8 +2,8 @@
 // Copyright (C) 2026 thetommylong
 
 import type { ScheduleEntry } from "./types/portal";
+import { getJson, pageCacheKey, removeJson, setJson } from "./pageCache";
 
-const PREFIX = "fsp:cal:";
 const MAX_WEEKS = 12;
 
 export interface WeekCache {
@@ -14,14 +14,20 @@ export interface WeekCache {
 /** Client-side TTL for schedule weeks (7 days). */
 const WEEK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export function readWeek(studentId: string, weekKey: string): WeekCache | null {
-  const raw = GM_getValue<WeekCache | null>(
-    `${PREFIX}${studentId}:${weekKey}`,
-    null,
-  );
+function weekKey(studentId: string, week: string): string {
+  return pageCacheKey("cal", studentId, week);
+}
+
+function indexKey(studentId: string): string {
+  return pageCacheKey("cal", studentId, "index");
+}
+
+export function readWeek(studentId: string, week: string): WeekCache | null {
+  const key = weekKey(studentId, week);
+  const raw = getJson<WeekCache>(key, null);
   if (!raw) return null;
   if (Date.now() - raw.savedAt > WEEK_TTL_MS) {
-    GM_deleteValue(`${PREFIX}${studentId}:${weekKey}`);
+    removeJson(key);
     return null;
   }
   return raw;
@@ -29,24 +35,22 @@ export function readWeek(studentId: string, weekKey: string): WeekCache | null {
 
 export function writeWeek(
   studentId: string,
-  weekKey: string,
+  week: string,
   entries: ScheduleEntry[],
 ): void {
-  GM_setValue(`${PREFIX}${studentId}:${weekKey}`, {
+  setJson(weekKey(studentId, week), {
     savedAt: Date.now(),
     entries,
   } satisfies WeekCache);
 
-  const indexKey = `${PREFIX}${studentId}:index`;
-  const index: string[] = GM_getValue<string[]>(indexKey, []);
-  if (!index.includes(weekKey)) {
-    index.push(weekKey);
+  const idx = indexKey(studentId);
+  const index: string[] = getJson<string[]>(idx, []) ?? [];
+  if (!index.includes(week)) {
+    index.push(week);
   }
   while (index.length > MAX_WEEKS) {
     const oldest = index.shift();
-    if (oldest) {
-      GM_deleteValue(`${PREFIX}${studentId}:${oldest}`);
-    }
+    if (oldest) removeJson(weekKey(studentId, oldest));
   }
-  GM_setValue(indexKey, index);
+  setJson(idx, index);
 }

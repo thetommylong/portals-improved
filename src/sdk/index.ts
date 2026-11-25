@@ -140,6 +140,7 @@ export function createAgent(
                 streamedEvent.content = accumulated;
                 onDelta?.(chunk);
               },
+              signal,
             );
           });
 

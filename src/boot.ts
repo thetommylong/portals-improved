@@ -19,6 +19,9 @@ export async function boot(): Promise<void> {
   // Side-effect: resolve runtime adapter (live or mock).
   await import("./adapters/runtime.svelte");
 
+  const { scrubLegacyGmCaches } = await import("./scrubLegacyGmCaches");
+  scrubLegacyGmCaches();
+
   const modules = import.meta.glob("./scripts/*/index.ts");
 
   const tasks = Object.entries(modules).map(async ([path, loader]) => {

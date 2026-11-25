@@ -129,59 +129,65 @@ function reauthPopupUrl(): string {
   return "https://fsp.fpt.edu.vn/";
 }
 
-function gmFetch<T>(
+/** Page-context fetch — same origin policy as the portal SPA (no GM CORS bypass). */
+async function portalFetch<T>(
   url: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   body?: unknown,
 ): Promise<T> {
-  return new Promise((resolve, reject) => {
-    let token: string;
-    try {
-      token = getToken();
-    } catch (err) {
-      fireAuthRequired();
-      reject(err instanceof Error ? err : new Error("No auth token found"));
-      return;
-    }
+  let token: string;
+  try {
+    token = getToken();
+  } catch (err) {
+    fireAuthRequired();
+    throw err instanceof Error ? err : new Error("No auth token found");
+  }
 
-    const payload = parseJwtPayload(token);
-    if (!payload || isJwtExpired(payload)) {
-      fireAuthRequired();
-      reject(new Error("Auth token expired"));
-      return;
-    }
+  const payload = parseJwtPayload(token);
+  if (!payload || isJwtExpired(payload)) {
+    fireAuthRequired();
+    throw new Error("Auth token expired");
+  }
 
-    const headers: Record<string, string> = {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-
-    GM_xmlhttpRequest({
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch(url, {
       method,
-      url,
-      headers,
-      data: body != null ? JSON.stringify(body) : undefined,
-      responseType: "json",
-      onload(res) {
-        if (res.status >= 200 && res.status < 300) {
-          resolve(res.response as T);
-        } else {
-          noteAuthFailureStatus(res.status);
-          reject(
-            new Error(`HTTP ${res.status}: ${JSON.stringify(res.response)}`),
-          );
-        }
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-      onerror(err) {
-        reject(new Error(`Network error: ${err.statusText || "unknown"}`));
-      },
-      timeout: 15_000,
-      ontimeout() {
-        reject(new Error("Request timed out"));
-      },
+      body: body != null ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     });
-  });
+    const text = await res.text();
+    let parsed: unknown = text;
+    if (text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = text;
+      }
+    }
+    if (!res.ok) {
+      noteAuthFailureStatus(res.status);
+      throw new Error(`HTTP ${res.status}: ${JSON.stringify(parsed)}`);
+    }
+    return parsed as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Request timed out", { cause: err });
+    }
+    if (err instanceof Error && err.message.startsWith("HTTP ")) throw err;
+    throw new Error(
+      `Network error: ${err instanceof Error ? err.message : "unknown"}`,
+      { cause: err },
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Soft preference: when both exist, favor compact data URLs over huge ones. */
@@ -394,13 +400,13 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Terms ---
 
   getDefaultTerm(campusId: string): Promise<Term> {
-    return gmFetch<Term>(
+    return portalFetch<Term>(
       `${BASE}/education-management/terms/get/default/${pathSegment(campusId)}`,
     );
   }
 
   getTermsByCampus(campusId: string): Promise<Term[]> {
-    return gmFetch<Term[]>(
+    return portalFetch<Term[]>(
       `${BASE}/education-management/terms/${pathSegment(campusId)}/by-campus`,
     );
   }
@@ -408,7 +414,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Feedback ---
 
   getFeedbackStatus(studentId: string): Promise<FeedbackStatus> {
-    return gmFetch<FeedbackStatus>(
+    return portalFetch<FeedbackStatus>(
       `${BASE}/feedback-service/feedbacks/students/${pathSegment(studentId)}/has-feedback`,
     );
   }
@@ -417,13 +423,13 @@ export class FspLiveAdapter implements PortalAdapter {
     termId: string,
     studentId: string,
   ): Promise<StudentFeedbackLecturerResult[]> {
-    return gmFetch(
+    return portalFetch(
       `${BASE}/feedback-service/feedbacks/students/${pathSegment(termId)}/${pathSegment(studentId)}/un-finished`,
     );
   }
 
   updateFeedbackAnswer(payload: FeedbackAnswerUpdate): Promise<unknown> {
-    return gmFetch(
+    return portalFetch(
       `${BASE}/feedback-service/feedbacks/students/update-answer`,
       "POST",
       payload,
@@ -434,7 +440,7 @@ export class FspLiveAdapter implements PortalAdapter {
     slot: 1 | 2,
     payload: FeedbackCommentUpdate,
   ): Promise<unknown> {
-    return gmFetch(
+    return portalFetch(
       `${BASE}/feedback-service/feedbacks/students/update-comment${slot}`,
       "POST",
       payload,
@@ -442,7 +448,7 @@ export class FspLiveAdapter implements PortalAdapter {
   }
 
   updateFeedbackStatus(payload: FeedbackStatusUpdate): Promise<unknown> {
-    return gmFetch(
+    return portalFetch(
       `${BASE}/feedback-service/feedbacks/students/update-status`,
       "POST",
       payload,
@@ -455,13 +461,13 @@ export class FspLiveAdapter implements PortalAdapter {
     studentId: string,
     termId: string,
   ): Promise<StudentHomeWork[]> {
-    return gmFetch(
+    return portalFetch(
       `${BASE}/homework-service/home-work-students/${pathSegment(studentId)}/${pathSegment(termId)}/home-work-student-by-term-id`,
     );
   }
 
   getUndoneHomework(studentId: string, termId: string): Promise<Homework[]> {
-    return gmFetch<Homework[]>(
+    return portalFetch<Homework[]>(
       `${BASE}/homework-service/home-work-students/${pathSegment(studentId)}/${pathSegment(termId)}/undone-home-work-student-by-term-id`,
     );
   }
@@ -469,13 +475,13 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Courses ---
 
   getCoursesByTerm(termId: string, studentId: string): Promise<Course[]> {
-    return gmFetch<Course[]>(
+    return portalFetch<Course[]>(
       `${BASE}/education-management/courses/${pathSegment(termId)}/${pathSegment(studentId)}/by-term-student`,
     );
   }
 
   getAcademicYears(studentId: string): Promise<string[]> {
-    return gmFetch<string[]>(
+    return portalFetch<string[]>(
       `${BASE}/education-management/courses/academics/${pathSegment(studentId)}/by-student`,
     );
   }
@@ -485,13 +491,13 @@ export class FspLiveAdapter implements PortalAdapter {
     termOrder: number,
     studentId: string,
   ): Promise<MarkCommon[]> {
-    return gmFetch<MarkCommon[]>(
+    return portalFetch<MarkCommon[]>(
       `${BASE}/education-management/courses/details/${pathSegment(academicYear)}/${pathSegment(termOrder)}/${pathSegment(studentId)}/get-mark-common-by-student`,
     );
   }
 
   getBlockMarkPeriods(campusId: string): Promise<BlockMarkPeriod[]> {
-    return gmFetch<BlockMarkPeriod[]>(
+    return portalFetch<BlockMarkPeriod[]>(
       `${BASE}/education-management/block-mark-periods/${pathSegment(campusId)}`,
     );
   }
@@ -501,7 +507,7 @@ export class FspLiveAdapter implements PortalAdapter {
     termOrder: number,
     studentId: string,
   ): Promise<KqrlResult> {
-    return gmFetch<KqrlResult>(
+    return portalFetch<KqrlResult>(
       `${BASE}/education-management/class-students/details/${pathSegment(academicYear)}/${pathSegment(termOrder)}/${pathSegment(studentId)}/get-kqrl-by-student`,
     );
   }
@@ -511,13 +517,13 @@ export class FspLiveAdapter implements PortalAdapter {
     termOrder: number,
     studentId: string,
   ): Promise<unknown> {
-    return gmFetch<unknown>(
+    return portalFetch<unknown>(
       `${BASE}/education-management/attitude-quality-students/${pathSegment(academicYear)}/${pathSegment(termOrder)}/${pathSegment(studentId)}/get-nlpc-by-student`,
     );
   }
 
   getGradesByCampus(campusId: string): Promise<Grade[]> {
-    return gmFetch<Grade[]>(
+    return portalFetch<Grade[]>(
       `${BASE}/identity-management/grades/${pathSegment(campusId)}/by-campus`,
     );
   }
@@ -526,7 +532,7 @@ export class FspLiveAdapter implements PortalAdapter {
     studentId: string,
     termId: string,
   ): Promise<MainClass[]> {
-    return gmFetch<MainClass[]>(
+    return portalFetch<MainClass[]>(
       `${BASE}/education-management/classes/${pathSegment(studentId)}/${pathSegment(termId)}/main-classes-by-student`,
     );
   }
@@ -534,13 +540,13 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Clubs ---
 
   getClubsByTerm(termId: string, studentId: string): Promise<Club[]> {
-    return gmFetch<Club[]>(
+    return portalFetch<Club[]>(
       `${BASE}/education-management/clubs/${pathSegment(termId)}/${pathSegment(studentId)}/by-term-student`,
     );
   }
 
   getClubSubjectsByIds(clubSubjectIds: string[]): Promise<ClubSubject[]> {
-    return gmFetch<ClubSubject[]>(
+    return portalFetch<ClubSubject[]>(
       `${BASE}/education-management/club-subjects/entities/ids`,
       "POST",
       clubSubjectIds,
@@ -550,7 +556,7 @@ export class FspLiveAdapter implements PortalAdapter {
   getClubSubjectTypesByIds(
     clubSubjectIds: string[],
   ): Promise<ClubSubjectType[]> {
-    return gmFetch<ClubSubjectType[]>(
+    return portalFetch<ClubSubjectType[]>(
       `${BASE}/education-management/club-subject-types/by-club-subject-ids`,
       "POST",
       clubSubjectIds,
@@ -560,7 +566,7 @@ export class FspLiveAdapter implements PortalAdapter {
   getClubStudentStatistics(
     studentIds: string[],
   ): Promise<Record<string, unknown>> {
-    return gmFetch<Record<string, unknown>>(
+    return portalFetch<Record<string, unknown>>(
       `${BASE}/education-management/clubs/statistic/cache-students`,
       "POST",
       studentIds,
@@ -571,7 +577,7 @@ export class FspLiveAdapter implements PortalAdapter {
     termId: string,
     studentId: string,
   ): Promise<unknown> {
-    return gmFetch<unknown>(
+    return portalFetch<unknown>(
       `${BASE}/education-management/clubs/discount-club-student/${pathSegment(termId)}/${pathSegment(studentId)}/get-discount-and-price-by-student`,
     );
   }
@@ -579,13 +585,13 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Events ---
 
   getEventsByTerm(termId: string, studentId: string): Promise<EventStudent[]> {
-    return gmFetch<EventStudent[]>(
+    return portalFetch<EventStudent[]>(
       `${BASE}/student-service/events/${pathSegment(termId)}/${pathSegment(studentId)}/by-term-student`,
     );
   }
 
   getEventStatistics(eventIds: string[]): Promise<Record<string, unknown>> {
-    return gmFetch<Record<string, unknown>>(
+    return portalFetch<Record<string, unknown>>(
       `${BASE}/student-service/events/statistic/students`,
       "POST",
       eventIds,
@@ -593,7 +599,7 @@ export class FspLiveAdapter implements PortalAdapter {
   }
 
   getEventImages(eventIds: string[]): Promise<Record<string, unknown>> {
-    return gmFetch<Record<string, unknown>>(
+    return portalFetch<Record<string, unknown>>(
       `${BASE}/student-service/events/images/by-id`,
       "POST",
       eventIds,
@@ -605,7 +611,7 @@ export class FspLiveAdapter implements PortalAdapter {
     studentId: string,
     eventData: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    return gmFetch<Record<string, unknown>>(
+    return portalFetch<Record<string, unknown>>(
       `${BASE}/student-service/events/register/${pathSegment(eventId)}/${pathSegment(studentId)}`,
       "PUT",
       eventData,
@@ -615,7 +621,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Campuses ---
 
   getCampusesByIds(campusIds: string[]): Promise<Campus[]> {
-    return gmFetch<Campus[]>(
+    return portalFetch<Campus[]>(
       `${BASE}/identity-management/campuses/entities/ids`,
       "POST",
       campusIds,
@@ -623,7 +629,7 @@ export class FspLiveAdapter implements PortalAdapter {
   }
 
   getCampus(campusId: string): Promise<Campus> {
-    return gmFetch<Campus>(
+    return portalFetch<Campus>(
       `${BASE}/identity-management/campuses/${pathSegment(campusId)}`,
     );
   }
@@ -631,13 +637,13 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Discipline ---
 
   getDisciplineLevels(campusId: string): Promise<DisciplineLevel[]> {
-    return gmFetch<DisciplineLevel[]>(
+    return portalFetch<DisciplineLevel[]>(
       `${BASE}/student-service/discipline-levels/${pathSegment(campusId)}/by-campus`,
     );
   }
 
   getDisciplineRules(campusId: string): Promise<DisciplineRule[]> {
-    return gmFetch<DisciplineRule[]>(
+    return portalFetch<DisciplineRule[]>(
       `${BASE}/student-service/discipline-rules/${pathSegment(campusId)}/by-campus`,
     );
   }
@@ -645,7 +651,7 @@ export class FspLiveAdapter implements PortalAdapter {
   getDisciplineRulesByStudent(
     studentId: string,
   ): Promise<DisciplineRuleStudent[]> {
-    return gmFetch<DisciplineRuleStudent[]>(
+    return portalFetch<DisciplineRuleStudent[]>(
       `${BASE}/student-service/discipline-rule-students/${pathSegment(studentId)}/by-student`,
     );
   }
@@ -653,25 +659,25 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Rewards ---
 
   getRewardBonusTypes(campusId: string): Promise<RewardBonusType[]> {
-    return gmFetch<RewardBonusType[]>(
+    return portalFetch<RewardBonusType[]>(
       `${BASE}/student-service/reward-bonus-types/${pathSegment(campusId)}/by-campus`,
     );
   }
 
   getRewardFrequencies(campusId: string): Promise<RewardFrequency[]> {
-    return gmFetch<RewardFrequency[]>(
+    return portalFetch<RewardFrequency[]>(
       `${BASE}/student-service/reward-frequencies/${pathSegment(campusId)}/by-campus`,
     );
   }
 
   getRewardsByCampus(campusId: string): Promise<Reward[]> {
-    return gmFetch<Reward[]>(
+    return portalFetch<Reward[]>(
       `${BASE}/student-service/rewards/${pathSegment(campusId)}/by-campus`,
     );
   }
 
   getRewardsByStudent(studentId: string): Promise<RewardStudent[]> {
-    return gmFetch<RewardStudent[]>(
+    return portalFetch<RewardStudent[]>(
       `${BASE}/student-service/reward-students/${pathSegment(studentId)}/by-student`,
     );
   }
@@ -679,7 +685,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Dormitory ---
 
   hasDormBedStudent(studentId: string): Promise<boolean> {
-    return gmFetch<boolean>(
+    return portalFetch<boolean>(
       `${BASE}/dormitory-management/dorm-bed-students/${pathSegment(studentId)}/has-student`,
     );
   }
@@ -687,7 +693,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Surveys ---
 
   getSurveyLink(): Promise<SurveyLink> {
-    return gmFetch<SurveyLink>(
+    return portalFetch<SurveyLink>(
       `${BASE}/education-management/surveys/get-link-survey`,
     );
   }
@@ -695,7 +701,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Notifications ---
 
   getAllNotificationTypes(): Promise<NotificationType[]> {
-    return gmFetch<NotificationType[]>(
+    return portalFetch<NotificationType[]>(
       `${BASE}/extended-service/notification-types/entities/all`,
     );
   }
@@ -704,13 +710,13 @@ export class FspLiveAdapter implements PortalAdapter {
     userId: string,
     records: number,
   ): Promise<NotificationsResult> {
-    return gmFetch<NotificationsResult>(
+    return portalFetch<NotificationsResult>(
       `${BASE}/extended-service/notifications/${pathSegment(userId)}/${pathSegment(records)}/by-records`,
     );
   }
 
   markNotificationAsRead(notificationId: string): Promise<unknown> {
-    return gmFetch<unknown>(
+    return portalFetch<unknown>(
       `${BASE}/extended-service/notifications/${pathSegment(notificationId)}/notification-as-read`,
       "GET",
     );
@@ -719,7 +725,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Menu ---
 
   getMenuRoleCampuses(roleCode: string, campusId: string): Promise<MenuItem[]> {
-    return gmFetch<MenuItem[]>(
+    return portalFetch<MenuItem[]>(
       `${BASE}/identity-management/menu-role-campuses/${pathSegment(roleCode)}/${pathSegment(campusId)}/by-code`,
     );
   }
@@ -727,7 +733,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Users ---
 
   getUserById(userId: string): Promise<User> {
-    return gmFetch<User>(
+    return portalFetch<User>(
       `${BASE}/user-management/users/${pathSegment(userId)}/by-id`,
     );
   }
@@ -749,30 +755,35 @@ export class FspLiveAdapter implements PortalAdapter {
         return;
       }
 
-      GM_xmlhttpRequest({
-        method: "GET",
-        url: `${BASE}/user-management/users/image/${pathSegment(userId)}/by-user-id`,
-        headers: {
-          Accept: "application/json, text/plain, */*",
-          Authorization: `Bearer ${token}`,
+      void fetch(
+        `${BASE}/user-management/users/image/${pathSegment(userId)}/by-user-id`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            Authorization: `Bearer ${token}`,
+          },
         },
-        onload(res) {
+      )
+        .then(async (res) => {
           noteAuthFailureStatus(res.status);
-          if (res.status !== 200 || !res.responseText) {
+          if (res.status !== 200) {
             resolve(null);
             return;
           }
-          resolve(extractImageUrl(res.responseText));
-        },
-        onerror() {
-          resolve(null);
-        },
-      });
+          const text = await res.text();
+          if (!text) {
+            resolve(null);
+            return;
+          }
+          resolve(extractImageUrl(text));
+        })
+        .catch(() => resolve(null));
     });
   }
 
   getStudentById(studentId: string): Promise<Student> {
-    return gmFetch<Student>(
+    return portalFetch<Student>(
       `${BASE}/user-management/students/${pathSegment(studentId)}`,
     );
   }
@@ -780,7 +791,7 @@ export class FspLiveAdapter implements PortalAdapter {
   // --- Schedule ---
 
   getTimeSlotsByTerm(termIds: string[]): Promise<TimeSlot[]> {
-    return gmFetch<TimeSlot[]>(
+    return portalFetch<TimeSlot[]>(
       `${BASE}/education-management/time-slots/by-term`,
       "POST",
       termIds,
@@ -792,7 +803,7 @@ export class FspLiveAdapter implements PortalAdapter {
     startDate: string,
     endDate: string,
   ): Promise<ScheduleEntry[]> {
-    return gmFetch<ScheduleEntry[]>(
+    return portalFetch<ScheduleEntry[]>(
       `${BASE}/education-management/schedules/get-calendar-by-student-and-date-range`,
       "POST",
       { studentId, startDate, endDate },

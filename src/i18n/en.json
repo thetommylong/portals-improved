@@ -280,6 +280,7 @@
   "chat.send": "Send",
   "chat.placeholder": "Ask about your schedule, grades…",
   "chat.loadingContext": "Loading context…",
+  "chat.thinking": "Thinking…",
   "chat.setupTitle": "Assistant setup",
   "chat.setupLead": "Add your OpenAI-compatible API key and optional endpoint to enable the assistant.",
   "chat.toolCall": "Tool call: {name}",

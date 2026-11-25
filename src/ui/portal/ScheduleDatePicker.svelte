@@ -122,16 +122,33 @@
 
   $effect(() => {
     if (!open || !panelEl) return;
-    const handle: OverlayFocusHandle = attachOverlayFocus(panelEl, onclose);
+    const panel = panelEl;
+    const handle: OverlayFocusHandle = attachOverlayFocus(panel, onclose);
+    const narrow = window.matchMedia("(max-width: 768px)");
+    function placeNarrow() {
+      if (!narrow.matches) {
+        panel.style.top = "";
+        return;
+      }
+      const gap = 8;
+      const bottom = trigger?.getBoundingClientRect().bottom ?? 48;
+      panel.style.top = `${bottom + gap}px`;
+    }
+    placeNarrow();
     function onPointerdown(e: Event) {
       if (!(e.target instanceof Node)) return;
-      if (panelEl?.contains(e.target)) return;
+      if (panel.contains(e.target)) return;
       if (trigger?.contains(e.target)) return;
       onclose();
     }
     document.addEventListener("pointerdown", onPointerdown);
+    narrow.addEventListener("change", placeNarrow);
+    window.addEventListener("resize", placeNarrow);
     return () => {
       document.removeEventListener("pointerdown", onPointerdown);
+      narrow.removeEventListener("change", placeNarrow);
+      window.removeEventListener("resize", placeNarrow);
+      panel.style.top = "";
       handle.release();
     };
   });
@@ -372,6 +389,16 @@
     transform-origin: top left;
     color: var(--text);
     font-family: "Google Sans Flex", system-ui, sans-serif;
+  }
+
+  /* Narrow chrome: viewport-center so the 7-day grid never clips. */
+  @media (max-width: 768px) {
+    .date-picker {
+      position: fixed;
+      left: 50%;
+      translate: -50% 0;
+      transform-origin: top center;
+    }
   }
 
   .date-picker:focus-visible {

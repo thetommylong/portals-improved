@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 thetommylong
 
+import { gmGetMigrate, gmSetMigrate } from "./gmPrefs";
 import en from "./i18n/en.json";
 import vi from "./i18n/vi.json";
 
@@ -11,10 +12,10 @@ export type MessageKey = keyof typeof en;
 
 const DICTS: Record<Locale, Record<MessageKey, string>> = { en, vi };
 
-const LOCALE_KEY = "fsp:locale";
+const LOCALE_KEY = "locale";
 
 function storedLocale(): Locale {
-  const raw = GM_getValue<string>(LOCALE_KEY, "");
+  const raw = gmGetMigrate<string>(LOCALE_KEY, "fsp:locale", "");
   if (raw === "vi" || raw === "en") return raw;
   if (navigator.language.toLowerCase().startsWith("vi")) return "vi";
   return "en";
@@ -25,7 +26,7 @@ class LocaleStore {
 
   setLocale(next: Locale): void {
     this.locale = next;
-    GM_setValue(LOCALE_KEY, next);
+    gmSetMigrate(LOCALE_KEY, "fsp:locale", next);
     if (document.documentElement) {
       document.documentElement.lang = next;
     }

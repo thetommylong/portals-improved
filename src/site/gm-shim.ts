@@ -8,18 +8,20 @@
 // theme, runtime) see it before they evaluate.
 //
 // Storage choice: non-secret prefs stay in localStorage. API keys
-// (`fsp:sdk:api_key`) are memory-only — never written to page-readable
+// (`sdk:api_key`) are memory-only — never written to page-readable
 // localStorage/sessionStorage on the demo. Refresh loses the demo key; that
 // is intentional. Real installs use Tampermonkey/Violentmonkey GM storage.
+// Portal list/schedule/marks caches use page `pi:cache:*` directly (not GM).
 
 const memoryStore = new Map<string, string>();
 
 /** Demo must not park API keys in page-readable web storage. */
 function isMemoryOnlyKey(key: string): boolean {
-  return key === "fsp:sdk:api_key";
+  return key === "sdk:api_key" || key === "fsp:sdk:api_key";
 }
 
 // Drop any pre-fix leftovers so a page script cannot read an old key.
+localStorage.removeItem("sdk:api_key");
 localStorage.removeItem("fsp:sdk:api_key");
 
 window.GM_getValue = ((key, defaultValue) => {
@@ -57,6 +59,15 @@ window.GM_deleteValue = ((key) => {
   }
   localStorage.removeItem(key);
 }) as typeof GM_deleteValue;
+
+window.GM_listValues = (() => {
+  const keys = new Set<string>([...memoryStore.keys()]);
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k) keys.add(k);
+  }
+  return [...keys];
+}) as typeof GM_listValues;
 
 window.GM_xmlhttpRequest = ((details) => {
   const { onload, onerror, ontimeout, timeout } = details;

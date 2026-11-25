@@ -30,7 +30,7 @@ GitHub Releases still mark the newest tag as “latest” (`make_latest: true`) 
 
 ## Demo site storage
 
-The Cloudflare Pages / `pnpm site:*` preview has no userscript manager. `src/site/gm-shim.ts` backs most GM prefs with `localStorage`, but **API keys (`fsp:sdk:api_key`) stay in memory only** so a page script cannot read them from web storage. Refreshing the demo drops the key; Tampermonkey/Violentmonkey installs still use real GM storage.
+The Cloudflare Pages / `pnpm site:*` preview has no userscript manager. `src/site/gm-shim.ts` backs most GM prefs with `localStorage`, but **API keys (`sdk:api_key`) stay in memory only** so a page script cannot read them from web storage. Refreshing the demo drops the key; Tampermonkey/Violentmonkey installs still use real GM storage. Portal list/schedule/marks caches use namespaced page `localStorage` (`pi:cache:*`) on both demo and live installs. Live FSP API calls use page `fetch` (same CORS as the portal). OpenAI-compatible chat uses page `fetch` when `GM_info` is absent (demo); userscript builds still use `GM_xmlhttpRequest` for LLM CORS bypass.
 
 ## Needs validation (unfixed)
 
