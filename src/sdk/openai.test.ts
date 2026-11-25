@@ -47,3 +47,33 @@ describe("getBaseUrl", () => {
     expect(store.has("sdk:base_url")).toBe(false);
   });
 });
+
+describe("page fetch transport (no GM_info)", () => {
+  beforeEach(() => {
+    store.clear();
+    vi.resetModules();
+    vi.stubGlobal("fetch", vi.fn());
+    Reflect.deleteProperty(globalThis, "GM_info");
+  });
+
+  it("posts chat completions via fetch", async () => {
+    store.set("sdk:api_key", "sk-test");
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ choices: [] }), { status: 200 }),
+    );
+    const { gmOpenAI, setBaseUrl } = await import("./openai");
+    setBaseUrl("https://llm.example.com/v1");
+    await gmOpenAI({
+      model: "gpt-test",
+      messages: [{ role: "user", content: "hi" }],
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("https://llm.example.com/v1/chat/completions");
+    expect(init?.method).toBe("POST");
+    expect((init?.headers as Record<string, string>).Authorization).toBe(
+      "Bearer sk-test",
+    );
+  });
+});
