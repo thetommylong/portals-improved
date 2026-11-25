@@ -44,6 +44,7 @@
   const renderItems = $derived(groupChatEvents(messages));
   let input = $state("");
   let sending = $state(false);
+  let thinking = $state(false);
   let sendAbort: AbortController | null = null;
   let retryStatus = $state<{
     attempt: number;
@@ -228,6 +229,7 @@
     }
 
     sending = true;
+    thinking = false;
     retryStatus = null;
     const abort = new AbortController();
     sendAbort = abort;
@@ -241,7 +243,12 @@
       await agent.send(
         text,
         (event) => {
+          if (event.type === "thinking") {
+            thinking = true;
+            return;
+          }
           if (event.type === "retry") {
+            thinking = false;
             retryStatus = {
               attempt: event.attempt ?? 1,
               maxAttempts: event.maxAttempts ?? 1,
@@ -252,16 +259,26 @@
             return;
           }
           if (event.type === "confirm" && event.confirmRequest) {
+            thinking = false;
             confirmRequest = event.confirmRequest;
             return;
           }
           if (event.type === "done") {
+            thinking = false;
             retryStatus = null;
             sending = false;
             return;
           }
           if (event.type === "error") {
+            thinking = false;
             retryStatus = null;
+          }
+          if (
+            event.type === "message" ||
+            event.type === "tool_call" ||
+            event.type === "tool_result"
+          ) {
+            thinking = false;
           }
           messages = [...messages, event];
         },
@@ -276,6 +293,7 @@
       );
     } finally {
       if (sendAbort === abort) sendAbort = null;
+      thinking = false;
       retryStatus = null;
       sending = false;
       confirmRequest = null;
@@ -408,6 +426,16 @@
     {#if confirmRequest}
       <div class="confirm-inline">
         <ConfirmCard request={confirmRequest} />
+      </div>
+    {/if}
+
+    {#if thinking && !retryStatus}
+      <div class="msg assistant" aria-busy="true">
+        <div class="bubble loading-bubble" role="status" aria-live="polite">
+          <span class="loading-dots" aria-label={t("chat.thinking")}>
+            <span></span><span></span><span></span>
+          </span>
+        </div>
       </div>
     {/if}
 
@@ -788,6 +816,7 @@
     padding: 2px 0;
   }
 
+  .msg.assistant,
   .msg.system {
     justify-content: flex-start;
   }
@@ -799,6 +828,60 @@
     font-size: 13px;
     line-height: 1.5;
     word-break: break-word;
+  }
+
+  .bubble.loading-bubble {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5em;
+    background: var(--surface-base);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    border-bottom-left-radius: 4px;
+  }
+
+  .loading-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 2px;
+  }
+
+  .loading-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.35;
+    animation: chat-dot-pulse 1.2s ease-in-out infinite;
+  }
+
+  .loading-dots span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .loading-dots span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  @keyframes chat-dot-pulse {
+    0%,
+    80%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+    40% {
+      opacity: 1;
+      transform: translateY(-2px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loading-dots span {
+      animation: none;
+      opacity: 0.7;
+    }
   }
 
   .bubble.retry-msg {

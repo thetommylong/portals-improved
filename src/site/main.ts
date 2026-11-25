@@ -9,8 +9,18 @@
 import "./gm-shim"; // must run first (module-scope GM reads at import time)
 import { mount } from "svelte";
 import { runtime } from "../adapters/runtime.svelte";
+import { setApiKey, setBaseUrl, setModel } from "../sdk/openai";
 import PortalShell from "../ui/PortalShell.svelte";
 import sharedCss from "../ui/portal/shared.css?inline";
+
+// Same-origin mock OpenAI from vite.site.config middleware — any key works.
+try {
+  setBaseUrl(`${window.location.origin}/v1`);
+  setApiKey("sk-mock");
+  setModel("mock-gpt");
+} catch {
+  // Ignore if origin is somehow non-http(s) during odd embeds.
+}
 
 void runtime.adapter.waitForValidSession(60_000).then((userId) => {
   if (userId) boot(userId);

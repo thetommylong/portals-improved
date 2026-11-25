@@ -8,6 +8,7 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { mockOpenAIMiddleware } from './src/site/mock-openai-middleware.js';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
   version?: string;
@@ -31,6 +32,7 @@ export default defineConfig({
   },
   plugins: [
     svelte(),
+    mockOpenAIMiddleware(),
     {
       // Entry lives at site/index.html; Vite's printed Local URL is still `/`.
       // Rewrite common URLs so `/`, `/index.html`, and `/site` (no slash) work.
