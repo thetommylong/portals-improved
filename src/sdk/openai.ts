@@ -29,8 +29,8 @@ const DEFAULT_MODEL = "gpt-4o-mini";
 
 /**
  * Real userscript managers expose `GM_info`. The demo site shim does not, so
- * OpenAI traffic can use page `fetch` (streaming + AbortSignal) there. Portal
- * FSP calls stay on `GM_xmlhttpRequest` in the live adapter.
+ * OpenAI traffic can use page `fetch` (streaming + AbortSignal) there.
+ * Live FSP portal APIs always use page `fetch` (same CORS as the portal SPA).
  */
 function useGmTransport(): boolean {
   return typeof GM_info !== "undefined";

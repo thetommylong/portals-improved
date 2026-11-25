@@ -59,7 +59,7 @@ Catalog of Web platform edges **portals-improved** can hit given how it is built
 | Partitioned third-party storage | Third-party iframes get partitioned buckets | Top-level portal less affected; embeds would isolate keys | `/en-US/docs/Web/API/Storage_Access_API` | M | L |
 | GM vs Web Storage | Production GM storage ≠ origin Web Storage; demo maps GM→`localStorage` | Secrets `fsp:*` via GM; demo inherits page quota/clear-site-data | `/en-US/docs/Web/API/Window/localStorage` | H | H |
 | `document.cookie` parsing | Whitespace; values with `=`; substring name matches; `HttpOnly` invisible | `getToken()` `/token=([^;]+)/` + `decodeURIComponent` | `/en-US/docs/Web/API/Document/cookie` | H | H |
-| `fetch` + CORS | Page `fetch`/`XHR` CORS-bound; `Authorization` → preflight | Demo shim uses `fetch`; production `GM_xmlhttpRequest` bypasses page CORS | `/en-US/docs/Web/HTTP/Guides/CORS`, `/en-US/docs/Web/API/Window/fetch` | H | H |
+| `fetch` + CORS | Page `fetch`/`XHR` CORS-bound; `Authorization` → preflight | Live FSP APIs use page `fetch` (portal CORS); LLM still uses `GM_xmlhttpRequest` in userscript builds | `/en-US/docs/Web/HTTP/Guides/CORS`, `/en-US/docs/Web/API/Window/fetch` | H | H |
 | `AbortController` | Abort rejects fetch; reason/timeout collapsed in shim | Demo GM XHR stand-in | `/en-US/docs/Web/API/AbortController` | L | H |
 | `URL` / schemes | Parses `javascript:`/`data:`; app must reject | `validateOutboundUrl` allowlists https + loopback http | `/en-US/docs/Web/API/URL` | H | M |
 | `URL.hostname` IPv6 brackets | May keep `[::1]` | Loopback check strips brackets | `/en-US/docs/Web/API/URL` | M | L |
@@ -99,7 +99,7 @@ Catalog of Web platform edges **portals-improved** can hit given how it is built
 
 1. **Bootstrap races:** `document.body` null, DCL-already-fired after dynamic import, `window.stop` vs remaining portal loads (`scripts/portal`).
 2. **Layout:** sticky + overflow ancestors; fixed + visual viewport / transformed containing blocks (schedule + overlays).
-3. **Privilege split:** demo `fetch`/CSP vs production `GM_xmlhttpRequest` + `connect: *`; outbound URL validation must stay in front of grants.
+3. **Privilege split:** portal APIs use page `fetch`; LLM still uses `GM_xmlhttpRequest` + `connect: *` in userscript builds; outbound URL validation must stay in front of grants.
 4. **Auth scrape:** page-readable storage/meta/cookie tokens (XSS = session).
 5. **Devtools residual:** `stopPropagation` ≠ defaults; `Function#toString` misses obfuscation; unpatched APIs (`location.replace`, workers).
 6. **Chat HTML:** `innerHTML`/Trusted Types class of risk — keep DOMPurify config tight.
